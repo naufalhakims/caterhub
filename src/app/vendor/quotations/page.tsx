@@ -20,9 +20,10 @@ export default async function VendorQuotationsPage({
     include: { event: true },
     orderBy: { createdAt: "desc" },
   });
-  // Permintaan pelanggan yang belum dijawab dipisahkan dari penawaran vendor.
+  // Pisahkan tegas: permintaan pelanggan tidak pernah tampil sebagai penawaran vendor.
   const requests = quotes.filter((q) => q.origin === "CUSTOMER_REQUEST" && q.status === "REQUESTED");
-  const offers = quotes.filter((q) => !(q.origin === "CUSTOMER_REQUEST" && q.status === "REQUESTED"));
+  const handledRequests = quotes.filter((q) => q.origin === "CUSTOMER_REQUEST" && q.status !== "REQUESTED");
+  const offers = quotes.filter((q) => q.origin === "VENDOR_OFFER");
   const compose = searchParams?.compose ? await db.quotation.findUnique({
     where: { id: searchParams.compose },
     include: { event: true, items: true },
@@ -149,6 +150,28 @@ export default async function VendorQuotationsPage({
           <Empty title="Belum ada penawaran." hint="Pastikan profil terverifikasi dan paket sudah aktif agar muncul di marketplace." />
         )}
       </div>
+
+      {handledRequests.length > 0 && (
+        <>
+          <h2 className="mt-7 font-display text-lg font-bold">Permintaan yang sudah ditangani</h2>
+          <p className="text-[13px] text-stone-500">Arsip permintaan pelanggan beserta hasilnya.</p>
+          <div className="mt-2 space-y-2">
+            {handledRequests.map((q) => (
+              <Card key={q.id} className="!p-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                  <Link href={`/quotations/${q.id}`} className="font-semibold hover:text-brand-700 hover:underline">
+                    {q.event.name} · {q.event.guestCount} pax
+                  </Link>
+                  <span className="flex items-center gap-2 text-xs text-stone-500">
+                    {formatDateID(q.event.eventDate)}
+                    <StatusBadge status={q.status} />
+                  </span>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -24,6 +24,10 @@ export async function sendQuotationAction(formData: FormData) {
   const user = await requireRole("VENDOR");
   const vendor = await db.vendorProfile.findUnique({ where: { userId: user.id } });
   if (!vendor) redirect("/vendor/profile?error=Profil vendor belum dibuat.");
+  // Vendor yang belum terverifikasi tidak boleh mengirim penawaran ke pelanggan.
+  if (vendor.verificationStatus !== "VERIFIED") {
+    redirect("/vendor/verification?error=Penawaran hanya bisa dikirim setelah verifikasi disetujui.");
+  }
 
   // Dukung dua format form: itemsJson (JSON) atau baris itemName{i}/itemQty{i}/itemPrice{i}.
   let parsedItems: unknown = [];
