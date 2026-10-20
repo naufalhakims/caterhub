@@ -13,7 +13,12 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
-    "test": "vitest run"
+    "test": "vitest run",
+    "api:dev": "npm --prefix backend run dev",
+    "api:start": "npm --prefix backend start",
+    "api:test": "npm --prefix backend test",
+    "api:typecheck": "npm --prefix backend run typecheck",
+    "bench:api": "npm --prefix backend run bench"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.7.4",

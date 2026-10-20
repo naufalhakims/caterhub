@@ -33,6 +33,8 @@ Buka http://localhost:3000.
 | `MIDTRANS_SERVER_KEY` | bila midtrans | Dipakai membuat transaksi **dan** memverifikasi signature webhook. |
 | `ALLOW_MOCK_WEBHOOK` | tidak | Default `false`. Webhook mock tidak terautentikasi — jangan aktifkan di produksi. Alur demo memakai `/api/payments/mock-settle` (butuh login). |
 | `UPLOAD_DIR` | tidak | Lokasi penyimpanan dokumen privat. Default `./storage`. |
+| `API_BASE_URL` | tidak | POC pemisahan: alamat API Express. Kosong = Next memakai Prisma langsung. |
+| `API_TIMEOUT_MS` | tidak | Batas waktu panggilan API sebelum fallback ke Prisma. Default `1500`. |
 
 ## Akun demo (password: `demo1234`)
 
@@ -118,12 +120,46 @@ Status: `PENDING` → `UNDER_REVIEW` → `VERIFIED` / `NEEDS_INFO` / `REJECTED`.
 ## Test & pemeriksaan
 
 ```bash
-npm test        # 52 unit test: routing/RBAC, akses resource, kapasitas/tanggal,
-                # alur penawaran, format Rupiah, signature webhook
+npm test          # 60 unit test: routing/RBAC, akses resource, kapasitas/tanggal,
+                  # alur penawaran, format Rupiah, signature webhook, klien API
 npm run typecheck
 npm run lint
 npm run build
+
+npm run api:test       # 11 test API Express (envelope, validasi, CORS, error)
+npm run api:typecheck
 ```
+
+## POC pemisahan backend (Express)
+
+Irisan vertikal pertama sudah dipindah ke service terpisah: **katalog vendor**
+(`GET /api/v1/vendors`, `GET /api/v1/vendors/:id`). Next tetap menjadi frontend.
+
+```bash
+npm run api:dev                     # API di http://localhost:4000 (terminal 1)
+
+# PowerShell (terminal 2)
+$env:API_BASE_URL="http://127.0.0.1:4000"; npm run dev
+# bash
+API_BASE_URL="http://127.0.0.1:4000" npm run dev
+```
+
+- Tanpa `API_BASE_URL`, aplikasi berjalan persis seperti sebelumnya (Prisma di Next).
+- Bila API mati/timeout, katalog **otomatis fallback** ke Prisma dan menulis warning —
+  halaman tidak ikut mati.
+- Endpoint publik & read-only; tidak ada data internal (userId, dokumen) di DTO.
+- Detail kontrak, env, dan batasan: [`backend/README.md`](backend/README.md).
+
+Hasil ukur lokal (200 request, keep-alive, tanpa cache; detail di `docs/BACKEND_SPLIT.md`):
+
+| Jalur | p50 | p95 |
+|---|---|---|
+| Prisma langsung | 0,91 ms | 1,18 ms |
+| HTTP API | 2,40 ms | 4,13 ms |
+
+Overhead pemisahan ≈ **+1,5 ms p50** untuk endpoint ini — jauh di bawah waktu render
+halaman, sehingga keputusan lanjut/tidaknya migrasi harus berbasis modul berikutnya,
+bukan angka ini saja.
 
 ## Struktur
 
@@ -134,6 +170,11 @@ src/lib            → util lintas lapis (date, money, roles, route-access, form
 src/components     → UI kecil (Card, Button, Field, RupiahInput, AutoRefresh)
 prisma/schema.prisma → entitas + migrasi di prisma/migrations
 prisma/seed.ts     → data demo
+
+backend/           → POC API Express + TS + Prisma (katalog vendor)
+backend/src        → app, http, vendor (filters, DTO, repository, routes)
+backend/test       → 11 test (tanpa DB, repository di-inject)
+backend/scripts    → bench Prisma vs HTTP
 ```
 
 ## Catatan deployment
@@ -141,4 +182,8 @@ prisma/seed.ts     → data demo
 - Penyimpanan file memakai filesystem lokal (demo). Vercel bersifat read-only/tidak persisten — ganti `src/server/storage.ts` dengan object storage (S3/R2) untuk produksi.
 - Jalankan `prisma migrate deploy` saat deploy.
 - Set `AUTH_SECRET` acak; jangan set `ALLOW_MOCK_WEBHOOK=true` di produksi.
-- Lihat `docs/BACKEND_SPLIT.md` untuk evaluasi dan rencana pemisahan frontend/backend.
+- POC backend: jalankan `backend` sebagai service kedua (port `API_PORT`) dan set
+  `API_BASE_URL` di frontend. Skema Prisma tetap satu; jalankan `prisma generate`
+  di root. Untuk produksi, backend perlu proses build/CI sendiri dan `DATABASE_URL`
+  dengan role read-only untuk endpoint publik.
+- Lihat `docs/BACKEND_SPLIT.md` untuk evaluasi, hasil ukur, dan rencana migrasi.

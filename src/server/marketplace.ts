@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { toDateOnly } from "@/lib/format";
+import { fetchVendorSearch, type VendorSearchResult } from "@/lib/vendor-api";
 
 export const searchFilterSchema = z.object({
   q: z.string().optional(),
@@ -47,6 +48,66 @@ export function scoreVendor(v: {
   return { score, reasons };
 }
 
+type VendorRow = {
+  id: string;
+  businessName: string;
+  description: string | null;
+  city: string;
+  logoUrl: string | null;
+  coverUrl: string | null;
+  rating: number;
+  reviewCount: number;
+  minPax: number;
+  maxPax: number;
+  packages: { pricePerPax: number }[];
+};
+
+function toResult(
+  v: VendorRow,
+  availability: { maxPax: number; reservedPax: number } | undefined,
+  f: SearchFilters,
+): VendorSearchResult {
+  const startingPrice = v.packages[0]?.pricePerPax ?? null;
+  const maxPax = availability?.maxPax ?? v.maxPax;
+  const reserved = availability?.reservedPax ?? 0;
+  const remaining = maxPax - reserved;
+  const guests = f.guests ?? 0;
+  const hasCapacity = !f.date || !guests ? true : remaining >= guests;
+  const capacityFit = !guests || (guests >= v.minPax && guests <= maxPax && remaining >= guests);
+  const budgetFit =
+    f.budgetMax == null || !guests || startingPrice == null
+      ? null
+      : startingPrice * guests <= f.budgetMax;
+  const cityMatch = !f.city ? null : v.city.toLowerCase() === f.city.toLowerCase();
+  const { score, reasons } = scoreVendor({
+    hasCapacity,
+    capacityFit,
+    budgetFit,
+    cityMatch,
+    rating: v.rating,
+  });
+  return {
+    id: v.id,
+    businessName: v.businessName,
+    city: v.city,
+    rating: v.rating,
+    reviewCount: v.reviewCount,
+    startingPrice,
+    remaining,
+    hasCapacity,
+    score,
+    reasons,
+    description: v.description,
+    logoUrl: v.logoUrl,
+    coverUrl: v.coverUrl,
+  };
+}
+
+/**
+ * POC pemisahan: bila API_BASE_URL diisi, data katalog diambil dari Express.
+ * Bila tidak, tetap memakai Prisma langsung (jalur lama) agar POC bisa
+ * dibatalkan hanya dengan menghapus satu variabel lingkungan.
+ */
 export async function searchVendors(raw: Record<string, string | undefined>) {
   const f = searchFilterSchema.parse({
     q: raw.q || undefined,
@@ -55,74 +116,56 @@ export async function searchVendors(raw: Record<string, string | undefined>) {
     guests: raw.guests || undefined,
     budgetMax: raw.budgetMax || undefined,
   });
+
+  const remote = await fetchVendorSearch({
+    q: f.q,
+    city: f.city,
+    date: f.date,
+    guests: f.guests,
+    budgetMax: f.budgetMax,
+  });
+  if (remote) return remote;
+
+  return searchVendorsFromDb(f);
+}
+
+async function searchVendorsFromDb(f: SearchFilters) {
   const day = f.date ? toDateOnly(f.date) : null;
+  const where = {
+    verificationStatus: "VERIFIED" as const,
+    ...(f.city ? { city: { contains: f.city, mode: "insensitive" as const } } : {}),
+    ...(f.q
+      ? {
+          OR: [
+            { businessName: { contains: f.q, mode: "insensitive" as const } },
+            { description: { contains: f.q, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+  };
 
-  const vendors = day
-    ? await db.vendorProfile.findMany({
-        where: {
-          verificationStatus: "VERIFIED",
-          ...(f.city ? { city: { contains: f.city, mode: "insensitive" } } : {}),
-          ...(f.q
-            ? {
-                OR: [
-                  { businessName: { contains: f.q, mode: "insensitive" } },
-                  { description: { contains: f.q, mode: "insensitive" } },
-                ],
-              }
-            : {}),
-        },
-        include: {
-          packages: { where: { isActive: true }, orderBy: { pricePerPax: "asc" }, take: 1 },
-          availability: { where: { date: day } },
-        },
-        orderBy: { rating: "desc" },
-        take: 50,
-      })
-    : await db.vendorProfile.findMany({
-        where: {
-          verificationStatus: "VERIFIED",
-          ...(f.city ? { city: { contains: f.city, mode: "insensitive" } } : {}),
-          ...(f.q
-            ? {
-                OR: [
-                  { businessName: { contains: f.q, mode: "insensitive" } },
-                  { description: { contains: f.q, mode: "insensitive" } },
-                ],
-              }
-            : {}),
-        },
-        include: {
-          packages: { where: { isActive: true }, orderBy: { pricePerPax: "asc" }, take: 1 },
-        },
-        orderBy: { rating: "desc" },
-        take: 50,
-      });
-
-  return vendors.map((v) => {
-    const startingPrice = v.packages[0]?.pricePerPax ?? null;
-    const avail =
-      "availability" in v && Array.isArray((v as { availability?: unknown }).availability)
-        ? (v as unknown as { availability: { maxPax: number; reservedPax: number }[] }).availability[0]
-        : null;
-    const maxPax = avail?.maxPax ?? v.maxPax;
-    const reserved = avail?.reservedPax ?? 0;
-    const remaining = maxPax - reserved;
-    const guests = f.guests ?? 0;
-    const hasCapacity = !day || !guests ? true : remaining >= guests;
-    const capacityFit =
-      !guests || (guests >= v.minPax && guests <= maxPax && remaining >= guests);
-    const budgetFit =
-      f.budgetMax == null || !guests || startingPrice == null
-        ? null
-        : startingPrice * guests <= f.budgetMax;
-    const cityMatch = !f.city ? null : v.city.toLowerCase() === f.city.toLowerCase();
-    const { score, reasons } = scoreVendor({
-      hasCapacity,
-      capacityFit,
-      budgetFit,
-      cityMatch,
-      rating: v.rating,
+  if (day) {
+    const vendors = await db.vendorProfile.findMany({
+      where,
+      include: {
+        packages: { where: { isActive: true }, orderBy: { pricePerPax: "asc" }, take: 1 },
+        availability: { where: { date: day } },
+      },
+      orderBy: { rating: "desc" },
+      take: 50,
     });
-    return { ...v, startingPrice, remaining, hasCapacity, score, reasons };
-  }).sort((a, b) => b.score - a.score);
+    return vendors
+      .map((v) => toResult(v, v.availability[0], f))
+      .sort((a, b) => b.score - a.score);
+  }
+
+  const vendors = await db.vendorProfile.findMany({
+    where,
+    include: {
+      packages: { where: { isActive: true }, orderBy: { pricePerPax: "asc" }, take: 1 },
+    },
+    orderBy: { rating: "desc" },
+    take: 50,
+  });
+  return vendors.map((v) => toResult(v, undefined, f)).sort((a, b) => b.score - a.score);
 }

@@ -26,7 +26,13 @@ test-results/
 
 # build artifacts
 *.tsbuildinfo
+.next-build*/
 
 # konfigurasi tooling lokal (bukan bagian aplikasi)
 .agents/
 .claude/
+
+# backend POC (dependensi & hasil bench lokal)
+backend/node_modules/
+backend/bench-*.json
+backend/.env
