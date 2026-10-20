@@ -26,6 +26,7 @@ const detail: VendorDetailDto = {
   description: "Katering rumahan",
   city: "Surabaya",
   address: "Jl. Contoh 1",
+  phone: null,
   logoUrl: null,
   coverUrl: null,
   gallery: [],
@@ -45,7 +46,7 @@ function repoSpy(overrides: Partial<VendorRepository> = {}) {
   return { repo, search, getById };
 }
 
-const app = (repo: VendorRepository) => createApp({ vendors: repo, corsOrigin: "http://localhost:3000" });
+const app = (repo: VendorRepository) => createApp({ vendors: repo, corsOrigins: ["http://localhost:3000"] });
 
 describe("GET /health", () => {
   it("mengembalikan status ok", async () => {

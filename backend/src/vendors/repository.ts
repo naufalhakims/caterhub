@@ -134,6 +134,7 @@ export const prismaVendorRepository: VendorRepository = {
       description: v.description,
       city: v.city,
       address: v.address,
+      phone: v.phone,
       logoUrl: v.logoUrl,
       coverUrl: v.coverUrl,
       gallery: v.gallery,

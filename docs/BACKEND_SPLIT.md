@@ -1,137 +1,148 @@
-# Pemisahan frontend/backend: evaluasi, POC, dan rencana
+# Pemisahan frontend & backend — catatan migrasi
 
-Status: **POC irisan vertikal pertama sudah diimplementasikan.** Migrasi penuh
-belum dilakukan dan tidak boleh dilakukan sekaligus.
+Status: **selesai**. Next.js hanya UI; Express API memiliki database, auth, otorisasi, aturan bisnis, dan file.
 
-Yang sudah dipindah: katalog vendor publik (`GET /api/v1/vendors`,
-`GET /api/v1/vendors/:id`) ke `backend/` (Express + TypeScript + Prisma).
-Yang masih di Next: auth/sesi, permintaan & penawaran, booking/kapasitas,
-pembayaran, chat, verifikasi, unggahan, dan seluruh UI.
+Dokumen ini mencatat keputusan, batas modul, dan hal yang perlu diketahui saat merawat/mendeploy. Kontrak endpoint ada di [`../backend/README.md`](../backend/README.md).
 
-## 1. Kondisi awal (baseline)
+## 1. Keputusan
 
-- Next.js 14 App Router, satu proses. Server Components membaca Prisma langsung;
-  mutasi memakai Server Actions.
-- Business logic terkumpul di `src/server/*`, tidak bergantung React kecuali
-  `redirect()`/`revalidatePath()` di file `"use server"`.
-- Otorisasi: `src/middleware.ts` + `src/lib/route-access.ts` (matriks rute) dan
-  `src/server/access.ts` (kepemilikan resource).
-
-### Bukti ukuran build
-
-| Rute | First Load JS |
+| Keputusan | Alasan |
 |---|---|
-| Sebagian besar rute | ~96,3 kB |
-| `/`, `/catering`, `/events/new`, `/vendor/quotations` | ~110 kB |
-| `/vendor/analytics` (Recharts) | 183 kB |
-| Middleware | 120 kB |
+| npm workspaces: `frontend/` + `backend/` | Satu repo, dependency & proses terpisah, tanpa memperkenalkan tooling monorepo baru. |
+| Express + TypeScript + Prisma | Reuse skema, migrasi, Zod, dan domain yang sudah ada; risiko rewrite paling rendah. |
+| JWT HS256 di cookie httpOnly | Tidak perlu NextAuth; Next (Edge) dan API memverifikasi token yang sama dengan `AUTH_SECRET`. |
+| BFF tipis di Next | Server Component tidak boleh sentuh DB; Server Action hanya memanggil REST dan mengurus redirect/revalidate. |
+| API sebagai satu-satunya penegak otorisasi resource | UI/middleware bisa dilewati; kepemilikan quotation/booking/payment/dokumen harus dicek di server data. |
 
-Kesimpulan: ukuran bundle **bukan** bottleneck utama. Biaya terbesar ada pada
-query Prisma per request dan render server, bukan pada pemisahan proses.
+Sebelumnya dievaluasi juga NestJS, Go, Laravel, dan Supabase/PostgREST. Untuk tim kecil dan domain transaksional (kapasitas, transisi status) Express + TS memberi perubahan paling kecil.
 
-## 2. Evaluasi opsi backend
+## 2. Batas tanggung jawab
 
-| Opsi | Kelebihan | Kekurangan untuk kasus ini |
+| Area | Frontend (`frontend/`) | Backend (`backend/`) |
 |---|---|---|
-| **Express + TypeScript + Prisma** | Reuse skema, Zod, dan modul domain; kurva belajar rendah; mudah di-deploy terpisah. | Struktur/guard/validasi error harus disusun sendiri. |
-| NestJS | Modul/guard/decorator rapi untuk jangka panjang. | Rewrite besar (DI, decorator); overhead untuk tim kecil. |
-| Go (Fiber/Echo) | Performa & memori terbaik; binary tunggal. | Menulis ulang domain + validasi; Prisma tidak tersedia; risiko regresi tinggi. |
-| Laravel | Ekosistem matang, auth/RBAC bawaan. | Dua bahasa, dua ORM; seluruh logika ditulis ulang. |
-| Supabase/PostgREST | Cepat untuk CRUD. | Aturan transaksional (kapasitas, transisi status) sulit dijaga; RLS menambah kompleksitas. |
+| Render & navigasi | ✅ | — |
+| Middleware rute berbasis peran | ✅ (gerbang awal) | — |
+| Baca/tulis data | lewat `fetch` ke API | ✅ Prisma/PostgreSQL |
+| Login/register/logout | form → API, simpan cookie | ✅ verifikasi password (bcrypt), terbitkan JWT |
+| Otorisasi per-resource | tidak | ✅ `requireRole` + cek kepemilikan di modul |
+| Aturan bisnis | tidak | ✅ `src/domain/*` |
+| Validasi input | validasi UX ringan | ✅ Zod (sumber kebenaran) |
+| Upload | forwarding `FormData` | ✅ validasi magic bytes, simpan/hapus file |
+| Menyajikan file | rewrite `/uploads`, proxy dokumen | ✅ static publik & route privat ber-otorisasi |
 
-**Keputusan: Express + TypeScript + Prisma.** Risiko rewrite paling rendah karena
-skema, migrasi, Zod, dan modul domain bisa dipakai ulang; Next.js tetap frontend.
+Frontend **tidak lagi** mengimpor `@prisma/client`, `next-auth`, `bcrypt`, atau `@/lib/db`.
 
-## 3. Arsitektur POC
+## 3. Alur request
+
+### Baca halaman (Server Component)
 
 ```
-Browser ──> Next.js (UI + server actions) ──fetch──> Express API ──Prisma──> PostgreSQL
-                     │                                   │
-                     └── fallback Prisma (bila API mati) ┘
+Browser ──cookie──> Next Server Component
+                         │ apiGet('/api/v1/...') + cookie
+                         ▼
+                    Express API ──Prisma──> PostgreSQL
 ```
 
-- `backend/` adalah paket terpisah (dependency & proses sendiri, port `4000`).
-- **Satu skema Prisma** dipakai bersama; Prisma Client di-generate di root, bukan
-  di backend, agar tidak bentrok dengan dev server Next di Windows.
-- Kontrak: envelope `{ data }` / `{ error: { code, message, fields? } }`, status
-  HTTP benar (400/404/500), versi di `/api/v1`.
-- Next memakai API hanya bila `API_BASE_URL` diisi (`src/lib/vendor-api.ts`).
-  Timeout `API_TIMEOUT_MS` (default 1500 ms) → fallback Prisma + warning.
-- Validasi & skor rekomendasi dihitung di API. Skor **masih diduplikasi** dari
-  `src/server/marketplace.ts` selama POC (ditandai komentar); setelah diterima,
-  API menjadi sumber tunggal dan salinan di Next dihapus.
+`frontend/src/lib/api.ts` meneruskan cookie sesi, memakai `cache: "no-store"`, dan membungkus error menjadi `ApiError`.
 
-### Endpoint
+### Mutasi (Server Action)
 
-| Method | Path | Keterangan |
+```
+<form action={serverAction}>
+  → parse FormData/JSON
+  → apiPost/apiPatch/apiForm/apiDelete
+  → redirect + revalidatePath
+```
+
+Tidak ada pemanggilan Prisma atau pengecekan kepemilikan di frontend. Contoh: `vendor-actions.ts`, `quotation-actions.ts`, `admin-actions.ts`, `image-actions.ts`, `verification-actions.ts`.
+
+### Route handler BFF
+
+| Route Next | Diteruskan ke |
+|---|---|
+| `POST /api/quotations/request` | `POST /api/v1/quotations/request` |
+| `POST /api/payments/mock-settle` | `POST /api/v1/payments/:id/mock-settle` |
+| `POST /api/payments/webhook` | `POST /api/v1/payments/webhook` (raw body + content-type) |
+| `GET /api/vendor-documents/[id]` | `GET /api/v1/documents/:id` (cookie diteruskan, respons file diproxy) |
+
+## 4. Auth & sesi
+
+- Cookie: `caterhub_session` (httpOnly, `SameSite=Lax`, `Path=/`, 30 hari).
+- Payload: `sub` (user id), `role`, `email`, `name`; algoritma HS256.
+- API: `attachUser` global → `req.user`; `requireAuth`/`requireRole` per route.
+- Next: `middleware.ts` + `lib/route-access.ts` mengarahkan tamu/peran salah; `lib/session.ts` membaca token untuk Navbar dan pengecekan halaman.
+- Cookie bersifat **host-scoped** (port diabaikan), jadi cookie dari `localhost:4000` juga terbaca di `localhost:3000`. BFF tetap meneruskan cookie ke API; saat login, Next menulis ulang cookie agar masa berlakunya konsisten.
+- `SameSite=Lax` + Server Actions Next (origin check bawaan) mengurangi CSRF. API juga membatasi `CORS_ORIGIN`. Untuk produksi multi-domain, pertimbangkan CSRF token eksplisit dan `SameSite=None; Secure`.
+
+## 5. Modul yang dimigrasikan
+
+- [x] Auth/register/login/logout/password + sesi JWT
+- [x] Profil customer & profil vendor
+- [x] Event (buat/daftar/detail)
+- [x] Katalog publik + kapasitas publik
+- [x] Permintaan & penawaran (kirim, tolak, terima/tolak/revisi, riwayat, chat)
+- [x] Booking + transisi status + anti-overbooking
+- [x] Dashboard customer/vendor + analitik
+- [x] Menu, paket, kalender, kapasitas, pesanan, penawaran vendor
+- [x] Verifikasi vendor + dokumen privat
+- [x] Upload gambar (logo, cover, galeri, menu, paket)
+- [x] Admin (dashboard, users, orders, vendors, detail, keputusan verifikasi)
+- [x] Pembayaran (mock/Midtrans) — fitur ditunda, hardening tetap
+- [x] Hapus jalur Prisma/NextAuth/bcrypt dari frontend
+
+## 6. Penyimpanan file
+
+| Jenis | Lokasi | Akses |
 |---|---|---|
-| GET | `/health` | Liveness. |
-| GET | `/api/v1/vendors` | Daftar vendor `VERIFIED`, filter `q/city/date/guests/budgetMax`, skor + alasan. |
-| GET | `/api/v1/vendors/:id` | Detail publik (paket, menu, ulasan); 404 bila tidak ada/belum terverifikasi. |
+| Gambar publik | `backend/public/uploads` | `GET /uploads/*` (static API, rewrite Next) |
+| Dokumen verifikasi | `backend/storage/private/verification` | `GET /api/v1/documents/:id` (ADMIN/pemilik) |
 
-DTO tidak memuat `userId`, `verificationNote`, `reviewedById`, atau dokumen privat.
+Validasi: maks 5 MB, magic bytes JPG/PNG/WEBP/PDF, folder disanitasi per segmen, file lama dihapus saat diganti. Kedua folder gitignored.
 
-## 4. Hasil pengukuran
+## 7. Pengujian & verifikasi
 
-Metodologi: 200 request, 20 warmup, keep-alive `node:http`, tanpa cache, API & DB
-di mesin yang sama (Windows, PostgreSQL lokal). Jalankan ulang: `npm run bench:api`.
+Otomatis:
 
-| Jalur | mean | p50 | p95 |
-|---|---|---|---|
-| Prisma langsung (daftar) | 0,95 ms | 0,91 ms | 1,18 ms |
-| HTTP `GET /api/v1/vendors` | 2,49 ms | 2,40 ms | 4,13 ms |
-| HTTP + filter (city/guests/date) | 2,25 ms | 1,96 ms | 3,98 ms |
+```bash
+npm test            # frontend 31 + backend 29
+npm run typecheck   # frontend + backend
+npm run lint
+npm run build       # backend typecheck + next build
+```
 
-Overhead pemisahan proses: **+1,5 ms p50 / +3 ms p95**. Angka ini kecil dibanding
-render halaman dan query nyata pada data besar, tetapi **belum** termasuk biaya
-jaringan antar-service di produksi.
+Cakupan: matriks rute/RBAC, akses resource (IDOR), kapasitas/tanggal, transisi penawaran, Rupiah, signature webhook, katalog & envelope API.
 
-Catatan penting: `fetch` (undici) di Windows menambah ±15 ms per request bahkan
-untuk `/health`. Pengukuran awal yang memakai `fetch` menyesatkan; bench final
-memakai `node:http` + keep-alive. Jangan mengutip angka fetch sebagai overhead API.
+Smoke manual (API + Next berjalan):
 
-### Verifikasi paritas
+- Login ketiga peran; cookie terbaca lintas port.
+- Semua halaman customer/vendor/admin → 200; peran salah → 307 ke beranda; tamu → 307 ke login.
+- Detail milik orang lain: customer → quotation/booking 404; vendor lain → 404; dokumen privat customer → 403; anonim → 401.
+- Upload gambar: API menyimpan, `/uploads` via Next → 200, hapus menghapus file.
+- Upload dokumen: vendor/admin bisa baca, customer 403.
+- Permintaan penawaran lewat BFF `POST /api/quotations/request` → 303 ke detail quotation baru.
+- Dashboard/analitik/kapasitas vendor dan seluruh halaman admin memuat data dari API.
 
-- Tanpa filter: Next (Prisma) = 6 vendor, API = 6 vendor.
-- Filter `city=Surabaya&guests=250&date=2026-10-26`: keduanya 4 vendor, **urutan ID identik**.
-- Log API membuktikan Next memanggil endpoint saat `API_BASE_URL` aktif.
-- Fallback diuji unit: API error/timeout/bentuk salah → Prisma, halaman tetap 200.
+## 8. Risiko & batasan
 
-## 5. Keamanan & batasan POC
+- **Satu secret bersama** — rotasi `AUTH_SECRET` mengeluarkan semua sesi; belum ada refresh token/revocation list.
+- **Belum ada rate limit** di login/webhook; tambahkan di reverse proxy atau middleware sebelum produksi.
+- **Filesystem lokal** tidak persisten di platform read-only; gunakan object storage.
+- **Pembayaran ditunda** — jangan aktifkan `ALLOW_MOCK_WEBHOOK` di produksi; endpoint mock-settle tetap butuh login + kepemilikan.
+- **Dua service** menambah hop jaringan; ukur p95 produksi. Katalog sempat diukur +1,5 ms p50 pada mesin lokal, tetapi angka itu bukan jaminan lintas jaringan.
+- **Belum ada contract test lintas service**; regresi kontrak saat ini ditangkap typecheck + smoke manual.
 
-- Endpoint publik, read-only; tidak ada auth karena belum ada data privat.
-- Belum ada rate limit, cache HTTP, atau observability terstruktur.
-- CORS dibatasi `CORS_ORIGIN`; permintaan tanpa Origin (server-to-server) tetap dilayani.
-- Belum ada Docker/CI khusus backend; deploy masih satu repo.
-- Belum ada test kontrak lintas service (baru test unit + verifikasi manual).
+## 9. Rollback
 
-## 6. Langkah berikutnya (setelah POC diterima)
+Tidak ada lagi fallback otomatis ke Prisma di Next. Untuk rollback:
 
-1. **Jadikan API sumber tunggal katalog**: hapus jalur Prisma + skor duplikat di
-   Next, tambah cache HTTP (`Cache-Control: public, s-maxage=30`) dan test kontrak.
-2. **Auth terpusat**: pindahkan verifikasi kredensial & sesi ke API (cookie
-   httpOnly, rotasi, CSRF untuk mutasi), Next hanya membaca sesi. Ini prasyarat
-   sebelum modul transaksional dipindah.
-3. **Modul berikutnya** (satu per satu, dengan gate ukur): permintaan/penawaran →
-   booking/kapasitas → verifikasi/unggahan → pembayaran.
-4. **Gate kualitas per modul**: typecheck, lint, unit + contract test, smoke E2E,
-   p95 tidak lebih buruk dari baseline, tidak ada pemanggilan Prisma tersisa di Next
-   untuk modul yang sudah dipindah.
-5. **Deployment**: dua service, `DATABASE_URL` read-only untuk endpoint publik,
-   object storage untuk unggahan, health check & graceful shutdown (sudah ada di POC).
+1. Kembalikan commit migrasi (frontend + backend) bersama-sama; skema Prisma tetap satu sehingga tidak ada migrasi DB terbalik yang diperlukan untuk perubahan kode murni.
+2. Jika hanya ingin mematikan frontend baru, jalankan versi frontend sebelumnya terhadap API yang sama — API kompatibel dengan kontrak `/api/v1`.
+3. Folder `backend/` tidak bisa dihapus tanpa memindahkan kembali modul ke Next.
 
-## 7. Risiko & mitigasi
+## 10. Langkah lanjutan
 
-- **Dua sumber kebenaran saat transisi** → satu modul dipindah sekaligus; larang
-  duplikasi aturan bisnis setelah modul dinyatakan selesai.
-- **Regresi otorisasi** → pindahkan `canView*`/matriks rute ke paket bersama yang
-  diuji di kedua sisi; jangan pernah mengandalkan UI.
-- **Sesi lintas origin** → samakan domain/cookie `SameSite`, uji CSRF.
-- **Unggahan file** → object storage + signed URL, jangan salin filesystem lokal.
-- **Biaya jaringan produksi** → ukur p95 antar-service sebelum memindah modul
-  berikutnya; bila lebih buruk dari baseline, pertahankan modul di Next.
-
-## 8. Rollback
-
-Kosongkan `API_BASE_URL` → seluruh trafik katalog kembali ke Prisma di Next tanpa
-perubahan kode. Folder `backend/` bisa dihapus tanpa memengaruhi aplikasi utama.
+1. Rate limit + observability (request id, log terstruktur, metrics).
+2. Object storage + signed URL untuk unggahan.
+3. Refresh token/rotasi sesi dan CSRF eksplisit bila frontend & API beda domain.
+4. Contract test (OpenAPI/Zod schema) antara frontend dan API.
+5. Selesaikan fitur pembayaran (idempotency webhook, rekonsiliasi) — saat ini sengaja ditunda.

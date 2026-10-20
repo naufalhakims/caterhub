@@ -1,5 +1,6 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import { ZodError } from "zod";
+import { ApiError } from "./errors";
 
 /** Envelope error konsisten: { error: { code, message, fields? } }. */
 export type ApiErrorBody = {
@@ -38,7 +39,17 @@ export function errorHandler(
 ) {
   if (res.headersSent) return next(err);
   if (err instanceof ZodError) {
-    return sendError(res, 400, "VALIDATION_ERROR", "Parameter tidak valid.", err.flatten().fieldErrors);
+    return sendError(res, 400, "VALIDATION_ERROR", "Data tidak valid.", err.flatten().fieldErrors);
+  }
+  if (err instanceof ApiError) {
+    return sendError(res, err.status, err.code, err.message, err.fields);
+  }
+  // Body JSON rusak / terlalu besar.
+  if (typeof err === "object" && err && "type" in err && (err as { type?: string }).type === "entity.parse.failed") {
+    return sendError(res, 400, "INVALID_JSON", "Body JSON tidak valid.");
+  }
+  if (typeof err === "object" && err && "type" in err && (err as { type?: string }).type === "entity.too.large") {
+    return sendError(res, 413, "PAYLOAD_TOO_LARGE", "Ukuran permintaan terlalu besar.");
   }
   // Jangan bocorkan stack/detail internal ke klien.
   console.error("[api] unhandled error:", err);

@@ -58,6 +58,7 @@ export type VendorDetailDto = {
   description: string | null;
   city: string;
   address: string | null;
+  phone: string | null;
   logoUrl: string | null;
   coverUrl: string | null;
   gallery: string[];

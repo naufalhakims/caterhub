@@ -1,38 +1,40 @@
-# deps
+﻿# deps
 node_modules/
 
 # next
 .next/
 out/
+next-env.d.ts
 
 # env
 .env
 .env*.local
 
 # prisma
-prisma/migrations/dev.db*
+*.db
+*.db-journal
 
 # misc
 *.log
 .DS_Store
+*.tsbuildinfo
 
-# uploads (demo lokal; jangan commit file pengguna)
-storage/
-public/uploads/
+# uploads & dokumen privat (jangan commit file pengguna)
+backend/storage/
+backend/public/uploads/
+frontend/public/uploads/
 
 # test artifacts
 playwright-report/
 test-results/
 
 # build artifacts
-*.tsbuildinfo
 .next-build*/
 
-# konfigurasi tooling lokal (bukan bagian aplikasi)
+# konfigurasi tooling lokal
 .agents/
 .claude/
 
-# backend POC (dependensi & hasil bench lokal)
-backend/node_modules/
-backend/bench-*.json
+# backend lokal
 backend/.env
+backend/bench-*.json

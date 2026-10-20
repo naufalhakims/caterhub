@@ -1,16 +1,20 @@
 import { createApp } from "./app";
+import { createApiRouter } from "./api";
 import { env } from "./env";
 import { db } from "./db";
 import { prismaVendorRepository } from "./vendors/repository";
 
 const app = createApp({
   vendors: prismaVendorRepository,
-  corsOrigin: env.corsOrigin,
+  api: createApiRouter(),
+  corsOrigins: env.corsOrigins,
+  publicUploadDir: env.publicUploadDir,
 });
 
 const server = app.listen(env.port, () => {
-  console.log(`[api] CaterHub API (POC) siap di http://localhost:${env.port}`);
-  console.log(`[api] CORS origin: ${env.corsOrigin}`);
+  console.log(`[api] CaterHub API siap di http://localhost:${env.port}`);
+  console.log(`[api] CORS: ${env.corsOrigins.join(", ")}`);
+  console.log(`[api] Upload publik: ${env.publicUploadDir}`);
 });
 
 async function shutdown(signal: string) {
@@ -19,7 +23,6 @@ async function shutdown(signal: string) {
     await db.$disconnect();
     process.exit(0);
   });
-  // Jangan menggantung selamanya bila koneksi masih terbuka.
   setTimeout(() => process.exit(1), 5_000).unref();
 }
 
