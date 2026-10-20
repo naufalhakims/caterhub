@@ -25,6 +25,7 @@ type BookingRow = {
   totalAmount: number;
   event: { name: string };
   vendor: { businessName: string };
+  review: { id: string } | null;
 };
 
 type QuoteRow = {
@@ -207,7 +208,14 @@ export default async function CustomerDashboard() {
                   <p className="truncate font-semibold">{b.event.name} — {b.vendor.businessName}</p>
                   <p className="text-sm text-stone-500">{formatIDR(b.totalAmount)}</p>
                 </div>
-                <StatusBadge status={b.status} />
+                <div className="flex shrink-0 items-center gap-2">
+                  {b.status === "COMPLETED" && !b.review && (
+                    <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-inset ring-amber-200">
+                      Beri ulasan
+                    </span>
+                  )}
+                  <StatusBadge status={b.status} />
+                </div>
               </Link>
             ))}
           </div>

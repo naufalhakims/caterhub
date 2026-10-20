@@ -1,5 +1,6 @@
 import { Card, Empty } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Field, Input, Textarea } from "@/components/ui/Field";
 import { RupiahInput } from "@/components/ui/RupiahInput";
 import { apiGet } from "@/lib/api";
@@ -60,7 +61,7 @@ export default async function VendorMenuPage({
               <input name="image" type="file" accept="image/jpeg,image/png,image/webp" className="block w-full cursor-pointer rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-brand-800" />
             </Field>
           </div>
-          <div><Button type="submit">Simpan menu</Button></div>
+          <div><SubmitButton>Simpan menu</SubmitButton></div>
         </form>
       </Card>
 
@@ -122,7 +123,7 @@ export default async function VendorMenuPage({
                             <input type="checkbox" name="removeImage" /> Hapus gambar saat disimpan
                           </label>
                         )}
-                        <Button type="submit" variant="secondary" className="!py-1.5 !text-xs">Simpan perubahan</Button>
+                        <SubmitButton variant="secondary" className="!py-1.5 !text-xs">Simpan perubahan</SubmitButton>
                       </form>
                     </details>
                   </Card>

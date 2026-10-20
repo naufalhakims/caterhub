@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { Card, StatusBadge } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { formatIDR } from "@/lib/format";
 import { apiGet, ApiError } from "@/lib/api";
 import type { VendorDetailDto } from "@/lib/vendor-types";
@@ -232,7 +233,7 @@ export default async function VendorDetailPage({
                     <input type="hidden" name="vendorId" value={vendor.id} />
                     <label className="block text-sm">
                       <span className="mb-1 block text-[13px] font-medium text-stone-600">Acara</span>
-                      <select name="eventId" defaultValue={searchParams.eventId ?? myEvents[0].id} className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500">
+                      <select name="eventId" required defaultValue={searchParams.eventId ?? myEvents[0].id} className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500">
                         {myEvents.map((e) => (
                           <option key={e.id} value={e.id}>
                             {e.name} — {e.guestCount} pax
@@ -242,7 +243,7 @@ export default async function VendorDetailPage({
                     </label>
                     <label className="block text-sm">
                       <span className="mb-1 block text-[13px] font-medium text-stone-600">Paket</span>
-                      <select name="packageId" defaultValue={vendor.packages[0]?.id} className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500">
+                      <select name="packageId" required defaultValue={vendor.packages[0]?.id} className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500">
                         {vendor.packages.map((p) => (
                           <option key={p.id} value={p.id}>
                             {p.name} — {formatIDR(p.pricePerPax)}/pax
@@ -251,7 +252,7 @@ export default async function VendorDetailPage({
                       </select>
                     </label>
                     <input name="notes" placeholder="Kustomisasi: tambah dessert, tanpa seafood…" className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm outline-none placeholder:text-stone-400 focus:border-brand-500" />
-                    <Button type="submit" className="w-full !py-2.5">Kirim permintaan penawaran</Button>
+                    <SubmitButton requireDirty={false} className="w-full !py-2.5">Kirim permintaan penawaran</SubmitButton>
                   </form>
                 )}
                 <div className="mt-3 border-t border-brand-100 pt-3 text-xs leading-relaxed text-stone-500">

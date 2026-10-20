@@ -1,5 +1,6 @@
 import { Card, StatusBadge } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Field, Input, Select, Textarea } from "@/components/ui/Field";
 import { requireVendor } from "@/server/vendor-helpers";
 import { updateVendorProfileAction } from "@/server/vendor-actions";
@@ -21,7 +22,7 @@ function UploadForm({ kind, label, hint }: { kind: string; label: string; hint?:
           className="block w-full cursor-pointer rounded-lg border border-stone-300 bg-white px-2 py-1.5 text-xs file:mr-2 file:rounded-md file:border-0 file:bg-brand-50 file:px-2 file:py-1 file:font-semibold file:text-brand-800"
         />
       </label>
-      <Button type="submit" variant="secondary" className="!py-1.5 !text-xs">Unggah</Button>
+      <SubmitButton variant="secondary" className="!py-1.5 !text-xs">Unggah</SubmitButton>
     </form>
   );
 }
@@ -148,10 +149,10 @@ export default async function VendorProfilePage({
             </Select>
           </Field>
           <Field label="Alamat"><Input name="address" defaultValue={fresh.address ?? ""} placeholder="cth. Jl. Raya Nginden No. 12" /></Field>
-          <Field label="Min pax per acara"><Input name="minPax" type="number" min={1} defaultValue={fresh.minPax} /></Field>
-          <Field label="Maks pax/hari (kapasitas dapur)"><Input name="maxPax" type="number" min={1} defaultValue={fresh.maxPax} /></Field>
-          <div className="sm:col-span-2"><Field label="Deskripsi usaha"><Textarea name="description" rows={3} defaultValue={fresh.description ?? ""} placeholder="Spesialisasi, gaya masakan, pengalaman…" /></Field></div>
-          <div><Button type="submit">Simpan profil</Button></div>
+          <Field label="Min pax per acara"><Input name="minPax" type="number" min={1} required defaultValue={fresh.minPax} /></Field>
+          <Field label="Maks pax/hari (kapasitas dapur)"><Input name="maxPax" type="number" min={1} required defaultValue={fresh.maxPax} /></Field>
+          <div className="sm:col-span-2"><Field label="Deskripsi usaha"><Textarea name="description" rows={3} maxLength={2000} defaultValue={fresh.description ?? ""} placeholder="Spesialisasi, gaya masakan, pengalaman…" /></Field></div>
+          <div><SubmitButton>Simpan profil</SubmitButton></div>
         </form>
       </Card>
     </div>

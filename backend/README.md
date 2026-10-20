@@ -80,6 +80,7 @@ Path folder di-resolve relatif terhadap root repo.
 | POST | `/api/v1/quotations/:id/decision` | terima/tolak/minta revisi |
 | POST | `/api/v1/quotations/:id/messages` | chat (hanya pihak terkait) |
 | GET | `/api/v1/bookings/:id` | detail booking (pemilik/vendor/admin) |
+| POST | `/api/v1/bookings/:id/review` | ulasan bintang 1–5 (pelanggan, pesanan `COMPLETED`) |
 | POST | `/api/v1/payments` | buat pembayaran |
 | GET | `/api/v1/payments/:id` | detail pembayaran (pemilik/admin) |
 | POST | `/api/v1/payments/:id/mock-settle` | simulasi lunas (login + pemilik) |

@@ -1,5 +1,6 @@
 import { Card, Empty, StatusBadge } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { formatDateID } from "@/lib/format";
 import { apiGet } from "@/lib/api";
@@ -123,7 +124,7 @@ export default async function VendorVerificationPage({
               />
             </Field>
           </div>
-          <div><Button type="submit">Unggah dokumen</Button></div>
+          <div><SubmitButton>Unggah dokumen</SubmitButton></div>
         </form>
       </Card>
 

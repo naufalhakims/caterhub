@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { registerAction } from "@/server/auth-actions";
 import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Field, Input, Select } from "@/components/ui/Field";
 
 export default function RegisterPage({
@@ -39,9 +39,9 @@ export default function RegisterPage({
             <option value="VENDOR">Vendor — kelola usaha catering</option>
           </Select>
         </Field>
-        <Button type="submit" className="w-full !py-2.5">
+        <SubmitButton className="w-full !py-2.5">
           Buat Akun
-        </Button>
+        </SubmitButton>
       </form>
       <p className="mt-4 text-center text-xs text-stone-400">
         Vendor baru diverifikasi admin sebelum bisa menerima pesanan.

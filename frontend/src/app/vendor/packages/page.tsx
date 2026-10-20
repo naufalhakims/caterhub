@@ -1,5 +1,5 @@
 import { Card, Empty } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Field, Input, Textarea } from "@/components/ui/Field";
 import { RupiahInput } from "@/components/ui/RupiahInput";
 import { apiGet } from "@/lib/api";
@@ -45,8 +45,8 @@ export default async function VendorPackagesPage({
         <form action={upsertPackageAction} className="mt-3 grid gap-3 sm:grid-cols-2">
           <Field label="Nama paket"><Input name="name" required placeholder="cth. Nusantara Premium" /></Field>
           <Field label="Harga/pax (Rp)"><RupiahInput name="pricePerPax" required placeholder="35.000" /></Field>
-          <Field label="Min pax"><Input name="minPax" type="number" min={1} defaultValue={50} /></Field>
-          <Field label="Maks pax"><Input name="maxPax" type="number" min={1} defaultValue={500} /></Field>
+          <Field label="Min pax"><Input name="minPax" type="number" min={1} required defaultValue={50} /></Field>
+          <Field label="Maks pax"><Input name="maxPax" type="number" min={1} required defaultValue={500} /></Field>
           <div className="sm:col-span-2"><Field label="Deskripsi"><Textarea name="description" rows={2} placeholder="cth. Nasi, 2 lauk, sayur, dessert, + pramusaji." /></Field></div>
           <div className="sm:col-span-2">
             <Field label="Gambar paket (opsional)">
@@ -64,7 +64,7 @@ export default async function VendorPackagesPage({
               {activeMenus.length === 0 && <p className="text-sm text-stone-400">Buat menu dulu di halaman Menu.</p>}
             </div>
           </fieldset>
-          <div><Button type="submit">Simpan paket</Button></div>
+          <div><SubmitButton>Simpan paket</SubmitButton></div>
         </form>
       </Card>
 
@@ -107,8 +107,8 @@ export default async function VendorPackagesPage({
                   <Field label="Nama paket"><Input name="name" defaultValue={p.name} required /></Field>
                   <Field label="Harga/pax (Rp)"><RupiahInput name="pricePerPax" defaultValue={p.pricePerPax} required /></Field>
                   <div className="grid grid-cols-2 gap-2">
-                    <Field label="Min pax"><Input name="minPax" type="number" min={1} defaultValue={p.minPax} /></Field>
-                    <Field label="Maks pax"><Input name="maxPax" type="number" min={1} defaultValue={p.maxPax} /></Field>
+                    <Field label="Min pax"><Input name="minPax" type="number" min={1} required defaultValue={p.minPax} /></Field>
+                    <Field label="Maks pax"><Input name="maxPax" type="number" min={1} required defaultValue={p.maxPax} /></Field>
                   </div>
                   <Field label="Deskripsi"><Textarea name="description" rows={2} defaultValue={p.description ?? ""} /></Field>
                   <Field label="Status">
@@ -143,7 +143,7 @@ export default async function VendorPackagesPage({
                       <input type="checkbox" name="removeImage" /> Hapus gambar saat disimpan
                     </label>
                   )}
-                  <Button type="submit" variant="secondary" className="!py-1.5 !text-xs">Simpan perubahan</Button>
+                  <SubmitButton variant="secondary" className="!py-1.5 !text-xs">Simpan perubahan</SubmitButton>
                 </form>
               </details>
             </Card>

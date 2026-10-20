@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
 import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Field, Input, Select, Textarea } from "@/components/ui/Field";
 import { RupiahInput } from "@/components/ui/RupiahInput";
 import { createEventAction } from "@/server/events";
@@ -76,7 +76,7 @@ export default async function NewEventPage({
             <Field label="Catatan (opsional)">
               <Textarea name="notes" rows={3} placeholder="Pantangan makanan, tema, kebutuhan khusus…" />
             </Field>
-            <Button type="submit" className="w-full !py-2.5">Simpan & cari catering →</Button>
+            <SubmitButton className="w-full !py-2.5">Simpan & cari catering →</SubmitButton>
           </form>
         </Card>
       </main>

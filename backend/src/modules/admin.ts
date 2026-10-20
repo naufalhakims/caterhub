@@ -4,6 +4,7 @@ import { db } from "../db";
 import { requireAuth, requireRole } from "../auth/middleware";
 import { asyncHandler, sendError } from "../http";
 import { ApiError } from "../errors";
+import { canReviewBooking, roundRating } from "../domain/review";
 
 const decisionSchema = z
   .object({
@@ -14,6 +15,11 @@ const decisionSchema = z
     message: "Catatan wajib diisi saat menolak atau meminta perbaikan.",
     path: ["note"],
   });
+
+const reviewSchema = z.object({
+  rating: z.coerce.number().int().min(1, "Rating minimal 1 bintang.").max(5, "Rating maksimal 5 bintang."),
+  comment: z.string().trim().max(1000, "Ulasan maksimal 1000 karakter.").optional(),
+});
 
 const STATUS_BY_DECISION = {
   review: "UNDER_REVIEW",
@@ -166,6 +172,85 @@ export function adminRouter() {
 export function bookingsRouter() {
   const router = Router();
   router.use(requireAuth);
+
+  router.post(
+    "/:id/review",
+    requireRole("CUSTOMER"),
+    asyncHandler(async (req, res) => {
+      const input = reviewSchema.parse(req.body ?? {});
+      const user = req.user!;
+
+      const booking = await db.booking.findUnique({
+        where: { id: req.params.id },
+        include: {
+          event: { select: { name: true } },
+          vendor: { select: { userId: true, rating: true, reviewCount: true } },
+          review: { select: { id: true } },
+        },
+      });
+      if (!booking) return sendError(res, 404, "BOOKING_NOT_FOUND", "Pesanan tidak ditemukan.");
+      if (booking.customerId !== user.id) {
+        return sendError(res, 403, "FORBIDDEN", "Anda tidak memiliki akses ke pesanan ini.");
+      }
+      if (!canReviewBooking({
+        actorId: user.id,
+        customerId: booking.customerId,
+        bookingStatus: booking.status,
+        hasReview: !!booking.review,
+      })) {
+        return booking.review
+          ? sendError(res, 409, "ALREADY_REVIEWED", "Pesanan ini sudah pernah diulas.")
+          : sendError(
+              res,
+              409,
+              "BOOKING_NOT_COMPLETED",
+              "Ulasan hanya bisa dibuat setelah pesanan selesai.",
+            );
+      }
+
+      const comment = input.comment?.trim() || null;
+      try {
+        const review = await db.$transaction(async (tx) => {
+          const created = await tx.review.create({
+            data: {
+              bookingId: booking.id,
+              customerId: user.id,
+              vendorId: booking.vendorId,
+              rating: input.rating,
+              comment,
+            },
+          });
+
+          // Update inkremental agar rating historis (mis. data seed) tetap terjaga.
+          const reviewCount = booking.vendor.reviewCount + 1;
+          const rating = roundRating(
+            (booking.vendor.rating * booking.vendor.reviewCount + input.rating) / reviewCount,
+          );
+          await tx.vendorProfile.update({
+            where: { id: booking.vendorId },
+            data: { rating, reviewCount },
+          });
+          await tx.notification.create({
+            data: {
+              userId: booking.vendor.userId,
+              type: "REVIEW",
+              title: "Ulasan baru diterima",
+              message: `${user.name ?? "Pelanggan"} memberi ${input.rating} bintang untuk "${booking.event.name}".`,
+            },
+          });
+          return created;
+        });
+
+        res.status(201).json({ data: review });
+      } catch (error) {
+        // Unique bookingId: dua permintaan bersamaan tetap hanya menghasilkan satu ulasan.
+        if (typeof error === "object" && error && "code" in error && (error as { code?: string }).code === "P2002") {
+          return sendError(res, 409, "ALREADY_REVIEWED", "Pesanan ini sudah pernah diulas.");
+        }
+        throw error;
+      }
+    }),
+  );
 
   router.get(
     "/:id",

@@ -31,6 +31,7 @@ export function viewsRouter() {
           include: {
             vendor: { select: { id: true, businessName: true, city: true, logoUrl: true } },
             event: true,
+            review: { select: { id: true } },
           },
           orderBy: { createdAt: "desc" },
           take: 10,

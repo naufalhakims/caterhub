@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card, Empty, StatusBadge } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Field, Textarea } from "@/components/ui/Field";
 import { formatDateID } from "@/lib/format";
 import { ApiError, apiGet } from "@/lib/api";
@@ -151,10 +151,41 @@ export default async function AdminVendorDetailPage({
               <Textarea name="note" rows={3} placeholder="cth. Foto dapur kurang jelas, mohon unggah ulang." maxLength={1000} />
             </Field>
             <div className="grid gap-2">
-              <Button type="submit" name="decision" value="approve">✓ Setujui (Terverifikasi)</Button>
-              <Button type="submit" name="decision" value="review" variant="secondary">Tandai sedang ditinjau</Button>
-              <Button type="submit" name="decision" value="request_info" variant="secondary">Minta perbaikan dokumen</Button>
-              <Button type="submit" name="decision" value="reject" variant="danger">Tolak verifikasi</Button>
+              <SubmitButton
+                name="decision"
+                value="approve"
+                requireDirty={false}
+                forceDisabled={vendor.verificationStatus === "VERIFIED"}
+              >
+                ✓ Setujui (Terverifikasi)
+              </SubmitButton>
+              <SubmitButton
+                name="decision"
+                value="review"
+                variant="secondary"
+                requireDirty={false}
+                forceDisabled={vendor.verificationStatus === "UNDER_REVIEW"}
+              >
+                Tandai sedang ditinjau
+              </SubmitButton>
+              <SubmitButton
+                name="decision"
+                value="request_info"
+                variant="secondary"
+                requireDirty={false}
+                requiredFields={["note"]}
+              >
+                Minta perbaikan dokumen
+              </SubmitButton>
+              <SubmitButton
+                name="decision"
+                value="reject"
+                variant="danger"
+                requireDirty={false}
+                requiredFields={["note"]}
+              >
+                Tolak verifikasi
+              </SubmitButton>
             </div>
           </form>
         </Card>

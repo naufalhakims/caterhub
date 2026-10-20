@@ -83,6 +83,9 @@ export default async function CateringPage({
                   hasCapacity: v.hasCapacity,
                   score: v.score,
                   reasons: v.reasons,
+                  description: v.description,
+                  logoUrl: v.logoUrl,
+                  coverUrl: v.coverUrl,
                 }}
               />
             </div>

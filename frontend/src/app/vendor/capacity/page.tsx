@@ -1,5 +1,5 @@
 import { Card, Empty } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Field, Input } from "@/components/ui/Field";
 import { formatDateOnlyID } from "@/lib/format";
 import { todayDateOnly } from "@/lib/date";
@@ -37,7 +37,7 @@ export default async function VendorCapacityPage({
         <form action={upsertCapacityAction} className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
           <Field label="Tanggal"><Input name="date" type="date" required /></Field>
           <Field label="Maks pax"><Input name="maxPax" type="number" min={0} defaultValue={vendor.maxPax} required /></Field>
-          <div className="flex items-end"><Button type="submit">Simpan</Button></div>
+          <div className="flex items-end"><SubmitButton>Simpan</SubmitButton></div>
         </form>
       </Card>
 
@@ -64,7 +64,7 @@ export default async function VendorCapacityPage({
                     <span className="mb-1 block">Maks pax</span>
                     <Input name="maxPax" type="number" min={r.reservedPax} defaultValue={r.maxPax} required className="!w-28 !py-1.5" />
                   </label>
-                  <Button type="submit" variant="secondary" className="!py-1.5">Perbarui</Button>
+                  <SubmitButton variant="secondary" className="!py-1.5">Perbarui</SubmitButton>
                   <span className="pb-1.5 text-[11px] text-stone-400">Minimal {r.reservedPax} pax (sudah terpesan)</span>
                 </form>
               </Card>

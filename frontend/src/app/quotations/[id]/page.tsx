@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { Card, StatusBadge } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Field, Textarea } from "@/components/ui/Field";
 import { formatIDR, formatDateID, formatDateTimeID } from "@/lib/format";
 import { ApiError, apiGet } from "@/lib/api";
@@ -165,9 +165,27 @@ export default async function QuotationDetailPage({
                 <Textarea name="revisionNote" rows={2} placeholder="cth. Tambah 1 menu dessert, budget maks 9 juta." />
               </Field>
               <div className="flex flex-col gap-2 sm:flex-row">
-                <Button type="submit" name="decision" value="accept" className="flex-1 !py-2.5">✓ Terima & buat pesanan</Button>
-                <Button type="submit" name="decision" value="revision" variant="secondary" className="flex-1">Minta revisi</Button>
-                <Button type="submit" name="decision" value="reject" variant="danger">Tolak</Button>
+                <SubmitButton
+                  name="decision"
+                  value="accept"
+                  requireDirty={false}
+                  className="flex-1 !py-2.5"
+                >
+                  ✓ Terima & buat pesanan
+                </SubmitButton>
+                <SubmitButton
+                  name="decision"
+                  value="revision"
+                  variant="secondary"
+                  requireDirty={false}
+                  requiredFields={["revisionNote"]}
+                  className="flex-1"
+                >
+                  Minta revisi
+                </SubmitButton>
+                <SubmitButton name="decision" value="reject" variant="danger" requireDirty={false}>
+                  Tolak
+                </SubmitButton>
               </div>
             </form>
           </Card>
@@ -198,7 +216,7 @@ export default async function QuotationDetailPage({
                     <Field label="Alasan (dikirim ke pelanggan)">
                       <Textarea name="reason" rows={2} required maxLength={500} placeholder="cth. Tanggal tersebut kapasitas dapur sudah penuh." />
                     </Field>
-                    <Button type="submit" variant="danger" className="!py-1.5 !text-xs">Tolak permintaan</Button>
+                    <SubmitButton variant="danger" className="!py-1.5 !text-xs">Tolak permintaan</SubmitButton>
                   </form>
                 </details>
               )}
@@ -262,7 +280,7 @@ export default async function QuotationDetailPage({
                 <Textarea name="body" rows={2} required maxLength={2000} placeholder="Tulis pesan…" />
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[11px] text-stone-400">Pesan tersimpan dan bisa dibaca kedua pihak.</p>
-                  <Button type="submit" className="!py-1.5">Kirim</Button>
+                  <SubmitButton className="!py-1.5">Kirim</SubmitButton>
                 </div>
               </form>
             </div>

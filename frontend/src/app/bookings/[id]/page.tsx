@@ -3,10 +3,14 @@ import { notFound } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { Card, StatusBadge } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { SubmitButton } from "@/components/ui/SubmitButton";
+import { StarRatingInput } from "@/components/ui/StarRatingInput";
+import { Field, Textarea } from "@/components/ui/Field";
 import { formatIDR, formatDateID } from "@/lib/format";
 import { ApiError, apiGet } from "@/lib/api";
 import { requireUser } from "@/lib/auth-helpers";
 import { createPaymentAction } from "@/server/payment-actions";
+import { createBookingReviewAction } from "@/server/booking-actions";
 
 const TRACK: { key: string; label: string }[] = [
   { key: "PAYMENT_PENDING", label: "Menunggu bayar" },
@@ -26,8 +30,9 @@ type BookingDetail = {
   cancelledAt: string | null;
   customerId: string;
   event: { name: string; eventDate: string; guestCount: number; location: string; city: string };
-  vendor: { businessName: string; userId: string };
+  vendor: { id: string; businessName: string; userId: string };
   payments: { id: string; amount: number; status: string }[];
+  review: { id: string; rating: number; comment: string | null; createdAt: string } | null;
 };
 
 export default async function BookingDetailPage({
@@ -187,6 +192,50 @@ export default async function BookingDetailPage({
           ))}
           {booking.payments.length === 0 && <p className="text-sm text-stone-500">Belum ada pembayaran.</p>}
         </div>
+
+        {isCustomer && booking.status === "COMPLETED" && (
+          <Card className="mt-4">
+            <h2 className="font-display text-lg font-bold">
+              {booking.review ? "Ulasan Anda" : "Bagaimana pengalaman Anda?"}
+            </h2>
+            {booking.review ? (
+              <div className="mt-2">
+                <p className="text-xl leading-none text-amber-500" aria-label={`${booking.review.rating} dari 5 bintang`}>
+                  {"★".repeat(booking.review.rating)}
+                  <span className="text-stone-300">{"★".repeat(5 - booking.review.rating)}</span>
+                </p>
+                <p className="mt-2 text-sm text-stone-500">
+                  Dikirim {formatDateID(booking.review.createdAt)}
+                </p>
+                {booking.review.comment && (
+                  <p className="mt-2 rounded-xl bg-[#FAF7F1] px-4 py-3 text-sm leading-relaxed text-stone-700 ring-1 ring-inset ring-stone-200/70">
+                    “{booking.review.comment}”
+                  </p>
+                )}
+              </div>
+            ) : (
+              <>
+                <p className="text-[13px] text-stone-500">
+                  Bantu pelanggan lain dengan menilai kualitas makanan, pelayanan, dan ketepatan waktu vendor ini.
+                </p>
+                <form action={createBookingReviewAction} className="mt-4 space-y-3">
+                  <input type="hidden" name="bookingId" value={booking.id} />
+                  <input type="hidden" name="vendorId" value={booking.vendor.id} />
+                  <StarRatingInput />
+                  <Field label="Ceritakan pengalaman Anda (opsional)">
+                    <Textarea
+                      name="comment"
+                      rows={3}
+                      maxLength={1000}
+                      placeholder="cth. Makanan enak, pramusaji ramah, dan pengiriman tepat waktu."
+                    />
+                  </Field>
+                  <SubmitButton>Kirim ulasan</SubmitButton>
+                </form>
+              </>
+            )}
+          </Card>
+        )}
       </main>
     </>
   );

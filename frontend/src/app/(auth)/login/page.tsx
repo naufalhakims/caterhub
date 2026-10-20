@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { loginAction } from "@/server/auth-actions";
 import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Field, Input } from "@/components/ui/Field";
 
 export default function LoginPage({
@@ -30,9 +30,9 @@ export default function LoginPage({
         <Field label="Kata Sandi">
           <Input name="password" type="password" required placeholder="••••••••" autoComplete="current-password" />
         </Field>
-        <Button type="submit" className="w-full !py-2.5">
+        <SubmitButton className="w-full !py-2.5">
           Masuk
-        </Button>
+        </SubmitButton>
       </form>
       <div className="mt-5 rounded-xl bg-[#FAF7F1] p-3.5 text-xs leading-relaxed text-stone-500 ring-1 ring-stone-200/70">
         <p className="font-bold text-stone-600">Akun demo — kata sandi: demo1234</p>

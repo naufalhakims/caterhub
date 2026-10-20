@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
 import { Card, StatusBadge } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { SubmitButton } from "@/components/ui/SubmitButton";
+import { ConfirmPasswordField } from "@/components/ui/ConfirmPasswordField";
 import { Field, Input } from "@/components/ui/Field";
 import { requireCustomer } from "@/lib/auth-helpers";
 import { apiGet } from "@/lib/api";
@@ -66,7 +67,7 @@ export default async function ProfilePage({
             <Field label="Kota">
               <Input name="city" defaultValue={user.city ?? ""} placeholder="cth. Surabaya" maxLength={60} />
             </Field>
-            <Button type="submit">Simpan profil</Button>
+            <SubmitButton>Simpan profil</SubmitButton>
           </form>
         </Card>
 
@@ -80,10 +81,8 @@ export default async function ProfilePage({
             <Field label="Kata sandi baru">
               <Input name="newPassword" type="password" autoComplete="new-password" minLength={8} required />
             </Field>
-            <Field label="Ulangi kata sandi baru">
-              <Input name="confirmPassword" type="password" autoComplete="new-password" minLength={8} required />
-            </Field>
-            <Button type="submit" variant="secondary">Ubah kata sandi</Button>
+            <ConfirmPasswordField label="Ulangi kata sandi baru" />
+            <SubmitButton variant="secondary">Ubah kata sandi</SubmitButton>
           </form>
         </Card>
       </main>

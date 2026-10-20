@@ -52,7 +52,7 @@ export async function upsertPackageAction(formData: FormData): Promise<never> {
 }
 
 export async function updateVendorProfileAction(formData: FormData): Promise<never> {
-  await requireVendor();
+  const { vendor } = await requireVendor();
   try {
     await apiPatch("/api/v1/vendor/me", {
       businessName: String(formData.get("businessName") ?? ""),
@@ -67,6 +67,9 @@ export async function updateVendorProfileAction(formData: FormData): Promise<nev
     fail("/vendor/profile", errorMessage(error, "Data profil tidak valid."));
   }
   revalidatePath("/vendor/profile");
+  revalidatePath("/vendor/dashboard");
+  revalidatePath("/catering");
+  revalidatePath(`/catering/${vendor.id}`);
   redirect("/vendor/profile?ok=Profil berhasil disimpan.");
 }
 

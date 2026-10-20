@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, Empty, StatusBadge } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Field, Input, Textarea } from "@/components/ui/Field";
 import { RupiahInput } from "@/components/ui/RupiahInput";
 import { formatIDR, formatDateID } from "@/lib/format";
@@ -151,7 +152,7 @@ export default async function VendorQuotationsPage({
               <Field label="Berlaku hingga"><Input name="expiresAt" type="date" /></Field>
             </div>
             <Field label="Catatan untuk pelanggan"><Textarea name="notes" rows={2} defaultValue={compose.notes ?? ""} placeholder="cth. Sudah termasuk alat makan & pramusaji." /></Field>
-            <Button type="submit" className="!px-6 !py-2.5">Kirim penawaran →</Button>
+            <SubmitButton requireDirty={false} className="!px-6 !py-2.5">Kirim penawaran →</SubmitButton>
           </form>
         </Card>
       )}
