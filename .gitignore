@@ -1,0 +1,32 @@
+# deps
+node_modules/
+
+# next
+.next/
+out/
+
+# env
+.env
+.env*.local
+
+# prisma
+prisma/migrations/dev.db*
+
+# misc
+*.log
+.DS_Store
+
+# uploads (demo lokal; jangan commit file pengguna)
+storage/
+public/uploads/
+
+# test artifacts
+playwright-report/
+test-results/
+
+# build artifacts
+*.tsbuildinfo
+
+# konfigurasi tooling lokal (bukan bagian aplikasi)
+.agents/
+.claude/

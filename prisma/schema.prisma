@@ -1,0 +1,439 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  VENDOR
+  ADMIN
+}
+
+enum VerificationStatus {
+  PENDING
+  UNDER_REVIEW
+  NEEDS_INFO
+  VERIFIED
+  REJECTED
+}
+
+enum VendorDocumentType {
+  BUSINESS_LICENSE
+  PREMISES_PHOTO
+  KITCHEN_PHOTO
+  MENU_PACKAGE
+  OTHER
+}
+
+enum EventType {
+  WEDDING
+  BIRTHDAY
+  CORPORATE
+  MEETING
+  SEMINAR
+  GATHERING
+  GRADUATION
+  OTHER
+}
+
+enum QuotationStatus {
+  DRAFT
+  REQUESTED
+  SENT
+  REVISION_REQUESTED
+  ACCEPTED
+  REJECTED
+  DECLINED
+  EXPIRED
+}
+
+enum QuotationOrigin {
+  CUSTOMER_REQUEST
+  VENDOR_OFFER
+}
+
+enum BookingStatus {
+  QUOTATION_PENDING
+  QUOTATION_SENT
+  REVISION_REQUESTED
+  CONFIRMED
+  PAYMENT_PENDING
+  PAID
+  PREPARING
+  READY
+  DELIVERED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  SETTLEMENT
+  FAILED
+  EXPIRED
+  CANCELLED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  passwordHash  String?
+  emailVerified DateTime?
+  image         String?
+  role          Role      @default(CUSTOMER)
+  phone         String?
+  address       String?
+  city          String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  vendorProfile VendorProfile?
+  events        Event[]        @relation("CustomerEvents")
+  quotationsAsCustomer Quotation[] @relation("CustomerQuotations")
+  bookingsAsCustomer   Booking[]   @relation("CustomerBookings")
+  reviews       Review[]
+  notifications Notification[]
+  offerMessages OfferMessage[] @relation("OfferMessages")
+  quotationActions QuotationHistory[] @relation("QuotationHistoryActor")
+
+  @@index([role])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model VendorProfile {
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  businessName       String
+  description        String?
+  phone              String?
+  address            String?
+  city               String             @default("Surabaya")
+  latitude           Float?
+  longitude          Float?
+  verificationStatus VerificationStatus @default(PENDING)
+  verificationNote   String?
+  reviewedAt         DateTime?
+  reviewedById       String?
+  logoUrl            String?
+  coverUrl           String?
+  gallery            String[]           @default([])
+  rating             Float              @default(0)
+  reviewCount        Int                @default(0)
+  minPax             Int                @default(50)
+  maxPax             Int                @default(500)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  menuItems    MenuItem[]
+  packages     Package[]
+  availability Availability[]
+  quotations   Quotation[]    @relation("VendorQuotations")
+  bookings     Booking[]      @relation("VendorBookings")
+  reviews      Review[]
+  documents    VendorDocument[]
+
+  @@index([city])
+  @@index([verificationStatus])
+}
+
+model VendorDocument {
+  id           String             @id @default(cuid())
+  vendorId     String
+  type         VendorDocumentType
+  title        String?
+  fileName     String
+  storageKey   String             @unique
+  mimeType     String
+  sizeBytes    Int
+  uploadedById String?
+  createdAt    DateTime           @default(now())
+
+  vendor VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@index([type])
+}
+
+model Event {
+  id         String    @id @default(cuid())
+  customerId String
+  name       String
+  eventType  EventType
+  eventDate  DateTime
+  eventTime  String?
+  location   String
+  city       String    @default("Surabaya")
+  guestCount Int
+  budgetMin  Int?
+  budgetMax  Int?
+  notes      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  customer   User        @relation("CustomerEvents", fields: [customerId], references: [id], onDelete: Cascade)
+  quotations Quotation[]
+  bookings   Booking[]
+
+  @@index([customerId])
+  @@index([eventDate])
+}
+
+model MenuItem {
+  id          String   @id @default(cuid())
+  vendorId    String
+  name        String
+  description String?
+  category    String   @default("Lauk")
+  price       Int      @default(0) // add-on price per pax, IDR
+  imageUrl    String?
+  isAvailable Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vendor   VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  packages PackageItem[]
+
+  @@index([vendorId])
+}
+
+model Package {
+  id          String   @id @default(cuid())
+  vendorId    String
+  name        String
+  description String?
+  pricePerPax Int // IDR per pax
+  minPax      Int      @default(50)
+  maxPax      Int      @default(500)
+  imageUrl    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vendor   VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  items    PackageItem[]
+  quotations Quotation[]
+
+  @@index([vendorId])
+  @@index([isActive])
+}
+
+model PackageItem {
+  packageId  String
+  menuItemId String
+
+  package  Package  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
+  @@id([packageId, menuItemId])
+}
+
+model Availability {
+  id          String   @id @default(cuid())
+  vendorId    String
+  date        DateTime @db.Date
+  maxPax      Int      @default(500)
+  reservedPax Int      @default(0)
+
+  vendor VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([vendorId, date])
+  @@index([date])
+}
+
+model Quotation {
+  id          String          @id @default(cuid())
+  eventId     String
+  packageId   String?
+  vendorId    String
+  customerId  String
+  status      QuotationStatus @default(DRAFT)
+  origin      QuotationOrigin @default(VENDOR_OFFER)
+  subtotal    Int             @default(0)
+  deliveryFee Int             @default(0)
+  serviceFee  Int             @default(0)
+  discount    Int             @default(0)
+  total       Int             @default(0) // snapshot harga saat kirim/terima
+  notes       String?
+  expiresAt   DateTime?
+  revisionNote String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  event    Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  package  Package?      @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  vendor   VendorProfile @relation("VendorQuotations", fields: [vendorId], references: [id], onDelete: Cascade)
+  customer User          @relation("CustomerQuotations", fields: [customerId], references: [id], onDelete: Cascade)
+  items    QuotationItem[]
+  booking  Booking?
+  messages OfferMessage[]
+  history  QuotationHistory[]
+
+  @@index([eventId])
+  @@index([vendorId])
+  @@index([customerId])
+  @@index([status])
+  @@index([origin])
+}
+
+model QuotationHistory {
+  id          String           @id @default(cuid())
+  quotationId String
+  actorId     String?
+  action      String // created | sent | revised | accepted | rejected | revision_requested | declined
+  fromStatus  QuotationStatus?
+  toStatus    QuotationStatus?
+  note        String?
+  createdAt   DateTime         @default(now())
+
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  actor     User?     @relation("QuotationHistoryActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([quotationId, createdAt])
+}
+
+model OfferMessage {
+  id          String   @id @default(cuid())
+  quotationId String
+  senderId    String
+  body        String
+  createdAt   DateTime @default(now())
+
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  sender    User      @relation("OfferMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([quotationId, createdAt])
+  @@index([senderId])
+}
+
+model QuotationItem {
+  id          String @id @default(cuid())
+  quotationId String
+  name        String // snapshot nama, bukan FK — harga historis stabil
+  description String?
+  quantity    Int
+  unitPrice   Int
+  subtotal    Int
+
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  @@index([quotationId])
+}
+
+model Booking {
+  id              String        @id @default(cuid())
+  eventId         String
+  quotationId     String        @unique
+  vendorId        String
+  customerId      String
+  status          BookingStatus @default(CONFIRMED)
+  totalAmount     Int // snapshot dari quotation.total
+  depositAmount   Int
+  remainingAmount Int
+  confirmedAt     DateTime?
+  cancelledAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  event    Event         @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  quotation Quotation    @relation(fields: [quotationId], references: [id], onDelete: Restrict)
+  vendor   VendorProfile @relation("VendorBookings", fields: [vendorId], references: [id], onDelete: Restrict)
+  customer User          @relation("CustomerBookings", fields: [customerId], references: [id], onDelete: Restrict)
+  payments Payment[]
+  review   Review?
+
+  @@index([vendorId])
+  @@index([customerId])
+  @@index([status])
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  bookingId         String
+  provider          String        @default("mock")
+  providerReference String        @unique
+  amount            Int
+  method            String        @default("QRIS")
+  status            PaymentStatus @default(PENDING)
+  qrPayload         String? // QR string / checkout URL snapshot
+  paidAt            DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@index([status])
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  bookingId  String   @unique
+  customerId String
+  vendorId   String
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  booking  Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  customer User          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  vendor   VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String    @default("INFO")
+  title     String
+  message   String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

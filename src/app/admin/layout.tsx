@@ -1,0 +1,25 @@
+import { Navbar } from "@/components/Navbar";
+import { SideNav } from "@/components/SideNav";
+import { requireRole } from "@/lib/auth-helpers";
+
+const NAV = [
+  ["/admin/dashboard", "Dashboard", "◈"],
+  ["/admin/vendors", "Vendor", "✓"],
+  ["/admin/users", "Pengguna", "○"],
+  ["/admin/orders", "Pesanan", "▣"],
+] as const;
+
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  await requireRole("ADMIN");
+  return (
+    <>
+      <Navbar />
+      <div className="mx-auto max-w-6xl gap-6 px-4 py-6 md:flex">
+        <aside className="shrink-0 md:w-52">
+          <SideNav items={NAV} />
+        </aside>
+        <div className="min-w-0 flex-1">{children}</div>
+      </div>
+    </>
+  );
+}
