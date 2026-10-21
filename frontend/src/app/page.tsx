@@ -15,10 +15,10 @@ const CATEGORIES = [
 ];
 
 const STEPS = [
-  { n: "01", t: "Buat acara", d: "Isi tanggal, lokasi, jumlah tamu, dan budget sekali saja." },
-  { n: "02", t: "Bandingkan vendor", d: "Skor rekomendasi dari kapasitas, budget, lokasi, dan rating." },
-  { n: "03", t: "Minta penawaran", d: "Sesuaikan paket dan terima rincian harga item per item." },
-  { n: "04", t: "Pesan & bayar QRIS", d: "Kapasitas dicek ulang otomatis sebelum pesanan dikunci." },
+  { n: "01", t: "Cari vendor", d: "Masukkan tanggal, jam, jumlah tamu, dan paket yang diinginkan." },
+  { n: "02", t: "Kirim permintaan", d: "Pesanan langsung dikirim ke vendor. Tidak wajib membuat acara dulu." },
+  { n: "03", t: "Vendor konfirmasi", d: "Vendor menyetujui dan menambahkan ongkir/biaya lain ke nota." },
+  { n: "04", t: "Bayar lunas & rating", d: "Setelah lunas vendor mulai persiapan, lalu beri rating." },
 ];
 
 export default async function LandingPage() {
@@ -47,16 +47,16 @@ export default async function LandingPage() {
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <Link
-                  href="/events/new"
+                  href="/catering"
                   className="rounded-xl bg-white px-6 py-3 font-semibold text-brand-900 shadow-lift transition hover:-translate-y-0.5"
                 >
-                  Buat Acara
+                  Cari Catering
                 </Link>
                 <Link
-                  href="/catering"
+                  href="/events/new"
                   className="rounded-xl px-6 py-3 font-semibold ring-1 ring-white/40 transition hover:bg-white/10"
                 >
-                  Jelajahi Catering
+                  Buat Acara (opsional)
                 </Link>
               </div>
             </div>
@@ -64,12 +64,16 @@ export default async function LandingPage() {
             <form
               action="/catering"
               method="get"
-              className="animate-rise relative mt-10 grid max-w-3xl gap-2 rounded-2xl bg-white p-3 text-stone-900 shadow-lift sm:grid-cols-[1fr_1fr_1fr_auto]"
+              className="animate-rise relative mt-10 grid max-w-3xl gap-2 rounded-2xl bg-white p-3 text-stone-900 shadow-lift sm:grid-cols-[1fr_0.8fr_1fr_1fr_auto]"
               style={{ animationDelay: "120ms" }}
             >
               <label className="block rounded-xl px-3 py-1.5 focus-within:ring-2 focus-within:ring-brand-200">
                 <span className="block text-[11px] font-bold uppercase tracking-wide text-stone-400">Tanggal</span>
                 <input name="date" type="date" required className="w-full bg-transparent text-sm font-medium outline-none" />
+              </label>
+              <label className="block rounded-xl px-3 py-1.5 focus-within:ring-2 focus-within:ring-brand-200">
+                <span className="block text-[11px] font-bold uppercase tracking-wide text-stone-400">Jam</span>
+                <input name="time" type="time" required className="w-full bg-transparent text-sm font-medium outline-none" />
               </label>
               <label className="block rounded-xl px-3 py-1.5 focus-within:ring-2 focus-within:ring-brand-200">
                 <span className="block text-[11px] font-bold uppercase tracking-wide text-stone-400">Tamu</span>
@@ -188,11 +192,11 @@ export default async function LandingPage() {
                 Berhenti kelola pesanan lewat chat berantakan.
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-white/75">
-                Terima permintaan penawaran, kirim rincian harga, kelola kapasitas harian dan
-                jadwal acara, pantau pendapatan — semua dari satu dashboard. Tanpa spreadsheet.
+                Terima permintaan pesanan, konfirmasi ongkir dan biaya lain ke nota,
+                kelola kapasitas harian, dan pantau pendapatan — semua dari satu dashboard.
               </p>
               <ul className="mt-4 grid gap-2 text-sm text-white/85 sm:grid-cols-3">
-                {["Penawaran digital", "Kapasitas otomatis", "Analitik usaha"].map((f) => (
+                {["Konfirmasi pesanan", "Kapasitas otomatis", "Analitik usaha"].map((f) => (
                   <li key={f} className="flex items-center gap-2">
                     <span className="grid h-5 w-5 place-items-center rounded-full bg-emerald-400/20 text-xs text-emerald-300">✓</span>
                     {f}

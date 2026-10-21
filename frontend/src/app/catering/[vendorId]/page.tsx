@@ -9,7 +9,6 @@ import { apiGet, ApiError } from "@/lib/api";
 import type { VendorDetailDto } from "@/lib/vendor-types";
 import { auth } from "@/auth";
 
-type NavEvent = { id: string; name: string; guestCount: number };
 type CapacityPreview = { ok: boolean; remaining: number; maxPax: number; reservedPax: number };
 
 export default async function VendorDetailPage({
@@ -17,7 +16,13 @@ export default async function VendorDetailPage({
   searchParams,
 }: {
   params: { vendorId: string };
-  searchParams: { date?: string; guests?: string; eventId?: string };
+  searchParams: {
+    date?: string;
+    time?: string;
+    guests?: string;
+    city?: string;
+    error?: string;
+  };
 }) {
   let vendor: VendorDetailDto;
   try {
@@ -27,10 +32,7 @@ export default async function VendorDetailPage({
     throw error;
   }
   const session = await auth();
-  const myEvents =
-    session?.user?.role === "CUSTOMER"
-      ? await apiGet<NavEvent[]>("/api/v1/events")
-      : [];
+  const canOrder = session?.user?.role === "CUSTOMER";
 
   const guests = searchParams.guests ? parseInt(searchParams.guests) : NaN;
   let cap: CapacityPreview | null = null;
@@ -112,10 +114,15 @@ export default async function VendorDetailPage({
 
         <div className="mx-auto max-w-6xl gap-6 px-4 py-8 lg:grid lg:grid-cols-[1fr_340px]">
           <div className="min-w-0">
+            {searchParams.error && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700 shadow-soft">
+                {searchParams.error}
+              </div>
+            )}
             {cap && (
-              <div className={`rounded-2xl border p-4 text-sm font-semibold shadow-soft ${cap.ok ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-700"}`}>
+              <div className={`${searchParams.error ? "mt-3" : ""} rounded-2xl border p-4 text-sm font-semibold shadow-soft ${cap.ok ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-700"}`}>
                 {cap.ok
-                  ? `✓ Tersedia — sisa ${cap.remaining} pax pada ${searchParams.date}.`
+                  ? `✓ Tersedia — sisa ${cap.remaining} pax pada ${searchParams.date}${searchParams.time ? ` pukul ${searchParams.time}` : ""}.`
                   : "✕ Kapasitas vendor tidak mencukupi untuk jumlah pax yang dipilih."}
               </div>
             )}
@@ -209,40 +216,58 @@ export default async function VendorDetailPage({
             )}
           </div>
 
-          {/* Sticky quote panel */}
+          {/* Sticky order panel */}
           <aside className="mt-8 lg:mt-0">
             <div className="lg:sticky lg:top-20">
               <Card className="border-brand-100 !bg-gradient-to-b !from-brand-50 !to-white">
-                <h2 className="font-display text-lg font-bold">Minta Penawaran</h2>
-                <p className="mt-0.5 text-[13px] text-stone-500">Gratis — vendor membalas dengan rincian harga.</p>
+                <h2 className="font-display text-lg font-bold">Pesan Catering</h2>
+                <p className="mt-0.5 text-[13px] text-stone-500">
+                  Isi tanggal, jam, dan pesanan Anda. Tidak perlu membuat acara lebih dulu.
+                </p>
                 {!session?.user ? (
                   <div className="mt-3">
-                    <Link href="/login"><Button className="w-full">Masuk untuk meminta penawaran</Button></Link>
+                    <Link href="/login"><Button className="w-full">Masuk untuk memesan</Button></Link>
                     <p className="mt-2 text-center text-xs text-stone-400">
                       Belum punya akun? <Link href="/register" className="font-semibold text-brand-700">Daftar</Link>
                     </p>
                   </div>
-                ) : myEvents.length === 0 ? (
-                  <div className="mt-3">
-                    <Link href="/events/new"><Button className="w-full">Buat acara dulu</Button></Link>
-                  </div>
+                ) : !canOrder ? (
+                  <p className="mt-3 rounded-xl bg-stone-100 px-3 py-2 text-sm text-stone-600">
+                    Pemesanan hanya tersedia untuk akun pelanggan.
+                  </p>
                 ) : vendor.packages.length === 0 ? (
                   <p className="mt-3 text-sm text-stone-500">Vendor belum membuka paket.</p>
                 ) : (
                   <form action="/api/quotations/request" method="post" className="mt-3 space-y-3">
                     <input type="hidden" name="vendorId" value={vendor.id} />
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="block text-sm">
+                        <span className="mb-1 block text-[13px] font-medium text-stone-600">Tanggal <span className="text-red-500">*</span></span>
+                        <input name="eventDate" type="date" required defaultValue={searchParams.date ?? ""} className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500" />
+                      </label>
+                      <label className="block text-sm">
+                        <span className="mb-1 block text-[13px] font-medium text-stone-600">Jam <span className="text-red-500">*</span></span>
+                        <input name="eventTime" type="time" required defaultValue={searchParams.time ?? ""} className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500" />
+                      </label>
+                    </div>
                     <label className="block text-sm">
-                      <span className="mb-1 block text-[13px] font-medium text-stone-600">Acara</span>
-                      <select name="eventId" required defaultValue={searchParams.eventId ?? myEvents[0].id} className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500">
-                        {myEvents.map((e) => (
-                          <option key={e.id} value={e.id}>
-                            {e.name} — {e.guestCount} pax
-                          </option>
-                        ))}
+                      <span className="mb-1 block text-[13px] font-medium text-stone-600">Jumlah tamu (pax) <span className="text-red-500">*</span></span>
+                      <input name="guestCount" type="number" min={10} max={vendor.maxPax} required defaultValue={searchParams.guests ?? ""} placeholder="cth. 250" className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm outline-none placeholder:text-stone-400 focus:border-brand-500" />
+                    </label>
+                    <label className="block text-sm">
+                      <span className="mb-1 block text-[13px] font-medium text-stone-600">Lokasi acara <span className="text-red-500">*</span></span>
+                      <input name="location" required minLength={3} maxLength={300} placeholder="cth. Gedung Sasono Utomo" className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm outline-none placeholder:text-stone-400 focus:border-brand-500" />
+                    </label>
+                    <label className="block text-sm">
+                      <span className="mb-1 block text-[13px] font-medium text-stone-600">Kota</span>
+                      <select name="city" defaultValue={searchParams.city ?? "Surabaya"} className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500">
+                        <option>Surabaya</option>
+                        <option>Sidoarjo</option>
+                        <option>Gresik</option>
                       </select>
                     </label>
                     <label className="block text-sm">
-                      <span className="mb-1 block text-[13px] font-medium text-stone-600">Paket</span>
+                      <span className="mb-1 block text-[13px] font-medium text-stone-600">Paket yang diinginkan <span className="text-red-500">*</span></span>
                       <select name="packageId" required defaultValue={vendor.packages[0]?.id} className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500">
                         {vendor.packages.map((p) => (
                           <option key={p.id} value={p.id}>
@@ -251,12 +276,12 @@ export default async function VendorDetailPage({
                         ))}
                       </select>
                     </label>
-                    <input name="notes" placeholder="Kustomisasi: tambah dessert, tanpa seafood…" className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm outline-none placeholder:text-stone-400 focus:border-brand-500" />
-                    <SubmitButton requireDirty={false} className="w-full !py-2.5">Kirim permintaan penawaran</SubmitButton>
+                    <input name="notes" maxLength={1000} placeholder="Kustomisasi: tambah dessert, tanpa seafood…" className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm outline-none placeholder:text-stone-400 focus:border-brand-500" />
+                    <SubmitButton requireDirty={false} className="w-full !py-2.5">Kirim permintaan pesanan</SubmitButton>
                   </form>
                 )}
                 <div className="mt-3 border-t border-brand-100 pt-3 text-xs leading-relaxed text-stone-500">
-                  <StatusBadge status="VERIFIED" /> Kapasitas dicek otomatis sebelum pesanan dikunci.
+                  <StatusBadge status="VERIFIED" /> Vendor mengonfirmasi dulu. Ongkir & biaya lain ditambahkan otomatis ke nota saat pembayaran lunas.
                 </div>
               </Card>
             </div>

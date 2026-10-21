@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { Card, StatusBadge } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { formatIDR } from "@/lib/format";
+import { formatDateID, formatIDR } from "@/lib/format";
 import { ApiError, apiGet } from "@/lib/api";
 import { requireUser } from "@/lib/auth-helpers";
 
@@ -16,8 +16,15 @@ type PaymentDetail = {
   providerReference: string;
   qrPayload: string | null;
   booking: {
-    event: { name: string };
+    event: { name: string; eventDate: string; eventTime: string | null };
     vendor: { businessName: string };
+    quotation: {
+      subtotal: number;
+      deliveryFee: number;
+      serviceFee: number;
+      discount: number;
+      items: { id: string; name: string; quantity: number; subtotal: number }[];
+    };
   };
 };
 
@@ -39,11 +46,36 @@ export default async function PaymentPage({ params }: { params: { id: string } }
         <div className="text-center">
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-700">Pembayaran QRIS</p>
           <h1 className="mt-1 font-display text-2xl font-bold">{payment.booking.event.name}</h1>
-          <p className="text-sm text-stone-500">{payment.booking.vendor.businessName}</p>
+          <p className="text-sm text-stone-500">
+            {payment.booking.vendor.businessName} · {formatDateID(payment.booking.event.eventDate)}
+            {payment.booking.event.eventTime ? ` · ${payment.booking.event.eventTime}` : ""}
+          </p>
         </div>
         <Card className="mt-5 text-center">
+          <p className="text-xs font-bold uppercase tracking-wide text-stone-400">Total pembayaran lunas</p>
           <p className="font-display text-4xl font-bold tracking-tight">{formatIDR(payment.amount)}</p>
           <div className="mt-2"><StatusBadge status={payment.status} /></div>
+
+          <dl className="mt-4 space-y-1.5 rounded-xl bg-[#FAF7F1] p-3 text-left text-xs ring-1 ring-inset ring-stone-200/70">
+            {payment.booking.quotation.items.map((item) => (
+              <div key={item.id} className="flex justify-between gap-2">
+                <dt className="text-stone-500">{item.name} × {item.quantity}</dt>
+                <dd className="font-medium text-stone-700">{formatIDR(item.subtotal)}</dd>
+              </div>
+            ))}
+            <div className="flex justify-between border-t border-stone-200 pt-1.5">
+              <dt className="text-stone-500">Ongkos kirim</dt>
+              <dd className="font-medium text-stone-700">{formatIDR(payment.booking.quotation.deliveryFee)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-stone-500">Biaya layanan / lainnya</dt>
+              <dd className="font-medium text-stone-700">{formatIDR(payment.booking.quotation.serviceFee)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-stone-500">Diskon</dt>
+              <dd className="font-medium text-emerald-700">−{formatIDR(payment.booking.quotation.discount)}</dd>
+            </div>
+          </dl>
 
           <div className="mx-auto mt-5 max-w-[260px] rounded-2xl border-2 border-stone-900 bg-white p-4">
             <div className="flex items-center justify-between">

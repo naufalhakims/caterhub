@@ -10,7 +10,7 @@ type VendorDashboard = {
     id: string;
     status: string;
     total: number;
-    event: { name: string; guestCount: number; eventDate: string };
+    event: { name: string; guestCount: number; eventDate: string; eventTime: string | null };
   }[];
   upcoming: {
     id: string;
@@ -63,14 +63,14 @@ export default async function VendorDashboard() {
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <Kpi icon="◈" bg="bg-emerald-50 text-emerald-700 ring-emerald-100" label="Pendapatan cair" value={formatIDR(revenue)} />
         <Kpi icon="◫" bg="bg-blue-50 text-blue-700 ring-blue-100" label="Acara mendatang" value={String(upcoming.length)} hint={upcomingPax > 0 ? `${upcomingPax} pax terjadwal` : undefined} />
-        <Kpi icon="✎" bg="bg-amber-50 text-amber-700 ring-amber-100" label="Penawaran menunggu" value={String(pendingCount)} hint={pendingCount > 0 ? "Segera respons agar tak kabur" : undefined} />
+        <Kpi icon="✎" bg="bg-amber-50 text-amber-700 ring-amber-100" label="Permintaan menunggu" value={String(pendingCount)} hint={pendingCount > 0 ? "Konfirmasi agar pelanggan bisa bayar" : undefined} />
         <Kpi icon="▣" bg="bg-purple-50 text-purple-700 ring-purple-100" label="Pax terpesan" value={String(upcomingPax)} />
         <Kpi icon="◍" bg="bg-brand-50 text-brand-700 ring-brand-100" label="Utilisasi hari ini" value={util == null ? "—" : `${util}%`} hint={todayAvail ? `${todayAvail.reservedPax}/${todayAvail.maxPax} pax` : "Belum ada jadwal hari ini"} />
         <Kpi icon="↗" bg="bg-stone-100 text-stone-700 ring-stone-200" label="Total nilai pesanan" value={formatIDR(orderTotal)} />
       </div>
 
       <h2 className="mt-7 font-display text-lg font-bold">
-        Penawaran menunggu <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 align-middle font-sans text-xs font-bold text-amber-800">{pendingQuotes.length}</span>
+        Permintaan menunggu <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 align-middle font-sans text-xs font-bold text-amber-800">{pendingQuotes.length}</span>
       </h2>
       <div className="mt-2.5 space-y-2">
         {pendingQuotes.map((q) => (
@@ -78,13 +78,15 @@ export default async function VendorDashboard() {
             <Card className="flex items-center justify-between !p-4 transition hover:-translate-y-0.5 hover:shadow-lift">
               <div>
                 <p className="font-semibold">{q.event.name} · {q.event.guestCount} pax</p>
-                <p className="text-sm text-stone-500">{formatDateID(q.event.eventDate)} · {formatIDR(q.total)}</p>
+                <p className="text-sm text-stone-500">
+                  {formatDateID(q.event.eventDate)}{q.event.eventTime ? ` · ${q.event.eventTime}` : ""} · {formatIDR(q.total)}
+                </p>
               </div>
               <StatusBadge status={q.status} />
             </Card>
           </Link>
         ))}
-        {pendingQuotes.length === 0 && <p className="text-sm text-stone-500">Tidak ada penawaran menunggu. Bagus — semua sudah direspons.</p>}
+        {pendingQuotes.length === 0 && <p className="text-sm text-stone-500">Tidak ada permintaan menunggu. Bagus — semua sudah direspons.</p>}
       </div>
 
       <h2 className="mt-7 font-display text-lg font-bold">Acara mendatang</h2>

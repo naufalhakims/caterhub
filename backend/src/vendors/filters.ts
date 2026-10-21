@@ -23,6 +23,7 @@ export const searchFilterSchema = z.object({
       .refine(isDateOnly, "Format tanggal harus YYYY-MM-DD dan valid.")
       .optional(),
   ),
+  time: optionalText(20),
   guests: z.preprocess(
     emptyToUndefined,
     z.coerce.number().int().min(1, "Jumlah tamu minimal 1.").max(100_000).optional(),
@@ -54,6 +55,7 @@ export function parseSearchFilters(query: Record<string, unknown>): SearchFilter
     q: pick("q"),
     city: pick("city"),
     date: pick("date"),
+    time: pick("time"),
     guests: pick("guests"),
     budgetMax: pick("budgetMax") ?? pick("budget"),
   });

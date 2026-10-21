@@ -1,13 +1,13 @@
 # CaterHub
 
-Marketplace + operasional catering UMKM: acara → rekomendasi vendor → permintaan/penawaran → booking (recheck kapasitas transaksional) → pembayaran → dashboard vendor/admin.
+Marketplace + operasional catering UMKM: cari vendor (tanggal, jam, pax, paket) → permintaan pesanan → konfirmasi vendor + biaya tambahan → pembayaran lunas → persiapan → rating → dashboard vendor/admin. Membuat acara bersifat opsional, hanya untuk memudahkan pencarian.
 
 Repo ini sudah **dipisah menjadi dua paket** di dalam satu monorepo npm workspaces:
 
 - `frontend/` — Next.js 14 (App Router), **UI saja**. Tidak lagi memakai Prisma, NextAuth, atau bcrypt.
 - `backend/` — Express + TypeScript + Prisma. Pemilik database, sesi/JWT, otorisasi, aturan bisnis, dan penyimpanan file.
 
-> **Status pembayaran:** integrasi payment sengaja *ditunda*. Yang ada hanya adapter mock + Midtrans (QRIS) dengan hardening keamanan. Fokus rilis ini: auth/authz, kapasitas, profil, verifikasi, gambar, chat, dan alur permintaan vs penawaran.
+> **Pembayaran:** hanya **lunas** (tanpa DP/termin). Adapter mock + Midtrans (QRIS) tersedia dengan hardening signature webhook. Vendor baru bisa memulai persiapan setelah pembayaran berstatus `PAID`.
 
 ## Arsitektur
 
@@ -116,21 +116,26 @@ Dua lapis:
 
 Uji manual yang sudah dilakukan: akses langsung tanpa cookie → redirect; customer membuka quotation/booking milik customer lain → **404**; vendor membuka quotation/booking vendor lain → **404**; customer membuka dokumen privat vendor → **403**; anonim → **401**.
 
-## Alur permintaan vs penawaran
+## Alur pesanan
 
-Dua jalur dipisahkan eksplisit lewat `Quotation.origin`:
+Alur utama memakai `Quotation` sebagai permintaan pesanan (`origin = CUSTOMER_REQUEST`):
 
-1. **Permintaan pelanggan** (`CUSTOMER_REQUEST`) — pelanggan memilih paket → status `REQUESTED`. Vendor memutuskan lebih dulu: kirim penawaran (`SENT`) atau tolak (`DECLINED`).
-2. **Penawaran vendor** (`VENDOR_OFFER`) — vendor mengirim penawaran langsung (`SENT`); pelanggan menerima / menolak / minta revisi.
+1. Pelanggan memilih vendor dan paket, lalu mengisi tanggal, jam, pax, dan lokasi. `Event` dibuat otomatis bila pelanggan belum punya acara.
+2. Permintaan masuk sebagai `REQUESTED`. Vendor dapat **mengonfirmasi** (`ACCEPTED`) atau **menolak** (`DECLINED`).
+3. Saat konfirmasi, vendor menetapkan ongkir/biaya lain/diskon. Total nota dihitung sistem dan menjadi `Booking` berstatus `PAYMENT_PENDING`.
+4. Pelanggan membayar **lunas**. Webhook mengubah booking menjadi `PAID`.
+5. Vendor baru bisa memulai `PREPARING` setelah `PAID`, lalu `READY → DELIVERED → COMPLETED`.
+6. Pelanggan dapat memberi rating sekali setelah pesanan lunas.
 
-Transisi dijaga `backend/src/domain/quotation-workflow.ts`; setiap aksi dicatat di `QuotationHistory`. Chat **tidak** mengubah status penawaran.
+Transisi dijaga `backend/src/domain/quotation-workflow.ts`; setiap aksi dicatat di `QuotationHistory`. Chat **tidak** mengubah status pesanan. Alur `VENDOR_OFFER` lama tetap tersimpan untuk kompatibilitas data, tetapi bukan alur utama.
 
 ## Kapasitas & tanggal
 
 - `Availability(vendorId, date)` + `reservedPax`; `date` adalah date-only.
 - Tanggal dinormalisasi ke UTC tengah malam; "hari ini" memakai kalender Asia/Jakarta.
 - `setDailyCapacity` menolak `maxPax < reservedPax`.
-- Terima penawaran memakai transaksi + `SELECT … FOR UPDATE` + recheck kapasitas (anti-overbooking) dan klaim status kondisional (anti double-accept).
+- Konfirmasi vendor memakai transaksi + `SELECT … FOR UPDATE` + recheck kapasitas (anti-overbooking) dan klaim status kondisional (anti double-confirm).
+- Kapasitas dicek per tanggal; jam acara disimpan dan ditampilkan ke vendor, belum ada kapasitas per slot jam.
 
 ## Verifikasi & unggahan
 
@@ -149,7 +154,7 @@ Semua respons memakai envelope `{ data }` / `{ error: { code, message, fields? }
 | Auth | `POST /api/v1/auth/register`, `/login`, `/logout`; `GET /auth/me`; `PATCH /auth/password`; `GET /auth/config` |
 | Profil | `GET/PATCH /api/v1/me` |
 | Event | `GET/POST /api/v1/events`, `GET /events/:id` |
-| Penawaran | `POST /api/v1/quotations/request`, `POST /quotations`, `GET /quotations/:id`, `POST /quotations/:id/{decline,decision,messages}` |
+| Pesanan | `POST /api/v1/quotations/request`, `GET /quotations/:id`, `POST /quotations/:id/{confirm,decline,messages}` (legacy: `POST /quotations`, `POST /quotations/:id/decision`) |
 | Vendor | `GET/PATCH /vendor/me`, `/vendor/dashboard`, `/vendor/analytics`, `/vendor/{menu,packages,capacity,bookings,images,documents,quotations}` |
 | Booking | `GET /api/v1/bookings/:id` |
 | Pembayaran | `POST /api/v1/payments`, `GET /payments/:id`, `POST /payments/:id/mock-settle`, `POST /payments/webhook` |

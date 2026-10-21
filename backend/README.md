@@ -57,7 +57,7 @@ Path folder di-resolve relatif terhadap root repo.
 | Method | Path | Akses |
 |---|---|---|
 | GET | `/health` | publik |
-| GET | `/api/v1/vendors` | publik (katalog `VERIFIED`; filter `q`, `city`, `date`, `guests`, `budgetMax`) |
+| GET | `/api/v1/vendors` | publik (katalog `VERIFIED`; filter `q`, `city`, `date`, `time`, `guests`, `budgetMax`) |
 | GET | `/api/v1/vendors/:id` | publik (detail vendor `VERIFIED`) |
 | GET | `/api/v1/capacity?vendorId=&date=&guests=` | publik |
 | POST | `/api/v1/auth/register` | publik (`CUSTOMER`/`VENDOR`) |
@@ -75,13 +75,12 @@ Path folder di-resolve relatif terhadap root repo.
 | GET/PATCH | `/api/v1/me` | profil |
 | GET/POST | `/api/v1/events` | daftar / buat acara |
 | GET | `/api/v1/events/:id` | detail acara (milik sendiri) |
-| POST | `/api/v1/quotations/request` | permintaan penawaran (`CUSTOMER_REQUEST`) |
-| GET | `/api/v1/quotations/:id` | detail penawaran (pihak terkait/admin) |
-| POST | `/api/v1/quotations/:id/decision` | terima/tolak/minta revisi |
+| POST | `/api/v1/quotations/request` | permintaan pesanan langsung (`CUSTOMER_REQUEST`; tanggal, jam, pax, lokasi; `eventId` opsional) |
+| GET | `/api/v1/quotations/:id` | detail permintaan/pesanan (pihak terkait/admin) |
 | POST | `/api/v1/quotations/:id/messages` | chat (hanya pihak terkait) |
 | GET | `/api/v1/bookings/:id` | detail booking (pemilik/vendor/admin) |
-| POST | `/api/v1/bookings/:id/review` | ulasan bintang 1–5 (pelanggan, pesanan `COMPLETED`) |
-| POST | `/api/v1/payments` | buat pembayaran |
+| POST | `/api/v1/bookings/:id/review` | ulasan bintang 1–5 (pelanggan, setelah pesanan lunas) |
+| POST | `/api/v1/payments` | buat pembayaran **lunas** (`kind: "full"`) |
 | GET | `/api/v1/payments/:id` | detail pembayaran (pemilik/admin) |
 | POST | `/api/v1/payments/:id/mock-settle` | simulasi lunas (login + pemilik) |
 | POST | `/api/v1/payments/webhook` | webhook provider (verifikasi signature) |
@@ -92,13 +91,14 @@ Path folder di-resolve relatif terhadap root repo.
 |---|---|---|
 | GET/PATCH | `/api/v1/vendor/me` | profil usaha |
 | GET | `/api/v1/vendor/dashboard`, `/analytics` | agregat |
-| GET | `/api/v1/vendor/quotations` | semua penawaran vendor |
+| GET | `/api/v1/vendor/quotations` | semua permintaan/pesanan vendor |
 | GET/POST | `/api/v1/vendor/menu` | daftar / upsert menu (multipart `image` opsional) |
 | DELETE | `/api/v1/vendor/menu/:id` | hapus menu |
 | GET/POST | `/api/v1/vendor/packages` | daftar / upsert paket (multipart) |
 | GET/POST | `/api/v1/vendor/capacity` | kapasitas harian |
 | GET | `/api/v1/vendor/bookings` | pesanan vendor |
-| POST | `/api/v1/vendor/bookings/:id/advance` | majukan status pesanan |
+| POST | `/api/v1/vendor/bookings/:id/advance` | majukan status produksi (`PAID` → `PREPARING` → …; status `PAID` hanya dari pembayaran) |
+| POST | `/api/v1/quotations/:id/confirm` | konfirmasi permintaan + set ongkir/biaya/diskon; membuat booking `PAYMENT_PENDING` |
 | POST/DELETE | `/api/v1/vendor/images` | unggah/hapus logo, cover, galeri |
 | GET/POST | `/api/v1/vendor/documents` | daftar/unggah dokumen verifikasi |
 | DELETE | `/api/v1/vendor/documents/:id` | hapus dokumen (hanya bila belum `VERIFIED`) |
@@ -155,12 +155,12 @@ npm -w backend test        # atau: npm run api:test
 npm -w backend run typecheck
 ```
 
-29 test: katalog/envelope/validasi/CORS/error (11), domain penawaran/booking/akses/skor (9), kapasitas/tanggal (3), keamanan webhook mock & signature Midtrans (6).
+39 test: katalog/envelope/validasi/CORS/error (11), domain permintaan/booking/akses/skor (12), kapasitas/tanggal (3), ulasan setelah lunas (7), keamanan webhook mock & signature Midtrans (6).
 
 ## Batasan
 
 - Belum ada rate limit, refresh token/rotasi sesi, atau observability terstruktur.
 - Satu `AUTH_SECRET` dipakai bersama frontend & API; rotasi secret akan mengeluarkan semua sesi.
 - Penyimpanan file masih lokal (demo).
-- Pembayaran sengaja ditunda; hanya adapter mock/Midtrans + hardening.
+- Pembayaran hanya satu tahap (lunas); belum ada refund otomatis untuk pembatalan setelah `PAID`.
 - `tsx` dipakai untuk menjalankan TypeScript; belum ada pipeline build/Docker khusus backend.

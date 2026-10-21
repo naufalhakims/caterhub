@@ -5,7 +5,7 @@ import { requireRole } from "@/lib/auth-helpers";
 const NAV = [
   ["/vendor/dashboard", "Dashboard", "◈"],
   ["/vendor/orders", "Pesanan", "▣"],
-  ["/vendor/quotations", "Penawaran", "✎"],
+  ["/vendor/quotations", "Permintaan", "✎"],
   ["/vendor/menu", "Menu", "☰"],
   ["/vendor/packages", "Paket", "▤"],
   ["/vendor/calendar", "Kalender", "◫"],

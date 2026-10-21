@@ -25,12 +25,25 @@ type BookingDetail = {
   id: string;
   status: string;
   totalAmount: number;
-  depositAmount: number;
   quotationId: string;
   cancelledAt: string | null;
   customerId: string;
-  event: { name: string; eventDate: string; guestCount: number; location: string; city: string };
+  event: {
+    name: string;
+    eventDate: string;
+    eventTime: string | null;
+    guestCount: number;
+    location: string;
+    city: string;
+  };
   vendor: { id: string; businessName: string; userId: string };
+  quotation: {
+    subtotal: number;
+    deliveryFee: number;
+    serviceFee: number;
+    discount: number;
+    items: { id: string; name: string; quantity: number; unitPrice: number; subtotal: number }[];
+  };
   payments: { id: string; amount: number; status: string }[];
   review: { id: string; rating: number; comment: string | null; createdAt: string } | null;
 };
@@ -53,6 +66,11 @@ export default async function BookingDetailPage({
   const paid = booking.payments.filter((p) => p.status === "SETTLEMENT").reduce((s, p) => s + p.amount, 0);
   const isCustomer = user.id === booking.customerId;
   const isAdmin = user.role === "ADMIN";
+  const canPay = ["PAYMENT_PENDING", "CONFIRMED"].includes(booking.status);
+  const canReview =
+    isCustomer &&
+    paid >= booking.totalAmount &&
+    ["PAID", "PREPARING", "READY", "DELIVERED", "COMPLETED"].includes(booking.status);
   // Kembali ke antarmuka peran masing-masing — admin tidak boleh nyasar ke halaman vendor.
   const backHref = isAdmin ? "/admin/orders" : isCustomer ? "/dashboard" : "/vendor/orders";
   const TRACK_KEYS = TRACK.map((t) => t.key);
@@ -72,7 +90,8 @@ export default async function BookingDetailPage({
           <StatusBadge status={booking.status} />
         </div>
         <p className="mt-1 text-sm text-stone-500">
-          {booking.vendor.businessName} · {formatDateID(booking.event.eventDate)} · {booking.event.guestCount} pax
+          {booking.vendor.businessName} · {formatDateID(booking.event.eventDate)}
+          {booking.event.eventTime ? ` · ${booking.event.eventTime}` : ""} · {booking.event.guestCount} pax
         </p>
         {searchParams.ok && <p className="mt-3 rounded-xl bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-700 ring-1 ring-inset ring-emerald-200">{searchParams.ok}</p>}
         {searchParams.error && <p className="mt-3 rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700 ring-1 ring-inset ring-red-200">{searchParams.error}</p>}
@@ -135,43 +154,54 @@ export default async function BookingDetailPage({
               <dd className="mt-0.5 font-medium">{booking.event.location}, {booking.event.city}</dd>
             </div>
             <div>
-              <dt className="text-xs font-bold uppercase tracking-wide text-stone-400">Penawaran</dt>
+              <dt className="text-xs font-bold uppercase tracking-wide text-stone-400">Rincian pesanan</dt>
               <dd className="mt-0.5"><Link href={`/quotations/${booking.quotationId}`} className="font-semibold text-brand-700 hover:underline">Lihat rincian →</Link></dd>
             </div>
           </div>
-          <div className="mt-4 rounded-xl bg-[#FAF7F1] p-4 ring-1 ring-inset ring-stone-200/70">
-            <div className="flex justify-between text-sm"><span className="text-stone-500">Total pesanan</span><span className="font-bold">{formatIDR(booking.totalAmount)}</span></div>
-            <div className="mt-1 flex justify-between text-sm"><span className="text-stone-500">DP (50%)</span><span>{formatIDR(booking.depositAmount)}</span></div>
-            <div className="mt-1 flex justify-between text-sm"><span className="text-stone-500">Sudah dibayar</span><span className="font-semibold text-emerald-700">{formatIDR(paid)}</span></div>
-            {paid < booking.totalAmount && (
-              <>
-                <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-stone-200">
-                  <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.round((paid / booking.totalAmount) * 100)}%` }} />
-                </div>
-                <p className="mt-1 text-right text-xs text-stone-500">Sisa {formatIDR(booking.totalAmount - paid)}</p>
-              </>
-            )}
+
+          <div className="mt-4 overflow-hidden rounded-xl ring-1 ring-inset ring-stone-200/70">
+            <div className="bg-white p-4">
+              <p className="text-xs font-bold uppercase tracking-wide text-stone-400">Nota pesanan</p>
+              <ul className="mt-2 space-y-1.5 text-sm">
+                {booking.quotation.items.map((item) => (
+                  <li key={item.id} className="flex justify-between gap-3">
+                    <span className="min-w-0 text-stone-600">
+                      {item.name}
+                      <span className="text-stone-400"> × {item.quantity}</span>
+                    </span>
+                    <span className="shrink-0 font-medium">{formatIDR(item.subtotal)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="space-y-1.5 bg-[#FAF7F1] p-4 text-sm">
+              <div className="flex justify-between"><span className="text-stone-500">Subtotal</span><span className="font-medium">{formatIDR(booking.quotation.subtotal)}</span></div>
+              <div className="flex justify-between"><span className="text-stone-500">Ongkos kirim</span><span className="font-medium">{formatIDR(booking.quotation.deliveryFee)}</span></div>
+              <div className="flex justify-between"><span className="text-stone-500">Biaya layanan / lainnya</span><span className="font-medium">{formatIDR(booking.quotation.serviceFee)}</span></div>
+              <div className="flex justify-between"><span className="text-stone-500">Diskon</span><span className="font-medium text-emerald-700">−{formatIDR(booking.quotation.discount)}</span></div>
+              <div className="flex items-baseline justify-between border-t border-stone-200 pt-2">
+                <span className="font-bold">Total</span>
+                <span className="font-display text-2xl font-bold text-brand-800">{formatIDR(booking.totalAmount)}</span>
+              </div>
+              <div className="flex justify-between pt-1"><span className="text-stone-500">Sudah dibayar</span><span className="font-semibold text-emerald-700">{formatIDR(paid)}</span></div>
+              {paid < booking.totalAmount && (
+                <div className="flex justify-between"><span className="text-stone-500">Sisa</span><span className="font-semibold text-amber-700">{formatIDR(booking.totalAmount - paid)}</span></div>
+              )}
+            </div>
           </div>
         </Card>
 
-        {isCustomer && paid < booking.totalAmount && booking.status !== "CANCELLED" && (
+        {isCustomer && canPay && paid < booking.totalAmount && (
           <Card className="mt-4 border-brand-100 !bg-gradient-to-b !from-brand-50 !to-white">
-            <h2 className="font-display text-lg font-bold">Bayar via QRIS</h2>
-            <p className="text-[13px] text-stone-500">Pindai QR, status terupdate otomatis setelah pembayaran terkonfirmasi.</p>
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-              {paid < booking.depositAmount && (
-                <form action={createPaymentAction} className="flex-1">
-                  <input type="hidden" name="bookingId" value={booking.id} />
-                  <input type="hidden" name="kind" value="deposit" />
-                  <Button type="submit" className="w-full !py-2.5">Bayar DP {formatIDR(booking.depositAmount - Math.min(paid, booking.depositAmount))}</Button>
-                </form>
-              )}
-              <form action={createPaymentAction} className="flex-1">
-                <input type="hidden" name="bookingId" value={booking.id} />
-                <input type="hidden" name="kind" value="full" />
-                <Button type="submit" variant="secondary" className="w-full !py-2.5">Lunasi {formatIDR(booking.totalAmount - paid)}</Button>
-              </form>
-            </div>
+            <h2 className="font-display text-lg font-bold">Bayar lunas via QRIS</h2>
+            <p className="text-[13px] text-stone-500">
+              Pembayaran hanya satu tahap: lunas sebesar {formatIDR(booking.totalAmount - paid)}.
+              Vendor baru mulai persiapan setelah pembayaran diterima.
+            </p>
+            <form action={createPaymentAction} className="mt-3">
+              <input type="hidden" name="bookingId" value={booking.id} />
+              <Button type="submit" className="w-full !py-2.5">Bayar lunas {formatIDR(booking.totalAmount - paid)}</Button>
+            </form>
           </Card>
         )}
 
@@ -193,11 +223,16 @@ export default async function BookingDetailPage({
           {booking.payments.length === 0 && <p className="text-sm text-stone-500">Belum ada pembayaran.</p>}
         </div>
 
-        {isCustomer && booking.status === "COMPLETED" && (
+        {canReview && (
           <Card className="mt-4">
             <h2 className="font-display text-lg font-bold">
               {booking.review ? "Ulasan Anda" : "Bagaimana pengalaman Anda?"}
             </h2>
+            {!booking.review && (
+              <p className="text-[13px] text-stone-500">
+                Pesanan sudah lunas — Anda sudah bisa memberi rating untuk vendor ini.
+              </p>
+            )}
             {booking.review ? (
               <div className="mt-2">
                 <p className="text-xl leading-none text-amber-500" aria-label={`${booking.review.rating} dari 5 bintang`}>

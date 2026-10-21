@@ -49,8 +49,8 @@ export default async function NewEventPage({
               <Field label="Tanggal acara">
                 <Input name="eventDate" type="date" required />
               </Field>
-              <Field label="Waktu (opsional)">
-                <Input name="eventTime" placeholder="cth. 10.00–14.00" />
+              <Field label="Jam acara">
+                <Input name="eventTime" type="time" required />
               </Field>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">

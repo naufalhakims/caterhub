@@ -5,20 +5,28 @@ describe("canReviewBooking", () => {
   const base = {
     actorId: "cust_1",
     customerId: "cust_1",
-    bookingStatus: "COMPLETED",
+    bookingStatus: "PAID",
     hasReview: false,
+    paidAmount: 1_000_000,
+    totalAmount: 1_000_000,
   };
 
-  it("mengizinkan pelanggan pemilik mengulas pesanan selesai", () => {
+  it("mengizinkan pelanggan pemilik mengulas pesanan yang sudah lunas", () => {
     expect(canReviewBooking(base)).toBe(true);
+    expect(canReviewBooking({ ...base, bookingStatus: "PREPARING" })).toBe(true);
+    expect(canReviewBooking({ ...base, bookingStatus: "COMPLETED" })).toBe(true);
   });
 
   it("menolak pelanggan lain (IDOR)", () => {
     expect(canReviewBooking({ ...base, actorId: "cust_2" })).toBe(false);
   });
 
-  it("menolak pesanan yang belum selesai", () => {
-    expect(canReviewBooking({ ...base, bookingStatus: "DELIVERED" })).toBe(false);
+  it("menolak pesanan yang belum dibayar", () => {
+    expect(canReviewBooking({ ...base, bookingStatus: "PAYMENT_PENDING", paidAmount: 0 })).toBe(false);
+  });
+
+  it("menolak pesanan yang baru dibayar sebagian", () => {
+    expect(canReviewBooking({ ...base, paidAmount: 500_000 })).toBe(false);
   });
 
   it("menolak ulasan ganda", () => {

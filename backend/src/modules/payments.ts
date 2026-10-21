@@ -10,7 +10,8 @@ import { MockPaymentProvider, getPaymentProvider } from "../domain/payment";
 
 const createSchema = z.object({
   bookingId: z.string().min(1),
-  kind: z.enum(["deposit", "full", "remaining"]).default("deposit"),
+  // Pembayaran hanya boleh lunas, tanpa DP/termin.
+  kind: z.literal("full").default("full"),
 });
 
 export function paymentsRouter() {
@@ -46,18 +47,16 @@ export function paymentsRouter() {
       if (booking.status === "CANCELLED") {
         throw new ApiError(409, "BOOKING_CANCELLED", "Pesanan dibatalkan.");
       }
+      if (!["PAYMENT_PENDING", "CONFIRMED"].includes(booking.status)) {
+        throw new ApiError(409, "PAYMENT_NOT_ALLOWED", "Pembayaran tidak tersedia pada status pesanan ini.");
+      }
 
       const paid = await db.payment.aggregate({
         where: { bookingId: booking.id, status: "SETTLEMENT" },
         _sum: { amount: true },
       });
       const paidSoFar = paid._sum.amount ?? 0;
-      const amount =
-        input.kind === "full"
-          ? booking.totalAmount - paidSoFar
-          : input.kind === "remaining"
-            ? booking.remainingAmount - Math.max(0, paidSoFar - booking.depositAmount)
-            : booking.depositAmount - Math.min(paidSoFar, booking.depositAmount);
+      const amount = booking.totalAmount - paidSoFar;
       if (amount <= 0) throw new ApiError(409, "ALREADY_PAID", "Pesanan sudah lunas.");
 
       const provider = getPaymentProvider();
@@ -92,6 +91,7 @@ export function paymentsRouter() {
               event: true,
               vendor: { select: { id: true, businessName: true, city: true, logoUrl: true } },
               customer: { select: { id: true, name: true, email: true } },
+              quotation: { include: { items: true } },
             },
           },
         },

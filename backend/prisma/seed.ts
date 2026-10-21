@@ -272,7 +272,7 @@ async function main() {
       data: {
         eventId: event.id, quotationId: quotation.id, vendorId: slot.profileId, customerId: cust.id,
         status: "COMPLETED", totalAmount: total,
-        depositAmount: Math.round(total * 0.5), remainingAmount: total - Math.round(total * 0.5),
+        depositAmount: total, remainingAmount: 0,
         confirmedAt: paidAt,
       },
     });
@@ -299,6 +299,10 @@ async function main() {
   // Skenario demo masa depan: pernikahan 250 pax di Dapur Nusantara (vendor1)
   const demo = profiles[0];
   const demoPkg = await db.package.findUniqueOrThrow({ where: { id: demo.pkgIds.premium } });
+  const demoVendorUser = await db.vendorProfile.findUniqueOrThrow({
+    where: { id: demo.profileId },
+    select: { userId: true },
+  });
   let demoEvent = await db.event.findFirst({
     where: { customerId: mainCustomer.id, name: "Pernikahan Budi & Sari" },
   });
@@ -306,7 +310,7 @@ async function main() {
     demoEvent = await db.event.create({
       data: {
         customerId: mainCustomer.id, name: "Pernikahan Budi & Sari", eventType: "WEDDING",
-        eventDate: daysFromNow(30), eventTime: "10.00–14.00",
+        eventDate: daysFromNow(30), eventTime: "10:00",
         location: "Gedung Sasono Utomo", city: "Surabaya", guestCount: 250,
         budgetMin: 7000000, budgetMax: 10000000,
         notes: "250 tamu, prasmanan + 1 stall live cooking.",
@@ -314,14 +318,12 @@ async function main() {
     });
     const guests = 250;
     const subtotal = demoPkg.pricePerPax * guests;
-    const total = subtotal + 200000 + 175000 - 250000;
     await db.quotation.create({
       data: {
         eventId: demoEvent.id, packageId: demoPkg.id, vendorId: demo.profileId,
-        customerId: mainCustomer.id, status: "SENT",
-        subtotal, deliveryFee: 200000, serviceFee: 175000, discount: 250000, total,
-        notes: "Penawaran awal: paket premium + stall siomay live cooking.",
-        expiresAt: daysFromNow(14),
+        customerId: mainCustomer.id, origin: "CUSTOMER_REQUEST", status: "REQUESTED",
+        subtotal, deliveryFee: 0, serviceFee: 0, discount: 0, total: subtotal,
+        notes: "Paket premium + stall siomay live cooking. Mohon konfirmasi ketersediaan.",
         items: {
           create: [
             { name: `Paket ${demoPkg.name} (${guests} pax)`, quantity: guests, unitPrice: demoPkg.pricePerPax, subtotal },
@@ -332,8 +334,9 @@ async function main() {
     });
     await db.notification.create({
       data: {
-        userId: mainCustomer.id, type: "QUOTATION", title: "Penawaran baru diterima",
-        message: `Dapur Nusantara mengirim penawaran untuk "Pernikahan Budi & Sari".`,
+        userId: demoVendorUser.userId,
+        type: "ORDER_REQUEST", title: "Permintaan pesanan baru",
+        message: `"Pernikahan Budi & Sari" (250 pax) menunggu konfirmasi Anda.`,
       },
     });
   }

@@ -186,25 +186,29 @@ export function bookingsRouter() {
           event: { select: { name: true } },
           vendor: { select: { userId: true, rating: true, reviewCount: true } },
           review: { select: { id: true } },
+          payments: { where: { status: "SETTLEMENT" }, select: { amount: true } },
         },
       });
       if (!booking) return sendError(res, 404, "BOOKING_NOT_FOUND", "Pesanan tidak ditemukan.");
       if (booking.customerId !== user.id) {
         return sendError(res, 403, "FORBIDDEN", "Anda tidak memiliki akses ke pesanan ini.");
       }
+      const paidAmount = booking.payments.reduce((sum, payment) => sum + payment.amount, 0);
       if (!canReviewBooking({
         actorId: user.id,
         customerId: booking.customerId,
         bookingStatus: booking.status,
         hasReview: !!booking.review,
+        paidAmount,
+        totalAmount: booking.totalAmount,
       })) {
         return booking.review
           ? sendError(res, 409, "ALREADY_REVIEWED", "Pesanan ini sudah pernah diulas.")
           : sendError(
               res,
               409,
-              "BOOKING_NOT_COMPLETED",
-              "Ulasan hanya bisa dibuat setelah pesanan selesai.",
+              "BOOKING_NOT_PAID",
+              "Ulasan hanya bisa dibuat setelah pesanan dibayar lunas.",
             );
       }
 

@@ -33,10 +33,13 @@ export default async function EventDetailPage({ params }: { params: { id: string
     throw error;
   }
 
+  const eventTime =
+    event.eventTime && /^\d{2}:\d{2}$/.test(event.eventTime) ? event.eventTime : undefined;
   const qs = new URLSearchParams({
     date: event.eventDate.slice(0, 10),
     guests: String(event.guestCount),
     city: event.city,
+    ...(eventTime ? { time: eventTime } : {}),
     ...(event.budgetMax != null ? { budgetMax: String(event.budgetMax) } : {}),
   });
 
@@ -68,7 +71,7 @@ export default async function EventDetailPage({ params }: { params: { id: string
         </Link>
 
         <h2 className="mt-8 font-display text-xl font-bold">
-          Penawaran <span className="ml-1 rounded-full bg-stone-200/70 px-2 py-0.5 align-middle font-sans text-xs font-bold">{event.quotations.length}</span>
+          Permintaan pesanan <span className="ml-1 rounded-full bg-stone-200/70 px-2 py-0.5 align-middle font-sans text-xs font-bold">{event.quotations.length}</span>
         </h2>
         <div className="mt-2.5 space-y-2">
           {event.quotations.map((q) => (
@@ -83,7 +86,7 @@ export default async function EventDetailPage({ params }: { params: { id: string
             </Link>
           ))}
           {event.quotations.length === 0 && (
-            <Empty title="Belum ada penawaran." hint="Cari catering, buka profil vendor, lalu kirim permintaan penawaran." />
+            <Empty title="Belum ada permintaan pesanan." hint="Cari catering, buka profil vendor, isi tanggal & jam, lalu kirim permintaan." />
           )}
         </div>
 

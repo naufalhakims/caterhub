@@ -6,6 +6,7 @@ export const searchFilterSchema = z.object({
   q: z.string().optional(),
   city: z.string().optional(),
   date: z.string().optional(),
+  time: z.string().optional(),
   guests: z.coerce.number().int().min(1).optional(),
   budgetMax: z.coerce.number().int().min(0).optional(),
 });
@@ -56,6 +57,7 @@ export async function searchVendors(raw: Record<string, string | undefined>): Pr
     q: raw.q || undefined,
     city: raw.city || undefined,
     date: raw.date || undefined,
+    time: raw.time || undefined,
     guests: raw.guests || undefined,
     budgetMax: raw.budgetMax || undefined,
   });

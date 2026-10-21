@@ -9,8 +9,10 @@ import {
   nextQuotationStatus,
   type QuotationDecision,
 } from "../domain/quotation-workflow";
-import { acceptQuotationAndBook } from "../domain/booking";
+import { acceptQuotationAndBook, confirmQuotationAndBook } from "../domain/booking";
 import { canViewQuotation, isOfferParty } from "../domain/access";
+import { checkCapacity } from "../domain/capacity";
+import { toDateOnly, todayDateOnly } from "../lib/date";
 import { zIdrWithDefault } from "../lib/money";
 
 const EDITABLE_STATUSES = ["REQUESTED", "SENT", "REVISION_REQUESTED"] as const;
@@ -37,11 +39,34 @@ const sendSchema = z.object({
   expiresAt: z.coerce.date().optional(),
 });
 
-const requestSchema = z.object({
-  eventId: z.string().min(1),
-  packageId: z.string().min(1),
-  vendorId: z.string().min(1),
-  notes: z.string().max(1000).optional(),
+const requestSchema = z
+  .object({
+    eventId: z.string().min(1).optional(),
+    eventDate: z.string().min(1).optional(),
+    eventTime: z.string().trim().min(1, "Jam acara wajib diisi.").max(20).optional(),
+    guestCount: z.coerce.number().int().min(10, "Minimal 10 pax.").max(100_000).optional(),
+    location: z.string().trim().min(3, "Lokasi wajib diisi.").max(300).optional(),
+    city: z.string().trim().max(50).default("Surabaya"),
+    packageId: z.string().min(1),
+    vendorId: z.string().min(1),
+    notes: z.string().max(1000).optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.eventId) return;
+    for (const [key, message] of [
+      ["eventDate", "Tanggal acara wajib diisi."],
+      ["eventTime", "Jam acara wajib diisi."],
+      ["guestCount", "Jumlah tamu wajib diisi."],
+      ["location", "Lokasi acara wajib diisi."],
+    ] as const) {
+      if (!v[key]) ctx.addIssue({ code: z.ZodIssueCode.custom, message, path: [key] });
+    }
+  });
+
+const confirmSchema = z.object({
+  deliveryFee: zIdrWithDefault(0),
+  serviceFee: zIdrWithDefault(0),
+  discount: zIdrWithDefault(0),
 });
 
 const decisionSchema = z
@@ -70,8 +95,6 @@ export function quotationsRouter() {
       const input = requestSchema.parse(req.body ?? {});
       const user = req.user!;
 
-      const event = await db.event.findUnique({ where: { id: input.eventId } });
-      if (!event || event.customerId !== user.id) return sendError(res, 403, "FORBIDDEN", "Akses ditolak.");
       const vendor = await db.vendorProfile.findUnique({ where: { id: input.vendorId } });
       if (!vendor || vendor.verificationStatus !== "VERIFIED") {
         return sendError(res, 400, "VENDOR_NOT_VERIFIED", "Vendor belum terverifikasi.");
@@ -83,7 +106,34 @@ export function quotationsRouter() {
       if (!pkg || pkg.vendorId !== vendor.id || !pkg.isActive) {
         return sendError(res, 400, "INVALID_PACKAGE", "Paket tidak valid.");
       }
-      if (event.guestCount < pkg.minPax || event.guestCount > pkg.maxPax) {
+
+      let savedEvent: {
+        id: string;
+        customerId: string;
+        name: string;
+        guestCount: number;
+        eventDate: Date;
+        eventTime: string | null;
+      } | null = null;
+      if (input.eventId) {
+        savedEvent = await db.event.findUnique({ where: { id: input.eventId } });
+        if (!savedEvent || savedEvent.customerId !== user.id) {
+          return sendError(res, 403, "FORBIDDEN", "Akses ditolak.");
+        }
+      }
+
+      let eventDate: Date;
+      let guestCount: number;
+      try {
+        eventDate = savedEvent ? savedEvent.eventDate : toDateOnly(input.eventDate!);
+      } catch {
+        return sendError(res, 400, "VALIDATION_ERROR", "Tanggal acara tidak valid.");
+      }
+      guestCount = savedEvent?.guestCount ?? input.guestCount!;
+      if (eventDate < todayDateOnly()) {
+        return sendError(res, 400, "DATE_IN_PAST", "Tanggal acara sudah lewat.");
+      }
+      if (guestCount < pkg.minPax || guestCount > pkg.maxPax) {
         return sendError(
           res,
           400,
@@ -94,53 +144,81 @@ export function quotationsRouter() {
 
       const existing = await db.quotation.findFirst({
         where: {
-          eventId: input.eventId,
-          vendorId: input.vendorId,
-          customerId: user.id,
-          origin: "CUSTOMER_REQUEST",
-          status: { in: ["REQUESTED", "SENT", "REVISION_REQUESTED"] },
-        },
-      });
-      if (existing) return res.status(200).json({ data: { id: existing.id, existing: true } });
-
-      const estimate = pkg.pricePerPax * event.guestCount;
-      const quotation = await db.quotation.create({
-        data: {
-          eventId: input.eventId,
-          packageId: input.packageId,
           vendorId: input.vendorId,
           customerId: user.id,
           origin: "CUSTOMER_REQUEST",
           status: "REQUESTED",
-          subtotal: estimate,
-          total: estimate,
-          notes: input.notes,
-          items: {
-            create: [
-              {
-                name: `Paket ${pkg.name} (${event.guestCount} pax)`,
-                quantity: event.guestCount,
-                unitPrice: pkg.pricePerPax,
-                subtotal: estimate,
+          event: { eventDate },
+        },
+      });
+      if (existing) return res.status(200).json({ data: { id: existing.id, existing: true } });
+
+      const capacity = await checkCapacity(vendor.id, eventDate, guestCount);
+      if (!capacity.ok) {
+        return sendError(
+          res,
+          400,
+          "CAPACITY_FULL",
+          `Kapasitas vendor tidak mencukupi (sisa ${capacity.remaining} pax pada tanggal tersebut).`,
+        );
+      }
+
+      const estimate = pkg.pricePerPax * guestCount;
+      const quotation = await db.$transaction(async (tx) => {
+        const event =
+          savedEvent ??
+          (await tx.event.create({
+            data: {
+              customerId: user.id,
+              name: `Pesanan ${pkg.name}`,
+              eventType: "OTHER",
+              eventDate,
+              eventTime: input.eventTime!,
+              location: input.location!,
+              city: input.city || "Surabaya",
+              guestCount,
+              notes: input.notes,
+            },
+          }));
+
+        return tx.quotation.create({
+          data: {
+            eventId: event.id,
+            packageId: input.packageId,
+            vendorId: input.vendorId,
+            customerId: user.id,
+            origin: "CUSTOMER_REQUEST",
+            status: "REQUESTED",
+            subtotal: estimate,
+            total: estimate,
+            notes: input.notes,
+            items: {
+              create: [
+                {
+                  name: `Paket ${pkg.name} (${guestCount} pax)`,
+                  quantity: guestCount,
+                  unitPrice: pkg.pricePerPax,
+                  subtotal: estimate,
+                },
+              ],
+            },
+            history: {
+              create: {
+                actorId: user.id,
+                action: "created",
+                toStatus: "REQUESTED",
+                note: `Permintaan pesanan dari pelanggan untuk "${event.name}".`,
               },
-            ],
-          },
-          history: {
-            create: {
-              actorId: user.id,
-              action: "created",
-              toStatus: "REQUESTED",
-              note: `Permintaan pesanan dari pelanggan untuk "${event.name}".`,
             },
           },
-        },
+        });
       });
       await db.notification.create({
         data: {
           userId: vendor.userId,
           type: "ORDER_REQUEST",
           title: "Permintaan pesanan baru",
-          message: `Acara "${event.name}" (${event.guestCount} pax) meminta penawaran paket ${pkg.name}.`,
+          message: `"${savedEvent?.name ?? `Pesanan ${pkg.name}`}" (${guestCount} pax, ${input.eventTime ?? savedEvent?.eventTime ?? "jam menyusul"}) menunggu konfirmasi Anda.`,
         },
       });
       res.status(201).json({ data: { id: quotation.id, existing: false } });
@@ -330,6 +408,43 @@ export function quotationsRouter() {
           },
         },
       });
+    }),
+  );
+
+  /** Vendor mengonfirmasi permintaan dan menetapkan biaya tambahan nota. */
+  router.post(
+    "/:id/confirm",
+    requireRole("VENDOR"),
+    asyncHandler(async (req, res) => {
+      const user = req.user!;
+      const vendor = await db.vendorProfile.findUnique({ where: { userId: user.id } });
+      if (!vendor) return sendError(res, 400, "VENDOR_PROFILE_MISSING", "Profil vendor belum dibuat.");
+      const input = confirmSchema.parse(req.body ?? {});
+
+      const q = await db.quotation.findUnique({ where: { id: req.params.id } });
+      if (!q || q.vendorId !== vendor.id) return sendError(res, 403, "FORBIDDEN", "Akses ditolak.");
+      if (
+        !canPerformQuotationDecision({
+          decision: "confirm_request",
+          actorRole: "VENDOR",
+          origin: q.origin,
+          status: q.status,
+        })
+      ) {
+        return sendError(
+          res,
+          409,
+          "INVALID_TRANSITION",
+          `Permintaan ini tidak bisa dikonfirmasi (status ${q.status}).`,
+        );
+      }
+
+      try {
+        const booking = await confirmQuotationAndBook(q.id, vendor.id, input);
+        res.json({ data: { bookingId: booking.id } });
+      } catch (error) {
+        return sendError(res, 409, "CONFIRM_FAILED", (error as Error).message);
+      }
     }),
   );
 

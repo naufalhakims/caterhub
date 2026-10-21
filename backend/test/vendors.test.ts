@@ -68,12 +68,13 @@ describe("GET /api/v1/vendors", () => {
   it("mem-parse filter dan membuang query kosong", async () => {
     const { repo, search } = repoSpy();
     await request(app(repo))
-      .get("/api/v1/vendors?q=dapur&city=Surabaya&date=2026-10-26&guests=250&budgetMax=10000000&city=")
+      .get("/api/v1/vendors?q=dapur&city=Surabaya&date=2026-10-26&time=10:00&guests=250&budgetMax=10000000&city=")
       .expect(200);
     expect(search).toHaveBeenCalledWith({
       q: "dapur",
       city: "Surabaya",
       date: "2026-10-26",
+      time: "10:00",
       guests: 250,
       budgetMax: 10000000,
     });

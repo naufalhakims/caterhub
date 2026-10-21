@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { calcTotals } from "../src/domain/quotation";
-import { canTransitionBooking } from "../src/domain/booking";
+import { canTransitionBooking, canVendorSetBookingStatus } from "../src/domain/booking";
+import {
+  canPerformQuotationDecision,
+  canTransitionQuotation,
+  nextQuotationStatus,
+} from "../src/domain/quotation-workflow";
 import { scoreVendor } from "../src/vendors/scoring";
 import {
   canViewBooking,
@@ -28,6 +33,38 @@ describe("canTransitionBooking", () => {
   });
   it("CANCELLED terminal", () => {
     expect(canTransitionBooking("CANCELLED", "PAID")).toBe(false);
+  });
+
+  it("vendor tidak boleh menandai PAID sendiri", () => {
+    expect(canVendorSetBookingStatus("PAID")).toBe(false);
+    expect(canVendorSetBookingStatus("PREPARING")).toBe(true);
+    expect(canVendorSetBookingStatus("CANCELLED")).toBe(true);
+  });
+});
+
+describe("alur konfirmasi pesanan", () => {
+  it("vendor mengonfirmasi permintaan REQUESTED menjadi ACCEPTED", () => {
+    expect(canTransitionQuotation("REQUESTED", "ACCEPTED")).toBe(true);
+    expect(
+      canPerformQuotationDecision({
+        decision: "confirm_request",
+        actorRole: "VENDOR",
+        origin: "CUSTOMER_REQUEST",
+        status: "REQUESTED",
+      }),
+    ).toBe(true);
+    expect(nextQuotationStatus("confirm_request")).toBe("ACCEPTED");
+  });
+
+  it("pelanggan tidak bisa mengonfirmasi pesanannya sendiri", () => {
+    expect(
+      canPerformQuotationDecision({
+        decision: "confirm_request",
+        actorRole: "CUSTOMER",
+        origin: "CUSTOMER_REQUEST",
+        status: "REQUESTED",
+      }),
+    ).toBe(false);
   });
 });
 

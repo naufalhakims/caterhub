@@ -7,11 +7,9 @@ import {
 } from "@/server/quotation-workflow";
 
 describe("transisi status penawaran", () => {
-  it("permintaan pelanggan harus diputuskan vendor lebih dulu", () => {
-    expect(canTransitionQuotation("REQUESTED", "SENT")).toBe(true);
+  it("permintaan pelanggan dikonfirmasi atau ditolak vendor", () => {
+    expect(canTransitionQuotation("REQUESTED", "ACCEPTED")).toBe(true);
     expect(canTransitionQuotation("REQUESTED", "DECLINED")).toBe(true);
-    // Pelanggan tidak bisa langsung "menerima" permintaan yang belum menjadi penawaran.
-    expect(canTransitionQuotation("REQUESTED", "ACCEPTED")).toBe(false);
   });
 
   it("penawaran vendor mengikuti alur kirim → terima/tolak/revisi", () => {
@@ -36,6 +34,19 @@ describe("keputusan per peran & asal penawaran", () => {
     // Penawaran inisiatif vendor tidak punya status REQUESTED untuk dijawab.
     expect(
       canPerformQuotationDecision({ ...base, origin: "VENDOR_OFFER", status: "REQUESTED" }),
+    ).toBe(false);
+  });
+
+  it("vendor mengonfirmasi permintaan pelanggan yang masih REQUESTED", () => {
+    const base = {
+      decision: "confirm_request" as const,
+      actorRole: "VENDOR" as const,
+      origin: "CUSTOMER_REQUEST" as const,
+    };
+    expect(canPerformQuotationDecision({ ...base, status: "REQUESTED" })).toBe(true);
+    expect(canPerformQuotationDecision({ ...base, status: "ACCEPTED" })).toBe(false);
+    expect(
+      canPerformQuotationDecision({ ...base, actorRole: "CUSTOMER", status: "REQUESTED" }),
     ).toBe(false);
   });
 
@@ -72,6 +83,7 @@ describe("keputusan per peran & asal penawaran", () => {
 describe("nextQuotationStatus", () => {
   it("memetakan keputusan ke status tujuan", () => {
     expect(nextQuotationStatus("send_offer")).toBe("SENT");
+    expect(nextQuotationStatus("confirm_request")).toBe("ACCEPTED");
     expect(nextQuotationStatus("decline_request")).toBe("DECLINED");
     expect(nextQuotationStatus("accept")).toBe("ACCEPTED");
     expect(nextQuotationStatus("reject")).toBe("REJECTED");

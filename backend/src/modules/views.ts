@@ -31,22 +31,27 @@ export function viewsRouter() {
           include: {
             vendor: { select: { id: true, businessName: true, city: true, logoUrl: true } },
             event: true,
+            payments: { where: { status: "SETTLEMENT" }, select: { amount: true } },
             review: { select: { id: true } },
           },
           orderBy: { createdAt: "desc" },
           take: 10,
         }),
         db.quotation.count({
-          where: { customerId, status: { in: ["SENT", "REVISION_REQUESTED"] } },
+          where: { customerId, origin: "CUSTOMER_REQUEST", status: "REQUESTED" },
         }),
         db.user.findUnique({ where: { id: customerId }, select: { phone: true, address: true } }),
         db.quotation.findMany({
           where: {
             customerId,
             origin: "CUSTOMER_REQUEST",
-            status: { in: ["REQUESTED", "DECLINED"] },
+            status: { in: ["REQUESTED", "ACCEPTED", "DECLINED"] },
           },
-          include: { event: true, vendor: { select: { businessName: true } } },
+          include: {
+            event: true,
+            vendor: { select: { businessName: true } },
+            booking: { select: { id: true, status: true } },
+          },
           orderBy: { createdAt: "desc" },
           take: 5,
         }),

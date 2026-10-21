@@ -5,7 +5,11 @@ import { db } from "../db";
 import { requireAuth, requireRole } from "../auth/middleware";
 import { asyncHandler, sendError } from "../http";
 import { ApiError } from "../errors";
-import { canTransitionBooking, cancelBookingAndRelease } from "../domain/booking";
+import {
+  canTransitionBooking,
+  canVendorSetBookingStatus,
+  cancelBookingAndRelease,
+} from "../domain/booking";
 import { parseDateOnly } from "../lib/date";
 import { setDailyCapacity } from "../domain/capacity";
 import { zIdr, zIdrWithDefault } from "../lib/money";
@@ -112,8 +116,8 @@ export function vendorRouter() {
       const vendor = await requireVendor(req);
       const [pendingQuotes, upcoming, revenue, orderAgg, recent, pendingCount, todayAvail] = await Promise.all([
         db.quotation.findMany({
-          where: { vendorId: vendor.id, status: { in: ["REQUESTED", "SENT", "REVISION_REQUESTED"] } },
-          include: { event: true },
+          where: { vendorId: vendor.id, origin: "CUSTOMER_REQUEST", status: "REQUESTED" },
+          include: { event: true, package: { select: { name: true } } },
           orderBy: { createdAt: "desc" },
           take: 5,
         }),
@@ -141,7 +145,7 @@ export function vendorRouter() {
           take: 5,
         }),
         db.quotation.count({
-          where: { vendorId: vendor.id, status: { in: ["REQUESTED", "SENT", "REVISION_REQUESTED"] } },
+          where: { vendorId: vendor.id, origin: "CUSTOMER_REQUEST", status: "REQUESTED" },
         }),
         db.availability.findUnique({
           where: { vendorId_date: { vendorId: vendor.id, date: todayDateOnly() } },
@@ -210,7 +214,7 @@ export function vendorRouter() {
       const vendor = await requireVendor(req);
       const quotes = await db.quotation.findMany({
         where: { vendorId: vendor.id },
-        include: { event: true },
+        include: { event: true, package: { select: { id: true, name: true } } },
         orderBy: { createdAt: "desc" },
       });
       res.json({ data: quotes });
@@ -421,6 +425,11 @@ export function vendorRouter() {
       const to = String(req.body?.to ?? "");
       const booking = await db.booking.findUnique({ where: { id: req.params.id } });
       if (!booking || booking.vendorId !== vendor.id) throw new ApiError(403, "FORBIDDEN", "Akses ditolak.");
+
+      // Vendor tidak boleh menandai lunas sendiri; status PAID hanya dari webhook pembayaran.
+      if (!canVendorSetBookingStatus(to)) {
+        throw new ApiError(403, "FORBIDDEN", "Status ini hanya dapat diubah oleh sistem pembayaran.");
+      }
 
       if (to === "CANCELLED") {
         try {

@@ -1,14 +1,14 @@
 import type { QuotationOrigin, QuotationStatus } from "@prisma/client";
 
 /**
- * Aturan transisi status penawaran (dua asal penawaran).
- *  - CUSTOMER_REQUEST: mulai REQUESTED; vendor memutuskan SENT atau DECLINED.
- *  - VENDOR_OFFER: mulai SENT.
+ * Aturan transisi status permintaan/penawaran.
+ *  - CUSTOMER_REQUEST: mulai REQUESTED; vendor mengonfirmasi (ACCEPTED) atau menolak (DECLINED).
+ *  - VENDOR_OFFER: alur lama, mulai SENT.
  * Chat tidak pernah mengubah status.
  */
 export const QUOTATION_TRANSITIONS: Record<QuotationStatus, QuotationStatus[]> = {
   DRAFT: ["REQUESTED", "SENT", "EXPIRED"],
-  REQUESTED: ["SENT", "DECLINED", "EXPIRED"],
+  REQUESTED: ["SENT", "ACCEPTED", "DECLINED", "EXPIRED"],
   SENT: ["REVISION_REQUESTED", "ACCEPTED", "REJECTED", "EXPIRED"],
   REVISION_REQUESTED: ["SENT", "ACCEPTED", "REJECTED", "EXPIRED"],
   ACCEPTED: [],
@@ -31,6 +31,7 @@ export type QuotationActor = "CUSTOMER" | "VENDOR" | "ADMIN";
 
 export type QuotationDecision =
   | "send_offer"
+  | "confirm_request"
   | "decline_request"
   | "accept"
   | "reject"
@@ -41,6 +42,7 @@ const DECISION_RULES: Record<
   { actor: QuotationActor; origin: QuotationOrigin | null; from: QuotationStatus[]; to: QuotationStatus }
 > = {
   send_offer: { actor: "VENDOR", origin: "CUSTOMER_REQUEST", from: ["REQUESTED"], to: "SENT" },
+  confirm_request: { actor: "VENDOR", origin: "CUSTOMER_REQUEST", from: ["REQUESTED"], to: "ACCEPTED" },
   decline_request: { actor: "VENDOR", origin: "CUSTOMER_REQUEST", from: ["REQUESTED"], to: "DECLINED" },
   accept: { actor: "CUSTOMER", origin: null, from: ["SENT", "REVISION_REQUESTED"], to: "ACCEPTED" },
   reject: { actor: "CUSTOMER", origin: null, from: ["SENT", "REVISION_REQUESTED"], to: "REJECTED" },
@@ -71,10 +73,10 @@ export function nextQuotationStatus(decision: QuotationDecision): QuotationStatu
 
 export const QUOTATION_STATUS_LABEL: Record<string, string> = {
   DRAFT: "Draf",
-  REQUESTED: "Permintaan Baru",
+  REQUESTED: "Menunggu Konfirmasi Vendor",
   SENT: "Penawaran Terkirim",
   REVISION_REQUESTED: "Minta Revisi",
-  ACCEPTED: "Diterima",
+  ACCEPTED: "Dikonfirmasi Vendor",
   REJECTED: "Ditolak Pelanggan",
   DECLINED: "Ditolak Vendor",
   EXPIRED: "Kedaluwarsa",

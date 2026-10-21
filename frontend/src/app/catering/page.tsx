@@ -10,7 +10,7 @@ export default async function CateringPage({
   searchParams: Record<string, string | undefined>;
 }) {
   const results = await searchVendors(searchParams);
-  const showReco = !!(searchParams.date || searchParams.guests || searchParams.budgetMax);
+  const showReco = !!(searchParams.date || searchParams.time || searchParams.guests || searchParams.budgetMax);
 
   return (
     <>
@@ -27,6 +27,7 @@ export default async function CateringPage({
             {searchParams.guests ? `${searchParams.guests} tamu` : ""}
             {searchParams.guests && searchParams.date ? " · " : ""}
             {searchParams.date ? `tanggal ${searchParams.date}` : ""}
+            {searchParams.time ? ` pukul ${searchParams.time}` : ""}
             {searchParams.budgetMax ? ` · budget maks Rp${Number(searchParams.budgetMax).toLocaleString("id-ID")}` : ""}
           </p>
         )}
@@ -36,7 +37,7 @@ export default async function CateringPage({
           method="get"
           className="mt-5 rounded-2xl border border-stone-200/80 bg-white p-4 shadow-soft"
         >
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1fr_auto]">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_0.85fr_1fr_1fr_auto]">
             <input name="q" defaultValue={searchParams.q ?? ""} placeholder="Cari nama catering…" aria-label="Cari catering" className="rounded-xl border border-stone-200 bg-[#FAF7F1] px-3 py-2 text-sm outline-none focus:border-brand-500" />
             <select name="city" defaultValue={searchParams.city ?? ""} aria-label="Kota" className="rounded-xl border border-stone-200 bg-[#FAF7F1] px-3 py-2 text-sm outline-none focus:border-brand-500">
               <option value="">Semua kota</option>
@@ -44,15 +45,17 @@ export default async function CateringPage({
               <option value="Sidoarjo">Sidoarjo</option>
               <option value="Gresik">Gresik</option>
             </select>
-            <input name="date" type="date" defaultValue={searchParams.date ?? ""} aria-label="Tanggal acara" className="rounded-xl border border-stone-200 bg-[#FAF7F1] px-3 py-2 text-sm outline-none focus:border-brand-500" />
-            <input name="guests" type="number" min={1} defaultValue={searchParams.guests ?? ""} placeholder="Tamu" aria-label="Jumlah tamu" className="rounded-xl border border-stone-200 bg-[#FAF7F1] px-3 py-2 text-sm outline-none focus:border-brand-500" />
+            <input name="date" type="date" required defaultValue={searchParams.date ?? ""} aria-label="Tanggal acara" className="rounded-xl border border-stone-200 bg-[#FAF7F1] px-3 py-2 text-sm outline-none focus:border-brand-500" />
+            <input name="time" type="time" required defaultValue={searchParams.time ?? ""} aria-label="Jam acara" className="rounded-xl border border-stone-200 bg-[#FAF7F1] px-3 py-2 text-sm outline-none focus:border-brand-500" />
+            <input name="guests" type="number" min={1} required defaultValue={searchParams.guests ?? ""} placeholder="Tamu" aria-label="Jumlah tamu" className="rounded-xl border border-stone-200 bg-[#FAF7F1] px-3 py-2 text-sm outline-none focus:border-brand-500" />
             <span className="block rounded-xl border border-stone-200 bg-[#FAF7F1] px-3 py-2 focus-within:border-brand-500">
               <RupiahInput name="budgetMax" variant="bare" defaultValue={searchParams.budgetMax ?? ""} placeholder="Budget maks" />
             </span>
             <button className="rounded-xl bg-brand-700 px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-800">
-              Filter
+              Cari
             </button>
           </div>
+          <p className="mt-2 text-xs text-stone-400">Tanggal & jam wajib diisi agar kapasitas vendor bisa dicek sebelum pesanan dikirim.</p>
         </form>
 
         <div className="mt-6 flex items-center justify-between">
@@ -70,7 +73,16 @@ export default async function CateringPage({
           {results.map((v, i) => (
             <div key={v.id} className="animate-rise" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
               <VendorCard
-                href={`/catering/${v.id}${searchParams.date ? `?date=${searchParams.date}&guests=${searchParams.guests ?? ""}` : ""}`}
+                href={`/catering/${v.id}${
+                  searchParams.date
+                    ? `?${new URLSearchParams({
+                        date: searchParams.date,
+                        time: searchParams.time ?? "",
+                        guests: searchParams.guests ?? "",
+                        ...(searchParams.city ? { city: searchParams.city } : {}),
+                      }).toString()}`
+                    : ""
+                }`}
                 showScore={showReco}
                 v={{
                   id: v.id,

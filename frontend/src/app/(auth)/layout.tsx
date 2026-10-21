@@ -18,9 +18,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             </p>
             <div className="mt-8 space-y-4 text-sm text-white/80">
               {[
-                ["Penawaran transparan", "Rincian harga item per item, tanpa biaya siluman."],
-                ["Kapasitas terjamin", "Pesanan dikunci hanya bila dapur masih muat."],
-                ["Bayar via QRIS", "DP 50% atau lunas, status terupdate otomatis."],
+                ["Nota transparan", "Ongkir & biaya tambahan otomatis masuk ke nota."],
+                ["Kapasitas terjamin", "Pesanan dikonfirmasi hanya bila dapur masih muat."],
+                ["Bayar lunas via QRIS", "Satu pembayaran lunas, status terupdate otomatis."],
               ].map(([t, d]) => (
                 <div key={t} className="flex gap-3">
                   <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-emerald-400/20 text-xs text-emerald-300">✓</span>

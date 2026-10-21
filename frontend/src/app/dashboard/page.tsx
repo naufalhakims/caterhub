@@ -25,6 +25,7 @@ type BookingRow = {
   totalAmount: number;
   event: { name: string };
   vendor: { businessName: string };
+  payments: { amount: number }[];
   review: { id: string } | null;
 };
 
@@ -34,6 +35,7 @@ type QuoteRow = {
   total: number;
   event: { name: string; eventDate: string; guestCount: number };
   vendor: { businessName: string };
+  booking: { id: string; status: string } | null;
 };
 
 type Dashboard = {
@@ -42,7 +44,6 @@ type Dashboard = {
   pendingQuotes: number;
   profile: { phone: string | null; address: string | null } | null;
   requests: QuoteRow[];
-  offers: QuoteRow[];
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -58,7 +59,7 @@ const TYPE_LABEL: Record<string, string> = {
 
 export default async function CustomerDashboard() {
   const user = await requireCustomer();
-  const { events, bookings, pendingQuotes, profile, requests, offers } =
+  const { events, bookings, pendingQuotes, profile, requests } =
     await apiGet<Dashboard>("/api/v1/dashboard");
   const profileIncomplete = !profile?.phone || !profile?.address;
 
@@ -73,7 +74,12 @@ export default async function CustomerDashboard() {
               Halo, {user.name?.split(" ")[0] ?? "Kak"} 👋
             </h1>
           </div>
-          <Link href="/events/new"><Button className="!px-5 !py-2.5">＋ Buat Acara</Button></Link>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/catering"><Button className="!px-5 !py-2.5">Cari Catering</Button></Link>
+            <Link href="/events/new">
+              <Button variant="secondary" className="!px-4 !py-2.5">＋ Buat Acara (opsional)</Button>
+            </Link>
+          </div>
         </div>
         {profileIncomplete && (
           <p className="mt-2 text-sm text-stone-500">
@@ -87,14 +93,14 @@ export default async function CustomerDashboard() {
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700 ring-1 ring-brand-100">◫</span>
             <div>
               <p className="text-xl font-extrabold">{events.length}</p>
-              <p className="text-xs text-stone-500">Acara dibuat</p>
+              <p className="text-xs text-stone-500">Acara tersimpan (opsional)</p>
             </div>
           </Card>
           <Card className="flex items-center gap-3 !p-4">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-700 ring-1 ring-amber-100">✎</span>
             <div>
               <p className="text-xl font-extrabold">{pendingQuotes}</p>
-              <p className="text-xs text-stone-500">Penawaran menunggu respons</p>
+              <p className="text-xs text-stone-500">Menunggu konfirmasi vendor</p>
             </div>
           </Card>
           <Card className="flex items-center gap-3 !p-4">
@@ -107,7 +113,12 @@ export default async function CustomerDashboard() {
         </div>
 
         <div className="mt-8 flex items-center justify-between">
-          <h2 className="font-display text-xl font-bold">Acara saya</h2>
+          <div>
+            <h2 className="font-display text-xl font-bold">Acara tersimpan</h2>
+            <p className="text-[13px] text-stone-500">
+              Opsional. Simpan tanggal, jam, dan jumlah tamu agar pencarian catering lebih cepat.
+            </p>
+          </div>
           {events.length > 0 && (
             <Link href="/events/new" className="text-sm font-semibold text-brand-700 hover:underline">
               + Acara baru
@@ -116,9 +127,9 @@ export default async function CustomerDashboard() {
         </div>
         {events.length === 0 ? (
           <Empty
-            title="Belum ada acara."
-            hint="Ceritakan kebutuhan acaramu — tanggal, tamu, budget — dan kami carikan catering yang cocok."
-            action={<Link href="/events/new"><Button>Buat acara pertama</Button></Link>}
+            title="Belum ada acara tersimpan."
+            hint="Anda tetap bisa memesan langsung dari marketplace tanpa membuat acara."
+            action={<Link href="/catering"><Button>Cari catering</Button></Link>}
           />
         ) : (
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -140,7 +151,7 @@ export default async function CustomerDashboard() {
                   )}
                   <div className="mt-3 flex gap-1.5 border-t border-stone-100 pt-3 text-xs">
                     <span className="rounded-full bg-stone-100 px-2 py-0.5 font-medium text-stone-600">
-                      {e.quotations.length} penawaran
+                      {e.quotations.length} permintaan
                     </span>
                     <span className="rounded-full bg-stone-100 px-2 py-0.5 font-medium text-stone-600">
                       {e.bookings.length} pesanan
@@ -153,9 +164,13 @@ export default async function CustomerDashboard() {
         )}
 
         <h2 className="mt-8 font-display text-xl font-bold">Permintaan pesanan</h2>
-        <p className="text-[13px] text-stone-500">Permintaan yang Anda kirim ke vendor — vendor memutuskan lebih dulu sebelum menjadi penawaran.</p>
+        <p className="text-[13px] text-stone-500">
+          Vendor mengonfirmasi lebih dulu. Setelah disetujui, Anda dapat membayar lunas.
+        </p>
         {requests.length === 0 ? (
-          <p className="mt-2 text-sm text-stone-500">Belum ada permintaan. Pilih vendor di marketplace untuk meminta penawaran.</p>
+          <p className="mt-2 text-sm text-stone-500">
+            Belum ada permintaan. Pilih vendor di marketplace untuk mengirim pesanan.
+          </p>
         ) : (
           <div className="mt-2 space-y-2">
             {requests.map((q) => (
@@ -164,29 +179,17 @@ export default async function CustomerDashboard() {
                   <div className="min-w-0">
                     <p className="truncate font-semibold">{q.event.name} — {q.vendor.businessName}</p>
                     <p className="text-sm text-stone-500">
-                      {formatDateID(q.event.eventDate)} · {q.event.guestCount} pax · estimasi {formatIDR(q.total)}
+                      {formatDateID(q.event.eventDate)} · {q.event.guestCount} pax · {formatIDR(q.total)}
                     </p>
                   </div>
-                  <StatusBadge status={q.status} />
-                </Card>
-              </Link>
-            ))}
-          </div>
-        )}
-
-        <h2 className="mt-7 font-display text-xl font-bold">Penawaran untuk Anda</h2>
-        {offers.length === 0 ? (
-          <p className="mt-2 text-sm text-stone-500">Belum ada penawaran yang perlu diputuskan.</p>
-        ) : (
-          <div className="mt-2 space-y-2">
-            {offers.map((q) => (
-              <Link key={q.id} href={`/quotations/${q.id}`}>
-                <Card className="flex flex-wrap items-center justify-between gap-2 !p-4 transition hover:shadow-lift">
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold">{q.event.name} — {q.vendor.businessName}</p>
-                    <p className="text-sm text-stone-500">{formatDateID(q.event.eventDate)} · {formatIDR(q.total)}</p>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {q.booking?.status === "PAYMENT_PENDING" && (
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200">
+                        Siap dibayar
+                      </span>
+                    )}
+                    <StatusBadge status={q.status} />
                   </div>
-                  <StatusBadge status={q.status} />
                 </Card>
               </Link>
             ))}
@@ -195,7 +198,9 @@ export default async function CustomerDashboard() {
 
         <h2 className="mt-8 font-display text-xl font-bold">Pesanan terbaru</h2>
         {bookings.length === 0 ? (
-          <p className="mt-2 text-sm text-stone-500">Belum ada pesanan — mulai dari membuat acara.</p>
+          <p className="mt-2 text-sm text-stone-500">
+            Belum ada pesanan — pilih catering, isi tanggal & jam, lalu kirim permintaan.
+          </p>
         ) : (
           <div className="mt-3 overflow-hidden rounded-2xl border border-stone-200/80 bg-white shadow-soft">
             {bookings.map((b, i) => (
@@ -209,7 +214,9 @@ export default async function CustomerDashboard() {
                   <p className="text-sm text-stone-500">{formatIDR(b.totalAmount)}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  {b.status === "COMPLETED" && !b.review && (
+                  {["PAID", "PREPARING", "READY", "DELIVERED", "COMPLETED"].includes(b.status) &&
+                    b.payments.reduce((sum, p) => sum + p.amount, 0) >= b.totalAmount &&
+                    !b.review && (
                     <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-inset ring-amber-200">
                       Beri ulasan
                     </span>
