@@ -1,9 +1,9 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { VendorCard } from "@/components/VendorCard";
 import { SectionHeading } from "@/components/SectionHeading";
-import { FoodArt } from "@/components/FoodArt";
 import { RupiahInput } from "@/components/ui/RupiahInput";
 import { ArrowRight, buttonLink } from "@/components/ui/Button";
 import { apiGet } from "@/lib/api";
@@ -12,12 +12,13 @@ import type { VendorCardDto } from "@/lib/vendor-types";
 type VendorReview = { id: string; rating: number; comment: string | null; customerName: string | null };
 type VendorDetail = { id: string; businessName: string; reviews: VendorReview[] };
 
+// Foto: Unsplash License (lihat docs/ASSET_CREDITS.md).
 const OCCASIONS = [
-  { name: "Pernikahan", hint: "100–1000 pax", mark: "💐", bg: "bg-blush", offset: "sm:mt-16" },
-  { name: "Korporat", hint: "Rapat & seminar", mark: "💼", bg: "bg-[#DCE3FF]", offset: "sm:mt-6" },
-  { name: "Nasi Kotak", hint: "Harian & hajatan", mark: "🍱", bg: "bg-mint", offset: "" },
-  { name: "Ulang Tahun", hint: "20–150 pax", mark: "🎂", bg: "bg-peach", offset: "sm:mt-6" },
-  { name: "Syukuran", hint: "Tumpeng & prasmanan", mark: "🍚", bg: "bg-sun-200", offset: "sm:mt-16" },
+  { name: "Pernikahan", hint: "100–1000 pax", img: "/landing/occ-pernikahan.jpg", alt: "Meja prasmanan dengan chafing dish", bg: "bg-blush", offset: "sm:mt-16" },
+  { name: "Korporat", hint: "Rapat & seminar", img: "/landing/occ-korporat.jpg", alt: "Peserta acara kantor", bg: "bg-[#DCE3FF]", offset: "sm:mt-6" },
+  { name: "Nasi Kotak", hint: "Harian & hajatan", img: "/landing/occ-nasi-kotak.jpg", alt: "Nasi kotak dengan lauk dan sayur", bg: "bg-mint", offset: "" },
+  { name: "Ulang Tahun", hint: "20–150 pax", img: "/landing/occ-ulang-tahun.jpg", alt: "Kue ulang tahun merah muda", bg: "bg-peach", offset: "sm:mt-6" },
+  { name: "Syukuran", hint: "Tumpeng & prasmanan", img: "/landing/occ-syukuran.jpg", alt: "Nasi tumpeng kuning", bg: "bg-sun-200", offset: "sm:mt-16" },
 ];
 
 const CITIES = ["Surabaya", "Sidoarjo", "Gresik"];
@@ -67,18 +68,27 @@ export default async function LandingPage() {
                 </Link>
               </div>
 
-              <div className="relative hidden h-[22rem] lg:block" aria-hidden>
-                <span className="absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/50 blur-2xl" />
-                <span className="absolute left-[30%] top-[46%] -translate-x-1/2 -translate-y-1/2 text-[9rem] drop-shadow-xl">🍱</span>
-                <span className="absolute left-[64%] top-[30%] -translate-x-1/2 -translate-y-1/2 rotate-12 text-[6rem] drop-shadow-lg">🍗</span>
-                <span className="absolute left-[70%] top-[72%] -translate-x-1/2 -translate-y-1/2 -rotate-6 text-[5.5rem] drop-shadow-lg">🥗</span>
-                <span className="absolute left-[18%] top-[16%] -rotate-12 text-6xl drop-shadow">🌶️</span>
-                <span className="absolute left-[44%] top-[84%] rotate-6 text-5xl drop-shadow">🍋</span>
+              <div className="relative mx-auto w-full max-w-xl lg:max-w-sm">
+                <div className="relative aspect-[16/11] overflow-hidden rounded-4xl shadow-[0_30px_60px_-30px_rgba(29,27,22,.55)] ring-8 ring-white/60 lg:aspect-[4/5] lg:-rotate-2">
+                  <Image
+                    src="/landing/hero-spread.jpg"
+                    alt="Hidangan Nusantara: sate, rendang, nasi, dan sayur di atas meja"
+                    fill
+                    priority
+                    sizes="(min-width: 1024px) 384px, 92vw"
+                    className="object-cover"
+                  />
+                </div>
+                <span className="absolute -bottom-4 left-4 rotate-3 rounded-2xl lg:-left-6 bg-white px-4 py-2.5 text-sm font-semibold text-ink shadow-lift">
+                  Masakan rumahan, <span className="font-display text-base text-brand-700">porsi acara</span>
+                </span>
               </div>
 
               <div className="flex flex-row items-end justify-between gap-6 lg:h-full lg:flex-col lg:items-center lg:justify-between lg:text-center">
                 <div className="hidden lg:block">
-                  <span className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-white/70 text-4xl">🍛</span>
+                  <span className="relative mx-auto block h-24 w-24 overflow-hidden rounded-full ring-4 ring-white/70">
+                    <Image src="/landing/hero-sate.jpg" alt="Sate dan lauk khas Indonesia" fill sizes="96px" className="object-cover" />
+                  </span>
                   <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-stone-700">Dari dapur UMKM</p>
                 </div>
                 <div>
@@ -167,9 +177,11 @@ export default async function LandingPage() {
             {OCCASIONS.map((o) => (
               <Link key={o.name} href="/catering" className={`group text-center ${o.offset}`}>
                 <span
-                  className={`mx-auto grid aspect-square w-[78%] place-items-center rounded-full ${o.bg} text-6xl transition-transform duration-500 ease-fluid group-hover:-translate-y-1 group-active:scale-95 sm:text-7xl`}
+                  className={`relative mx-auto block aspect-square w-[78%] rounded-full ${o.bg} p-2.5 transition-transform duration-500 ease-fluid group-hover:-translate-y-1 group-active:scale-95`}
                 >
-                  {o.mark}
+                  <span className="relative block h-full w-full overflow-hidden rounded-full">
+                    <Image src={o.img} alt={o.alt} fill sizes="(min-width: 640px) 18vw, 40vw" className="object-cover transition-transform duration-700 ease-fluid group-hover:scale-105" />
+                  </span>
                 </span>
                 <p className="mt-4 font-display text-2xl text-ink">{o.name}</p>
                 <p className="text-sm text-stone-500">{o.hint}</p>
@@ -195,7 +207,15 @@ export default async function LandingPage() {
                 <ArrowRight className="ml-6" />
               </Link>
             </div>
-            <FoodArt seed="umkm-dapur" size="lg" className="hidden h-72 rounded-3xl !bg-none lg:grid" />
+            <div className="relative h-56 overflow-hidden rounded-4xl ring-8 ring-white/50 sm:h-72 lg:h-80 lg:rotate-2">
+              <Image
+                src="/landing/vendor-chef.jpg"
+                alt="Juru masak menyiapkan hidangan di dapur"
+                fill
+                sizes="(min-width: 1024px) 30vw, 92vw"
+                className="object-cover"
+              />
+            </div>
             <div className="lg:text-center">
               <p className="font-display text-6xl text-ink sm:text-7xl">24 jam</p>
               <p className="mt-1 text-sm font-medium text-stone-800">
@@ -209,15 +229,26 @@ export default async function LandingPage() {
         {/* CARA KERJA */}
         <section id="cara-kerja" className="mx-auto max-w-7xl scroll-mt-24 px-4 pt-28 sm:px-6">
           <div className="grid gap-10 lg:grid-cols-[1fr_1.6fr]">
-            <SectionHeading
-              title={
-                <>
-                  Dari <em>permintaan</em> sampai meja prasmanan
-                </>
-              }
-              hint="Empat langkah, satu nota, tanpa bolak-balik konfirmasi lewat chat."
-            />
-            <ol className="grid gap-x-8 gap-y-10 sm:grid-cols-2">
+            <div>
+              <SectionHeading
+                title={
+                  <>
+                    Dari <em>permintaan</em> sampai meja prasmanan
+                  </>
+                }
+                hint="Empat langkah, satu nota, tanpa bolak-balik konfirmasi lewat chat."
+              />
+              <div className="relative mt-8 hidden aspect-[10/7] overflow-hidden rounded-4xl lg:block">
+                <Image
+                  src="/landing/steps-table.jpg"
+                  alt="Meja makan dengan aneka hidangan Indonesia dilihat dari atas"
+                  fill
+                  sizes="(min-width: 1024px) 34vw, 0px"
+                  className="object-cover"
+                />
+              </div>
+            </div>
+            <ol className="grid content-start gap-x-8 gap-y-10 sm:grid-cols-2">
               {STEPS.map((s, i) => (
                 <li key={s.t} className="border-t border-stone-200 pt-5">
                   <p className="font-display text-5xl text-tangerine">0{i + 1}</p>
