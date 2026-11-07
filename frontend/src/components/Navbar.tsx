@@ -50,7 +50,7 @@ export async function Navbar() {
   const unread = user ? await unreadCount() : 0;
 
   return (
-    <header className="material sticky top-0 z-30">
+    <header className="material sticky top-0 z-30 print:hidden">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
         <Link href="/" className="pressable rounded-lg">
           <Logo className="text-[1.9rem]" />

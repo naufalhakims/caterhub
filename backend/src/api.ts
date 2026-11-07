@@ -9,6 +9,8 @@ import { adminRouter, bookingsRouter } from "./modules/admin";
 import { paymentsRouter } from "./modules/payments";
 import { publicRouter } from "./modules/public";
 import { viewsRouter } from "./modules/views";
+import { kitchenRouter } from "./modules/kitchen";
+import { offlineRouter } from "./modules/offline";
 
 /** Router gabungan seluruh modul API. */
 export function createApiRouter(): Router {
@@ -19,6 +21,9 @@ export function createApiRouter(): Router {
   api.use("/events", eventsRouter());
   api.use("/quotations", quotationsRouter());
   api.use("/vendor", vendorRouter());
+  // Dapur (bahan baku, resep, HPP, produksi) — juga di bawah /vendor.
+  api.use("/vendor", kitchenRouter());
+  api.use("/vendor", offlineRouter());
   api.use("/documents", documentsRouter());
   api.use("/me", profileRouter());
   api.use("/admin", adminRouter());

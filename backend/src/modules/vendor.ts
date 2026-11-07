@@ -118,7 +118,7 @@ export function vendorRouter() {
       await maybeSweep();
       const [pendingQuotes, upcoming, revenue, orderAgg, recent, pendingCount, todayAvail] = await Promise.all([
         db.quotation.findMany({
-          where: { vendorId: vendor.id, origin: "CUSTOMER_REQUEST", status: "REQUESTED" },
+          where: { vendorId: vendor.id, status: { in: ["REQUESTED", "REVISION_REQUESTED"] } },
           include: { event: true, package: { select: { name: true } } },
           orderBy: { createdAt: "desc" },
           take: 5,
@@ -150,7 +150,7 @@ export function vendorRouter() {
           take: 5,
         }),
         db.quotation.count({
-          where: { vendorId: vendor.id, origin: "CUSTOMER_REQUEST", status: "REQUESTED" },
+          where: { vendorId: vendor.id, status: { in: ["REQUESTED", "REVISION_REQUESTED"] } },
         }),
         db.availability.findUnique({
           where: { vendorId_date: { vendorId: vendor.id, date: todayDateOnly() } },

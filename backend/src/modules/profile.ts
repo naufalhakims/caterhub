@@ -44,9 +44,24 @@ export function profileRouter() {
           address: true,
           city: true,
           role: true,
+          whatsappOptIn: true,
           createdAt: true,
           _count: { select: { events: true, bookingsAsCustomer: true, reviews: true } },
         },
+      });
+      res.json({ data: user });
+    }),
+  );
+
+  /** Izin notifikasi WhatsApp — berlaku untuk semua peran. */
+  router.patch(
+    "/whatsapp",
+    asyncHandler(async (req, res) => {
+      const { optIn } = z.object({ optIn: z.boolean() }).parse(req.body ?? {});
+      const user = await db.user.update({
+        where: { id: req.user!.id },
+        data: { whatsappOptIn: optIn },
+        select: { whatsappOptIn: true },
       });
       res.json({ data: user });
     }),

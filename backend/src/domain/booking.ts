@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { OVERBOOK_MSG, toDateLiteral } from "./capacity";
-import { calcTotals } from "./quotation";
+import { buildRequestItems, calcTotals } from "./quotation";
+import { nextInvoiceNumber } from "./invoice";
 import { diffInDays, todayDateOnly } from "../lib/date";
 import { notify, notifyAdmins, type Db } from "./notify";
 
@@ -107,6 +108,7 @@ export async function acceptQuotationAndBook(quotationId: string, customerId: st
         remainingAmount: 0,
         confirmedAt: now,
         paymentDueAt: computePaymentDueAt(now, q.event.eventDate),
+        invoiceNumber: await nextInvoiceNumber(tx, { id: q.vendorId, businessName: q.vendor.businessName }),
       },
     });
     await tx.quotationHistory.create({
@@ -121,9 +123,10 @@ export async function acceptQuotationAndBook(quotationId: string, customerId: st
     });
     await notify(tx, q.vendor.userId, {
       type: "BOOKING",
-      title: "Pesanan baru diterima",
-      message: `Acara "${q.event.name}" (${guests} pax) telah dikonfirmasi.`,
+      title: "Penawaran diterima pelanggan",
+      message: `Acara "${q.event.name}" (${guests} pax) menjadi pesanan. Menunggu pelanggan melunasi.`,
       link: "/vendor/orders",
+      whatsapp: true,
     });
     return booking;
   });
@@ -141,7 +144,7 @@ export async function confirmQuotationAndBook(
   return db.$transaction(async (tx) => {
     const q = await tx.quotation.findUnique({
       where: { id: quotationId },
-      include: { event: true, items: true, vendor: { select: { userId: true } } },
+      include: { event: true, items: true, vendor: { select: { userId: true, businessName: true } } },
     });
     if (!q) throw new Error("Permintaan pesanan tidak ditemukan.");
     if (q.vendorId !== vendorId) throw new Error("Akses ditolak.");
@@ -186,6 +189,7 @@ export async function confirmQuotationAndBook(
         remainingAmount: 0,
         confirmedAt: now,
         paymentDueAt,
+        invoiceNumber: await nextInvoiceNumber(tx, { id: q.vendorId, businessName: q.vendor.businessName }),
       },
     });
     await tx.quotationHistory.create({
@@ -203,6 +207,7 @@ export async function confirmQuotationAndBook(
       title: "Pesanan dikonfirmasi vendor",
       message: `Pesanan "${q.event.name}" (${guests} pax) disetujui. Total nota ${total.toLocaleString("id-ID")} — lunasi sebelum batas waktu agar jadwal tidak dilepas.`,
       link: `/bookings/${booking.id}`,
+      whatsapp: true,
     });
     return booking;
   });
@@ -236,6 +241,8 @@ export function decideCancellation(input: {
   status: string;
   paidAmount: number;
   daysUntilEvent: number;
+  /** Pesanan offline: uang diterima langsung oleh vendor, jadi tidak lewat refund admin. */
+  source?: string;
 }): CancelDecision {
   const { actor, status, paidAmount, daysUntilEvent } = input;
   const isUnpaid = UNPAID_CANCELLABLE.includes(status);
@@ -249,7 +256,7 @@ export function decideCancellation(input: {
       message: `Pesanan lunas hanya bisa dibatalkan paling lambat H-${CUSTOMER_CANCEL_MIN_DAYS}. Hubungi vendor melalui chat pesanan.`,
     };
   }
-  const refund = paidAmount > 0;
+  const refund = paidAmount > 0 && input.source !== "OFFLINE";
   return { ok: true, refund, nextStatus: refund ? "REFUND_PENDING" : "CANCELLED" };
 }
 
@@ -294,10 +301,10 @@ async function applyCancellation(
   const byLabel = opts.by === "CUSTOMER" ? "pelanggan" : opts.by === "VENDOR" ? "vendor" : "sistem";
   const message = `Pesanan "${booking.event.name}" dibatalkan oleh ${byLabel}: ${opts.reason}.${refundNote}`;
   if (opts.by !== "CUSTOMER") {
-    await notify(tx, booking.customerId, { type: "BOOKING", title: "Pesanan dibatalkan", message, link });
+    await notify(tx, booking.customerId, { type: "BOOKING", title: "Pesanan dibatalkan", message, link, whatsapp: true });
   }
   if (opts.by !== "VENDOR") {
-    await notify(tx, booking.vendor.userId, { type: "BOOKING", title: "Pesanan dibatalkan", message, link });
+    await notify(tx, booking.vendor.userId, { type: "BOOKING", title: "Pesanan dibatalkan", message, link, whatsapp: true });
   }
   if (refund) {
     await notifyAdmins(tx, {
@@ -338,6 +345,7 @@ export async function cancelBooking(input: {
       status: booking.status,
       paidAmount,
       daysUntilEvent: diffInDays(booking.event.eventDate, todayDateOnly(input.now)),
+      source: booking.source,
     });
     if (!decision.ok) throw new Error(decision.message);
 
@@ -376,6 +384,180 @@ export async function expireUnpaidBookings(now = new Date()): Promise<number> {
     if (done) count++;
   }
   return count;
+}
+
+// ---------------------------------------------------------------------------
+// Pesanan offline (dicatat vendor dari WA/telepon)
+// ---------------------------------------------------------------------------
+
+export type OfflinePaymentMethod = "CASH" | "TRANSFER";
+
+/** Akun tersembunyi pemilik semua pesanan offline satu vendor. */
+async function offlineCustomer(tx: Db, vendor: { id: string; businessName: string }) {
+  const email = `offline+${vendor.id}@caterhub.local`;
+  return tx.user.upsert({
+    where: { email },
+    update: {},
+    create: {
+      email,
+      name: `Pelanggan offline · ${vendor.businessName}`,
+      role: "CUSTOMER",
+      isPlaceholder: true,
+      whatsappOptIn: false,
+    },
+    select: { id: true },
+  });
+}
+
+async function createManualPayment(tx: Db, bookingId: string, amount: number, method: OfflinePaymentMethod) {
+  await tx.payment.create({
+    data: {
+      bookingId,
+      provider: "manual",
+      providerReference: `MANUAL-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`.toUpperCase(),
+      amount,
+      method,
+      status: "SETTLEMENT",
+      paidAt: new Date(),
+    },
+  });
+}
+
+export type OfflineOrderInput = {
+  vendorUserId: string;
+  customerName: string;
+  customerPhone?: string | null;
+  eventName: string;
+  eventDate: Date;
+  eventTime: string;
+  guestCount: number;
+  location: string;
+  city: string;
+  packageId: string;
+  addOnIds: string[];
+  deliveryFee: number;
+  serviceFee: number;
+  discount: number;
+  notes?: string | null;
+  payment: "NONE" | OfflinePaymentMethod;
+};
+
+/**
+ * Catat pesanan offline sebagai booking biasa (sumber OFFLINE): memotong
+ * kapasitas, masuk kalender/produksi/invoice. Tidak ada batas bayar otomatis
+ * karena pembayaran ditagih langsung oleh vendor.
+ */
+export async function createOfflineBooking(input: OfflineOrderInput) {
+  return db.$transaction(async (tx) => {
+    const vendor = await tx.vendorProfile.findUnique({
+      where: { userId: input.vendorUserId },
+      select: { id: true, businessName: true, userId: true },
+    });
+    if (!vendor) throw new Error("Profil vendor belum dibuat.");
+    if (input.eventDate < todayDateOnly()) throw new Error("Tanggal acara sudah lewat.");
+
+    const pkg = await tx.package.findFirst({ where: { id: input.packageId, vendorId: vendor.id } });
+    if (!pkg) throw new Error("Paket tidak valid.");
+    const addOnIds = [...new Set(input.addOnIds)];
+    const addOns = addOnIds.length
+      ? await tx.menuItem.findMany({
+          where: { id: { in: addOnIds }, vendorId: vendor.id, price: { gt: 0 } },
+          select: { id: true, name: true, price: true },
+          orderBy: { name: "asc" },
+        })
+      : [];
+    if (addOns.length !== addOnIds.length) throw new Error("Menu tambahan tidak valid.");
+
+    const items = buildRequestItems(pkg, addOns, input.guestCount);
+    const { subtotal, total } = calcTotals(items, input.deliveryFee, input.serviceFee, input.discount);
+    if (total <= 0) throw new Error("Total nota harus lebih dari 0.");
+
+    const customer = await offlineCustomer(tx, vendor);
+    const event = await tx.event.create({
+      data: {
+        customerId: customer.id,
+        name: input.eventName,
+        eventType: "OTHER",
+        eventDate: input.eventDate,
+        eventTime: input.eventTime,
+        location: input.location,
+        city: input.city,
+        guestCount: input.guestCount,
+        notes: input.notes ?? undefined,
+      },
+    });
+    const quotation = await tx.quotation.create({
+      data: {
+        eventId: event.id,
+        packageId: pkg.id,
+        vendorId: vendor.id,
+        customerId: customer.id,
+        origin: "VENDOR_OFFLINE",
+        status: "ACCEPTED",
+        subtotal,
+        deliveryFee: input.deliveryFee,
+        serviceFee: input.serviceFee,
+        discount: input.discount,
+        total,
+        notes: input.notes ?? undefined,
+        items: { create: items },
+        history: {
+          create: {
+            actorId: vendor.userId,
+            action: "created",
+            toStatus: "ACCEPTED",
+            note: `Pesanan offline dicatat vendor untuk ${input.customerName}.`,
+          },
+        },
+      },
+    });
+
+    await reserveCapacity(tx, vendor.id, input.eventDate, input.guestCount);
+
+    const paid = input.payment !== "NONE";
+    const booking = await tx.booking.create({
+      data: {
+        eventId: event.id,
+        quotationId: quotation.id,
+        vendorId: vendor.id,
+        customerId: customer.id,
+        source: "OFFLINE",
+        offlineCustomerName: input.customerName,
+        offlineCustomerPhone: input.customerPhone || null,
+        status: paid ? "PAID" : "PAYMENT_PENDING",
+        totalAmount: total,
+        depositAmount: total,
+        remainingAmount: 0,
+        confirmedAt: new Date(),
+        paymentDueAt: null,
+        invoiceNumber: await nextInvoiceNumber(tx, vendor),
+      },
+    });
+    if (paid) await createManualPayment(tx, booking.id, total, input.payment as OfflinePaymentMethod);
+    return booking;
+  });
+}
+
+/** Vendor mencatat pelunasan tunai/transfer — hanya untuk pesanan offline. */
+export async function recordOfflinePayment(bookingId: string, vendorUserId: string, method: OfflinePaymentMethod) {
+  return db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "Booking" WHERE "id" = ${bookingId} FOR UPDATE`;
+    const booking = await tx.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        vendor: { select: { userId: true } },
+        payments: { where: { status: "SETTLEMENT" }, select: { amount: true } },
+      },
+    });
+    if (!booking || booking.vendor.userId !== vendorUserId) throw new Error("Akses ditolak.");
+    if (booking.source !== "OFFLINE") throw new Error("Pembayaran manual hanya untuk pesanan offline.");
+    if (!["PAYMENT_PENDING", "CONFIRMED"].includes(booking.status)) throw new Error("Pesanan ini tidak menunggu pembayaran.");
+    const remaining = booking.totalAmount - booking.payments.reduce((s, p) => s + p.amount, 0);
+    if (remaining <= 0) throw new Error("Pesanan sudah lunas.");
+    await createManualPayment(tx, booking.id, remaining, method);
+    await tx.booking.update({ where: { id: booking.id }, data: { status: "PAID" } });
+    return { amount: remaining };
+  });
 }
 
 export const VALID_BOOKING_TRANSITIONS: Record<string, string[]> = {

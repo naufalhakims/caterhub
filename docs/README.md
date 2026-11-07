@@ -7,6 +7,8 @@ Dokumentasi ini disusun dari **pembacaan langsung kode sumber** (commit `73b8d42
 | [ANALISIS_CODEBASE.md](./ANALISIS_CODEBASE.md) | Kondisi project saat ini: arsitektur, modul, model data, mesin status, alur bisnis, peta endpoint ↔ halaman, kualitas & pengujian. |
 | [GAP_ANALYSIS.md](./GAP_ANALYSIS.md) | Apa yang kurang: bug/risiko logika bisnis, fitur yang setengah jadi, celah keamanan, utang teknis, ketidaksesuaian dengan narasi produk. Diberi prioritas. |
 | [ROADMAP_PENGEMBANGAN.md](./ROADMAP_PENGEMBANGAN.md) | Rencana pengembangan bertahap dengan fokus tema hackathon **digitalisasi UMKM**: perbaikan pra-demo, fitur pembeda, arah jangka panjang, dan saran UI/UX. |
+| [DEMO_SCRIPT.md](./DEMO_SCRIPT.md) | Skrip presentasi ±8 menit untuk juri: persiapan akun, alur per peran, jawaban pertanyaan teknis. |
+| [CHANGELOG.md](./CHANGELOG.md) | Catatan versi per tahap (v0.1 baseline → versi terbaru). Mulai dari sini untuk melihat perubahan terakhir. |
 | [DESIGN.md](./DESIGN.md) | Sistem desain UI: tipografi serif + italic berwarna, palet, komponen, tata letak (mengikuti referensi `videoframe_*.png`). |
 | [BACKEND_SPLIT.md](./BACKEND_SPLIT.md) | Catatan keputusan pemisahan frontend Next.js ↔ backend Express (dokumen lama, masih relevan). |
 

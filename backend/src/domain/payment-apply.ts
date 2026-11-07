@@ -15,7 +15,7 @@ export async function applyWebhookResult(r: WebhookResult) {
         booking: {
           include: {
             event: { select: { name: true } },
-            vendor: { select: { businessName: true } },
+            vendor: { select: { businessName: true, userId: true } },
           },
         },
       },
@@ -54,6 +54,7 @@ export async function applyWebhookResult(r: WebhookResult) {
         title: "Pembayaran akan dikembalikan",
         message: `Pembayaran untuk "${booking.event.name}" masuk setelah pesanan dibatalkan. Dana ${payment.amount.toLocaleString("id-ID")} akan dikembalikan.`,
         link,
+        whatsapp: true,
       });
       await notifyAdmins(tx, {
         type: "REFUND",
@@ -83,6 +84,19 @@ export async function applyWebhookResult(r: WebhookResult) {
 
     if (paidTotal >= booking.totalAmount && canTransitionBooking(booking.status, "PAID")) {
       await tx.booking.update({ where: { id: booking.id }, data: { status: "PAID" } });
+      await notify(tx, booking.vendor.userId, {
+        type: "PAYMENT",
+        title: "Pembayaran lunas diterima",
+        message: `"${booking.event.name}" sudah dibayar lunas ${booking.totalAmount.toLocaleString("id-ID")}. Silakan jadwalkan produksi.`,
+        link: "/vendor/orders",
+        whatsapp: true,
+      });
+      await notify(tx, booking.customerId, {
+        type: "PAYMENT",
+        title: "Pembayaran diterima",
+        message: `Terima kasih! Pembayaran untuk "${booking.event.name}" sudah kami terima. Vendor mulai menyiapkan pesanan Anda.`,
+        link,
+      });
     }
     return payment;
   });

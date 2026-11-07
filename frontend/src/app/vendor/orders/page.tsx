@@ -7,6 +7,8 @@ import { formatIDR, formatDateID, formatDateTimeID } from "@/lib/format";
 import { apiGet } from "@/lib/api";
 import { requireVendor } from "@/server/vendor-helpers";
 import { advanceBookingAction } from "@/server/vendor-actions";
+import { recordManualPaymentAction } from "@/server/offline-actions";
+import { ArrowRight, buttonLink } from "@/components/ui/Button";
 
 /** Satu langkah produksi berikutnya per status — label menyebut hasilnya. */
 const NEXT: Record<string, [string, string] | undefined> = {
@@ -26,6 +28,10 @@ type VendorOrder = {
   totalAmount: number;
   paymentDueAt: string | null;
   cancelReason: string | null;
+  source: string;
+  invoiceNumber: string | null;
+  offlineCustomerName: string | null;
+  offlineCustomerPhone: string | null;
   event: { name: string; guestCount: number; location: string; eventDate: string; eventTime: string | null };
   customer: { name: string | null };
 };
@@ -41,10 +47,18 @@ export default async function VendorOrdersPage({
 
   return (
     <div>
-      <h1 className="font-display text-4xl text-ink sm:text-5xl">Pesanan</h1>
-      <p className="text-sm text-stone-500">
-        {active.length} aktif dari {orders.length} pesanan — majukan status seiring produksi.
-      </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="font-display text-4xl text-ink sm:text-5xl">Pesanan</h1>
+          <p className="text-sm text-stone-500">
+            {active.length} aktif dari {orders.length} pesanan — majukan status seiring produksi.
+          </p>
+        </div>
+        <Link href="/vendor/orders/new" className={buttonLink("primary", "!pr-4")}>
+          Catat pesanan offline
+          <ArrowRight className="ml-2" />
+        </Link>
+      </div>
       <Flash ok={searchParams?.ok} error={searchParams?.error} />
       {orders.length === 0 ? (
         <div className="mt-4">
@@ -61,19 +75,45 @@ export default async function VendorOrdersPage({
                     <Link href={`/bookings/${o.id}`} className="font-semibold hover:text-brand-700 hover:underline">
                       {o.event.name} · {o.event.guestCount} pax
                     </Link>
+                    {o.source === "OFFLINE" && (
+                      <span className="ml-2 rounded-full bg-ink px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wider text-white">
+                        Offline
+                      </span>
+                    )}
                     <p className="text-sm text-stone-500">
                       {formatDateID(o.event.eventDate)}
                       {o.event.eventTime ? ` · ${o.event.eventTime}` : ""} · {o.event.location}
                     </p>
                     <p className="mt-0.5 text-sm">
                       <span className="font-bold">{formatIDR(o.totalAmount)}</span>
-                      {o.customer.name && <span className="text-stone-500"> · {o.customer.name}</span>}
+                      <span className="text-stone-500">
+                        {" "}· {o.source === "OFFLINE" ? o.offlineCustomerName : o.customer.name}
+                        {o.source === "OFFLINE" && o.offlineCustomerPhone ? ` (${o.offlineCustomerPhone})` : ""}
+                      </span>
+                      {o.invoiceNumber && (
+                        <Link href={`/bookings/${o.id}/invoice`} className="ml-2 font-mono text-xs text-brand-700 hover:underline">
+                          {o.invoiceNumber}
+                        </Link>
+                      )}
                     </p>
                   </div>
                   <StatusBadge status={o.status} />
                 </div>
 
-                {o.status === "PAYMENT_PENDING" && (
+                {o.status === "PAYMENT_PENDING" && o.source === "OFFLINE" && (
+                  <form action={recordManualPaymentAction} className="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-inset ring-amber-200">
+                    <input type="hidden" name="bookingId" value={o.id} />
+                    <span className="font-medium">Belum dibayar — catat pelunasan:</span>
+                    <select name="method" defaultValue="CASH" aria-label="Metode pembayaran" className="rounded-full border border-amber-300 bg-white px-3 py-1 text-xs">
+                      <option value="CASH">Tunai</option>
+                      <option value="TRANSFER">Transfer</option>
+                    </select>
+                    <FormButton variant="dark" pendingLabel="Menyimpan…" className="!px-3 !py-1 !text-xs">
+                      Tandai lunas
+                    </FormButton>
+                  </form>
+                )}
+                {o.status === "PAYMENT_PENDING" && o.source !== "OFFLINE" && (
                   <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 ring-1 ring-inset ring-amber-200">
                     Menunggu pelanggan melunasi
                     {o.paymentDueAt ? ` sebelum ${formatDateTimeID(o.paymentDueAt)} WIB` : ""}. Bila lewat, pesanan batal otomatis
@@ -102,7 +142,9 @@ export default async function VendorOrdersPage({
                         label="Batalkan"
                         consequence={
                           PAID_STATUSES.has(o.status)
-                            ? "Pelanggan sudah membayar lunas — dana akan dikembalikan penuh melalui admin. Pembatalan sepihak menurunkan kepercayaan pelanggan."
+                            ? o.source === "OFFLINE"
+                              ? "Pesanan offline sudah lunas — kembalikan dana ke pelanggan secara langsung bila perlu."
+                              : "Pelanggan sudah membayar lunas — dana akan dikembalikan penuh melalui admin. Pembatalan sepihak menurunkan kepercayaan pelanggan."
                             : "Kapasitas pada tanggal ini dikembalikan dan pelanggan diberi tahu."
                         }
                       />

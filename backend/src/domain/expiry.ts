@@ -49,10 +49,56 @@ export async function expireStaleQuotations(now = new Date()): Promise<number> {
   return count;
 }
 
+/** Kirim pengingat ±3 jam sebelum batas pelunasan (sekali per booking). */
+export const PAYMENT_REMINDER_LEAD_MS = 3 * 60 * 60 * 1000;
+/** Jangan ingatkan booking yang baru saja dibuat (jendela bayarnya memang pendek). */
+const REMINDER_MIN_AGE_MS = 30 * 60 * 1000;
+
+export async function remindUpcomingPaymentDue(now = new Date()): Promise<number> {
+  const due = await db.booking.findMany({
+    where: {
+      status: "PAYMENT_PENDING",
+      paymentReminderSentAt: null,
+      paymentDueAt: { gt: now, lte: new Date(now.getTime() + PAYMENT_REMINDER_LEAD_MS) },
+      createdAt: { lte: new Date(now.getTime() - REMINDER_MIN_AGE_MS) },
+    },
+    select: { id: true, customerId: true, paymentDueAt: true, totalAmount: true, event: { select: { name: true } } },
+    take: 100,
+  });
+  let count = 0;
+  for (const b of due) {
+    const done = await db.$transaction(async (tx) => {
+      const claimed = await tx.booking.updateMany({
+        where: { id: b.id, paymentReminderSentAt: null, status: "PAYMENT_PENDING" },
+        data: { paymentReminderSentAt: now },
+      });
+      if (claimed.count === 0) return false;
+      const time = new Intl.DateTimeFormat("id-ID", {
+        timeZone: "Asia/Jakarta",
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(b.paymentDueAt!);
+      await notify(tx, b.customerId, {
+        type: "PAYMENT_REMINDER",
+        title: "Pengingat: segera lunasi pesanan",
+        message: `Pesanan "${b.event.name}" (${b.totalAmount.toLocaleString("id-ID")}) belum dibayar. Batas pelunasan ${time} WIB — setelah itu jadwal vendor dilepas.`,
+        link: `/bookings/${b.id}`,
+        whatsapp: true,
+      });
+      return true;
+    });
+    if (done) count++;
+  }
+  return count;
+}
+
 export async function runExpirySweep(now = new Date()) {
+  const reminders = await remindUpcomingPaymentDue(now);
   const bookings = await expireUnpaidBookings(now);
   const quotations = await expireStaleQuotations(now);
-  return { bookings, quotations };
+  return { reminders, bookings, quotations };
 }
 
 const SWEEP_THROTTLE_MS = 60_000;

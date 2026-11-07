@@ -7,6 +7,7 @@ import { formatIDR, formatDateID } from "@/lib/format";
 import { apiGet } from "@/lib/api";
 import { requireVendor } from "@/server/vendor-helpers";
 import { Flash } from "@/components/ui/Flash";
+import { ArrowRight, buttonLink } from "@/components/ui/Button";
 import {
   confirmQuotationRequestAction,
   declineQuotationRequestAction,
@@ -22,6 +23,8 @@ type VendorQuote = {
   discount: number;
   total: number;
   notes: string | null;
+  revisionNote: string | null;
+  expiresAt: string | null;
   event: {
     name: string;
     guestCount: number;
@@ -40,25 +43,56 @@ export default async function VendorQuotationsPage({
 }) {
   await requireVendor();
   const quotes = await apiGet<VendorQuote[]>("/api/v1/vendor/quotations");
-  const requests = quotes.filter(
-    (q) => q.origin === "CUSTOMER_REQUEST" && q.status === "REQUESTED",
-  );
+  const requests = quotes.filter((q) => q.status === "REQUESTED");
+  const revisions = quotes.filter((q) => q.status === "REVISION_REQUESTED");
+  const awaiting = quotes.filter((q) => q.status === "SENT");
   const handledRequests = quotes.filter(
-    (q) => q.origin === "CUSTOMER_REQUEST" && q.status !== "REQUESTED",
+    (q) => !["REQUESTED", "REVISION_REQUESTED", "SENT"].includes(q.status),
   );
 
   return (
     <div>
       <h1 className="font-display text-4xl text-ink sm:text-5xl">Permintaan pesanan</h1>
       <p className="text-sm text-stone-500">
-        Konfirmasi permintaan pelanggan, atau tolak dengan alasan. Setelah dikonfirmasi,
-        pelanggan membayar lunas dan Anda baru bisa mulai persiapan.
+        Konfirmasi langsung, ajukan penawaran khusus bila menu/harga perlu disesuaikan, atau tolak dengan alasan.
+        Setelah pesanan dibuat, pelanggan membayar lunas dan Anda baru bisa mulai persiapan.
       </p>
       <Flash ok={searchParams?.ok} error={searchParams?.error} />
 
-      <h2 className="mt-5 font-display text-lg font-bold">
-        Menunggu konfirmasi
-        <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 align-middle font-sans text-xs font-bold text-amber-800">
+      {revisions.length > 0 && (
+        <>
+          <h2 className="mt-6 font-display text-2xl text-ink">
+            Revisi diminta
+            <span className="ml-2 rounded-full bg-purple-100 px-2 py-0.5 align-middle font-sans text-xs font-bold text-purple-800">
+              {revisions.length}
+            </span>
+          </h2>
+          <div className="mt-2 space-y-3">
+            {revisions.map((q) => (
+              <Card key={q.id} className="!border-purple-200 !p-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-semibold">{q.event.name} · {q.event.guestCount} pax</p>
+                    <p className="text-sm text-stone-500">
+                      {formatDateID(q.event.eventDate)} · penawaran terakhir {formatIDR(q.total)}
+                    </p>
+                    {q.revisionNote && <p className="mt-1.5 text-sm text-purple-900">“{q.revisionNote}”</p>}
+                  </div>
+                  <StatusBadge status={q.status} />
+                </div>
+                <Link href={`/quotations/${q.id}`} className={buttonLink("primary", "mt-3 !pr-4")}>
+                  Perbarui penawaran
+                  <ArrowRight className="ml-2" />
+                </Link>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
+
+      <h2 className="mt-6 font-display text-2xl text-ink">
+        Permintaan baru
+        <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 align-middle font-sans text-xs font-bold text-amber-800">
           {requests.length}
         </span>
       </h2>
@@ -113,8 +147,14 @@ export default async function VendorQuotationsPage({
               </form>
             </details>
 
-            <details className="mt-2">
-              <summary className="cursor-pointer text-xs font-semibold text-red-600">
+            <Link
+              href={`/quotations/${q.id}`}
+              className="mt-2 inline-block rounded-full px-3 py-1.5 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-50"
+            >
+              Ajukan penawaran khusus (ubah item / harga) →
+            </Link>
+            <details className="mt-1">
+              <summary className="cursor-pointer px-3 text-xs font-semibold text-red-600">
                 Tolak permintaan…
               </summary>
               <form action={declineQuotationRequestAction} className="mt-2 space-y-2">
@@ -143,9 +183,32 @@ export default async function VendorQuotationsPage({
         )}
       </div>
 
+      {awaiting.length > 0 && (
+        <>
+          <h2 className="mt-7 font-display text-2xl text-ink">Menunggu keputusan pelanggan</h2>
+          <div className="mt-2 space-y-2">
+            {awaiting.map((q) => (
+              <Link key={q.id} href={`/quotations/${q.id}`} className="block">
+                <Card interactive className="!p-3.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <span className="font-semibold">
+                      {q.event.name} · {q.event.guestCount} pax · {formatIDR(q.total)}
+                    </span>
+                    <span className="flex items-center gap-2 text-xs text-stone-500">
+                      {q.expiresAt ? `berlaku s.d. ${formatDateID(q.expiresAt)}` : formatDateID(q.event.eventDate)}
+                      <StatusBadge status={q.status} />
+                    </span>
+                  </div>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
+
       {handledRequests.length > 0 && (
         <>
-          <h2 className="mt-7 font-display text-lg font-bold">Sudah ditangani</h2>
+          <h2 className="mt-7 font-display text-2xl text-ink">Sudah ditangani</h2>
           <div className="mt-2 space-y-2">
             {handledRequests.map((q) => (
               <Card key={q.id} className="!p-3.5">

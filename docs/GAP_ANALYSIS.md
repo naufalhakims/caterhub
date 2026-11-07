@@ -31,8 +31,8 @@ Prioritas:
 | # | Prio | Temuan | Dampak |
 |---|---|---|---|
 | B1 | **P0** | **Notifikasi** ditulis di ±10 tempat (pesanan baru, konfirmasi, penolakan, pesan chat, ulasan, verifikasi) tetapi **tidak ada endpoint untuk membaca** maupun ikon/lonceng di UI. | Vendor tidak tahu ada pesanan masuk kecuali membuka dashboard. Ini inti "layanan pelanggan lebih baik" dalam tema lomba. |
-| B2 | P1 | Alur **penawaran vendor / negosiasi / revisi** (`POST /quotations`, `POST /quotations/:id/decision`) lengkap di API + tes, tetapi tidak ada form di UI. Halaman penawaran hanya menampilkan `revisionNote` bila ada. | Pesanan besar catering (pernikahan, korporat) biasanya butuh nego harga/menu — nilai jual utama vs marketplace biasa tidak terlihat. |
-| B3 | P1 | **Kustomisasi menu** tidak ada: `MenuItem.price` (harga add-on per pax) ditampilkan "+Rp…" tetapi pelanggan tidak bisa memilih menu tambahan. | Klaim "customize menus" di konsep produk belum terpenuhi. |
+| B2 | P1 | ✅ *Selesai v0.5.0* — Alur **penawaran vendor / negosiasi / revisi** (`POST /quotations`, `POST /quotations/:id/decision`) lengkap di API + tes, tetapi tidak ada form di UI. Halaman penawaran hanya menampilkan `revisionNote` bila ada. | Pesanan besar catering (pernikahan, korporat) biasanya butuh nego harga/menu — nilai jual utama vs marketplace biasa tidak terlihat. |
+| B3 | P1 | ✅ *Selesai v0.5.0 (menu tambahan per pax)* — **Kustomisasi menu** tidak ada: `MenuItem.price` (harga add-on per pax) ditampilkan "+Rp…" tetapi pelanggan tidak bisa memilih menu tambahan. | Klaim "customize menus" di konsep produk belum terpenuhi. |
 | B4 | P1 | Data acara (`eventType`, `budgetMin/Max`) dan `latitude/longitude` vendor tidak dipakai rekomendasi; "Lokasi dekat" = nama kota sama. | Rekomendasi terasa dangkal saat dijelaskan ke juri. |
 | B5 | P2 | Pelanggan tidak bisa mengubah/menghapus acara; admin tidak bisa menangguhkan pengguna/vendor; paket tidak bisa dihapus (hanya nonaktif). | Operasional admin & pelanggan terbatas. |
 | B6 | P2 | Tidak ada pemulihan kata sandi / verifikasi email (model `VerificationToken` ada tapi sisa NextAuth). | Hambatan nyata bagi pengguna UMKM yang sering lupa sandi. |
@@ -76,10 +76,10 @@ Prioritas:
 
 Tema: *bagaimana sistem web membantu UMKM mengelola operasional, meningkatkan produktivitas, dan melayani pelanggan lebih baik.* Yang sudah kuat: kapasitas harian, konfirmasi pesanan terstruktur, status produksi, analitik pendapatan, verifikasi kepercayaan. Yang belum ada dan sangat relevan untuk catering UMKM:
 
-1. **Notifikasi ke kanal yang dipakai UMKM** (WhatsApp) — vendor UMKM hidup di WhatsApp, bukan di dashboard.
-2. **Nota/invoice & kuitansi PDF** — kebutuhan administrasi pelanggan korporat dan bukti transaksi vendor.
-3. **Lembar produksi dapur** (rekap porsi per menu per tanggal) dan **perhitungan bahan baku / HPP** — inti "produktivitas operasional".
-4. **Pencatatan pesanan offline** — vendor tetap menerima order dari WhatsApp/telepon; tanpa input manual, kalender & kapasitas di CaterHub tidak akurat.
+1. **Notifikasi ke kanal yang dipakai UMKM** (WhatsApp) — vendor UMKM hidup di WhatsApp, bukan di dashboard. ✅ *Selesai v0.7.0 (outbox + adapter mock; provider asli tinggal ditambahkan).*
+2. **Nota/invoice & kuitansi PDF** — kebutuhan administrasi pelanggan korporat dan bukti transaksi vendor. ✅ *Selesai v0.8.0.*
+3. **Lembar produksi dapur** (rekap porsi per menu per tanggal) dan **perhitungan bahan baku / HPP** — inti "produktivitas operasional". ✅ *Selesai v0.6.0.*
+4. **Pencatatan pesanan offline** — vendor tetap menerima order dari WhatsApp/telepon; tanpa input manual, kalender & kapasitas di CaterHub tidak akurat. ✅ *Selesai v0.8.0.*
 5. **Pencairan dana / rekonsiliasi** — belum ada konsep saldo vendor, komisi platform, atau payout.
 6. **Badge kepercayaan** (sertifikat halal, PIRT/NIB, SLHS) yang terbaca pelanggan, bukan hanya status "terverifikasi".
 
@@ -108,4 +108,4 @@ Penerapan apple-design (komponen dasar): umpan balik tekan instan & status "Memp
 
 Verifikasi: 81 unit test lulus (backend 48 termasuk `booking-policy.test.ts`, frontend 33), typecheck & lint bersih, `next build` sukses, dan smoke test E2E terhadap API lokal untuk A1/A2/A3/A4/B1 lulus.
 
-Belum dikerjakan dari Fase 0: skrip demo + seed yang bercerita. Booking lama (dibuat sebelum migrasi) tidak memiliki `paymentDueAt` sehingga tidak kedaluwarsa otomatis.
+Skrip demo + seed yang bercerita: ✅ selesai di v0.9.0 ([DEMO_SCRIPT.md](./DEMO_SCRIPT.md)). Booking lama (dibuat sebelum migrasi) tidak memiliki `paymentDueAt` sehingga tidak kedaluwarsa otomatis.

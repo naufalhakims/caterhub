@@ -5,6 +5,7 @@ import { Card, StatusBadge } from "@/components/ui/Card";
 import { buttonLink } from "@/components/ui/Button";
 import { FoodArt, backdropFor } from "@/components/FoodArt";
 import { SubmitButton } from "@/components/ui/SubmitButton";
+import { LiveEstimate } from "@/components/LiveEstimate";
 import { formatIDR } from "@/lib/format";
 import { apiGet, ApiError } from "@/lib/api";
 import type { VendorDetailDto } from "@/lib/vendor-types";
@@ -51,6 +52,8 @@ export default async function VendorDetailPage({
     if (!menusByCat[m.category]) menusByCat[m.category] = [];
     menusByCat[m.category].push(m);
   }
+  // Menu dengan harga add-on > 0 bisa ditambahkan pelanggan per pax.
+  const addOnMenus = vendor.menuItems.filter((m) => m.price > 0);
   const cheapest = vendor.packages.length
     ? Math.min(...vendor.packages.map((p) => p.pricePerPax))
     : null;
@@ -295,7 +298,30 @@ export default async function VendorDetailPage({
                         ))}
                       </select>
                     </label>
-                    <input name="notes" maxLength={1000} placeholder="Kustomisasi: tambah dessert, tanpa seafood…" className="w-full rounded-2xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-ink focus:ring-4 focus:ring-sun-200 placeholder:text-stone-400" />
+                    {addOnMenus.length > 0 && (
+                      <fieldset className="rounded-2xl border border-stone-200 p-3">
+                        <legend className="px-1 text-[13px] font-medium text-stone-600">Menu tambahan (opsional, per pax)</legend>
+                        <div className="max-h-48 space-y-1 overflow-y-auto pr-1">
+                          {addOnMenus.map((m) => (
+                            <label
+                              key={m.id}
+                              className="flex cursor-pointer items-center justify-between gap-3 rounded-xl px-2 py-1.5 text-sm transition-colors hover:bg-paper has-[:checked]:bg-sun-100"
+                            >
+                              <span className="flex min-w-0 items-center gap-2.5">
+                                <input type="checkbox" name="addOnIds" value={m.id} className="h-4 w-4 shrink-0 accent-ink" />
+                                <span className="truncate">{m.name}</span>
+                              </span>
+                              <span className="shrink-0 text-xs font-semibold text-stone-600">+{formatIDR(m.price)}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </fieldset>
+                    )}
+                    <input name="notes" maxLength={1000} placeholder="Catatan: tanpa seafood, porsi anak, dll." className="w-full rounded-2xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-ink focus:ring-4 focus:ring-sun-200 placeholder:text-stone-400" />
+                    <LiveEstimate
+                      packages={vendor.packages.map((p) => ({ id: p.id, pricePerPax: p.pricePerPax }))}
+                      addOns={addOnMenus.map((m) => ({ id: m.id, price: m.price }))}
+                    />
                     <SubmitButton requireDirty={false} arrow className="w-full !py-3">Kirim permintaan pesanan</SubmitButton>
                   </form>
                 )}

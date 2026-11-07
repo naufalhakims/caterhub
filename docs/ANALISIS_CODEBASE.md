@@ -1,6 +1,6 @@
 # Analisis Codebase CaterHub
 
-> Sumber: kode di `frontend/` dan `backend/` per commit `73b8d42`. Hasil verifikasi lokal: `npm test` → **71 tes lulus** (frontend 32, backend 39); `npm run typecheck` → bersih di kedua paket.
+> Sumber: kode di `frontend/` dan `backend/` per commit `73b8d42` (baseline). Perubahan sesudahnya dicatat di [CHANGELOG.md](./CHANGELOG.md); tabel endpoint di bawah sudah diperbarui sampai v0.8.0. Hasil verifikasi lokal: `npm test` → **71 tes lulus** (frontend 32, backend 39); `npm run typecheck` → bersih di kedua paket.
 
 ## 1. Gambaran arsitektur
 
@@ -111,13 +111,15 @@ PAYMENT_PENDING ──(webhook settlement)──▶ PAID ─▶ PREPARING ─▶
 | `GET /vendors`, `GET /vendors/:id`, `GET /capacity` | ✅ |
 | `GET/POST /events`, `GET /events/:id` | ✅ |
 | `POST /quotations/request`, `GET /quotations/:id`, `/confirm`, `/decline`, `/messages` | ✅ |
-| `POST /quotations` (vendor kirim/revisi penawaran) | ❌ **tidak ada UI** |
-| `POST /quotations/:id/decision` (accept/reject/revisi pelanggan) | ❌ **tidak ada UI** |
+| `POST /quotations` (vendor kirim/revisi penawaran) | ✅ sejak v0.5.0 (`OfferEditor`) |
+| `POST /quotations/:id/decision` (accept/reject/revisi pelanggan) | ✅ sejak v0.5.0 (panel keputusan pelanggan) |
 | `/vendor/*` (dashboard, analytics, menu, packages, capacity, bookings, images, documents, me) | ✅ |
+| `/vendor/ingredients`, `/vendor/menu/:id/recipe`, `/vendor/costing`, `/vendor/packages/:id/cost`, `/vendor/production` | ✅ sejak v0.6.0 (Bahan & HPP, Produksi) |
 | `/admin/*`, `/bookings/:id`, `/bookings/:id/review` | ✅ |
+| `/bookings/:id/invoice`, `/vendor/bookings/offline`, `/vendor/bookings/:id/manual-payment` | ✅ sejak v0.8.0 (invoice, pesanan offline) |
 | `/payments`, `/payments/:id`, `/payments/:id/mock-settle`, `/payments/webhook` | ✅ |
 | `/me` (profil) | ✅ |
-| Notifikasi | ❌ **tidak ada endpoint baca sama sekali** — baris `Notification` hanya ditulis |
+| Notifikasi | ✅ sejak v0.2.0 (`/me/notifications`); WhatsApp outbox sejak v0.7.0 (`/me/whatsapp`, `/admin/whatsapp`) |
 
 ## 7. Kualitas kode & pengujian
 

@@ -5,6 +5,8 @@ import { Card, StatusBadge } from "@/components/ui/Card";
 import { FormButton } from "@/components/ui/FormButton";
 import { OrderStepper } from "@/components/OrderStepper";
 import { CancelBookingForm } from "@/components/CancelBookingForm";
+import { recordManualPaymentAction } from "@/server/offline-actions";
+import { buttonLink } from "@/components/ui/Button";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { StarRatingInput } from "@/components/ui/StarRatingInput";
 import { Field, Textarea } from "@/components/ui/Field";
@@ -31,6 +33,10 @@ type BookingDetail = {
   paymentDueAt: string | null;
   refundAmount: number | null;
   refundedAt: string | null;
+  source: string;
+  invoiceNumber: string | null;
+  offlineCustomerName: string | null;
+  offlineCustomerPhone: string | null;
   customerId: string;
   event: {
     name: string;
@@ -86,8 +92,11 @@ export default async function BookingDetailPage({
     UNPAID_CANCELLABLE.includes(booking.status) ||
     (PAID_CANCELLABLE.includes(booking.status) &&
       (isVendor || daysUntilEvent >= CUSTOMER_CANCEL_MIN_DAYS));
+  const offline = booking.source === "OFFLINE";
   const cancelConsequence = paid > 0
-    ? `Dana ${formatIDR(paid)} akan dikembalikan melalui admin. Jadwal vendor pada tanggal ini akan dilepas.`
+    ? offline
+      ? `Pembayaran ${formatIDR(paid)} diterima langsung oleh Anda — kembalikan ke pelanggan secara langsung bila perlu. Jadwal pada tanggal ini akan dilepas.`
+      : `Dana ${formatIDR(paid)} akan dikembalikan melalui admin. Jadwal vendor pada tanggal ini akan dilepas.`
     : "Jadwal vendor pada tanggal ini akan dilepas dan tagihan yang belum dibayar dibatalkan.";
   const cancelledByLabel =
     booking.cancelledBy === "CUSTOMER" ? "pelanggan" : booking.cancelledBy === "VENDOR" ? "vendor" : booking.cancelledBy === "SYSTEM" ? "sistem" : null;
@@ -101,12 +110,23 @@ export default async function BookingDetailPage({
         </p>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
           <h1 className="font-display text-4xl text-ink sm:text-5xl">{booking.event.name}</h1>
-          <StatusBadge status={booking.status} />
+          <span className="flex items-center gap-2">
+            {offline && (
+              <span className="rounded-full bg-ink px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-white">Offline</span>
+            )}
+            <StatusBadge status={booking.status} />
+          </span>
         </div>
         <p className="mt-1 text-sm text-stone-500">
           {booking.vendor.businessName} · {formatDateID(booking.event.eventDate)}
           {booking.event.eventTime ? ` · ${booking.event.eventTime}` : ""} · {booking.event.guestCount} pax
         </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Link href={`/bookings/${booking.id}/invoice`} className={buttonLink("secondary", "!py-2")}>
+            {paid >= booking.totalAmount && booking.totalAmount > 0 ? "Lihat kuitansi" : "Lihat invoice"}
+          </Link>
+          {booking.invoiceNumber && <span className="font-mono text-xs text-stone-500">{booking.invoiceNumber}</span>}
+        </div>
         <Flash ok={searchParams?.ok} error={searchParams?.error} />
 
         {/* Tahap & status */}
@@ -133,6 +153,18 @@ export default async function BookingDetailPage({
         ) : (
           <Card className="mt-4">
             <OrderStepper status={booking.status} />
+            {booking.status === "PAYMENT_PENDING" && offline && isVendor && (
+              <form action={recordManualPaymentAction} className="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm text-amber-900 ring-1 ring-inset ring-amber-200">
+                <input type="hidden" name="bookingId" value={booking.id} />
+                <input type="hidden" name="returnTo" value="booking" />
+                <span className="font-medium">Pesanan offline belum dibayar — catat pelunasan:</span>
+                <select name="method" defaultValue="CASH" aria-label="Metode pembayaran" className="rounded-full border border-amber-300 bg-white px-3 py-1 text-sm">
+                  <option value="CASH">Tunai</option>
+                  <option value="TRANSFER">Transfer</option>
+                </select>
+                <FormButton variant="dark" pendingLabel="Menyimpan…" className="!py-1.5">Tandai lunas</FormButton>
+              </form>
+            )}
             {booking.status === "PAYMENT_PENDING" && dueAt && (
               <p className="mt-3 rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm text-amber-900 ring-1 ring-inset ring-amber-200">
                 Lunasi sebelum <span className="font-semibold">{formatDateTimeID(dueAt)} WIB</span>. Setelah itu pesanan
@@ -144,6 +176,15 @@ export default async function BookingDetailPage({
 
         <Card className="mt-4">
           <div className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+            {offline && (
+              <div>
+                <dt className="text-xs font-bold uppercase tracking-wide text-stone-400">Pelanggan (offline)</dt>
+                <dd className="mt-0.5 font-medium">
+                  {booking.offlineCustomerName}
+                  {booking.offlineCustomerPhone ? ` · ${booking.offlineCustomerPhone}` : ""}
+                </dd>
+              </div>
+            )}
             <div>
               <dt className="text-xs font-bold uppercase tracking-wide text-stone-400">Lokasi acara</dt>
               <dd className="mt-0.5 font-medium">{booking.event.location}, {booking.event.city}</dd>

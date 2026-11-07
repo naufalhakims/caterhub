@@ -11,14 +11,17 @@ import { requireUser } from "@/lib/auth-helpers";
 import {
   confirmQuotationRequestAction,
   declineQuotationRequestAction,
+  decideOfferAction,
 } from "@/server/quotation-actions";
+import { OfferEditor } from "@/components/OfferEditor";
+import { FormButton } from "@/components/ui/FormButton";
 import { sendOfferMessageAction } from "@/server/chat-actions";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { Flash } from "@/components/ui/Flash";
 
 const ACTION_LABEL: Record<string, string> = {
   created: "Permintaan pesanan dibuat",
-  sent: "Penawaran dikirim",
+  sent: "Penawaran khusus dikirim",
   revised: "Penawaran diperbarui",
   accepted: "Pesanan dikonfirmasi vendor",
   rejected: "Ditolak pelanggan",
@@ -30,6 +33,7 @@ const ACTION_LABEL: Record<string, string> = {
 type QuotationDetail = {
   id: string;
   customerId: string;
+  packageId: string | null;
   status: string;
   origin: string;
   subtotal: number;
@@ -41,6 +45,7 @@ type QuotationDetail = {
   revisionNote: string | null;
   expiresAt: string | null;
   event: {
+    id: string;
     name: string;
     eventDate: string;
     eventTime: string | null;
@@ -49,7 +54,7 @@ type QuotationDetail = {
     city: string;
   };
   vendor: { businessName: string; userId: string };
-  items: { id: string; name: string; quantity: number; unitPrice: number; subtotal: number }[];
+  items: { id: string; name: string; quantity: number; unitPrice: number; subtotal: number; menuItemId: string | null }[];
   booking: { id: string; status: string } | null;
   messages: {
     id: string;
@@ -90,8 +95,25 @@ export default async function QuotationDetailPage({
   const messages = isParty ? q.messages : [];
   const history = q.history;
   const waiting = q.status === "REQUESTED";
+  const offered = q.status === "SENT";
+  const revising = q.status === "REVISION_REQUESTED";
   const confirmed = q.status === "ACCEPTED";
   const declined = q.status === "DECLINED";
+  const rejected = q.status === "REJECTED";
+  const expired = q.status === "EXPIRED";
+  const negotiating = offered || revising;
+  const editorProps = {
+    quotationId: q.id,
+    eventId: q.event.id,
+    customerId: q.customerId,
+    packageId: q.packageId,
+    guestCount: q.event.guestCount,
+    items: q.items.map((i) => ({ name: i.name, quantity: i.quantity, unitPrice: i.unitPrice, menuItemId: i.menuItemId })),
+    deliveryFee: q.deliveryFee,
+    serviceFee: q.serviceFee,
+    discount: q.discount,
+    notes: null,
+  };
 
   return (
     <>
@@ -114,8 +136,8 @@ export default async function QuotationDetailPage({
               ? "Permintaan pesanan dari Anda"
               : "Permintaan pesanan pelanggan"
             : isVendor
-              ? "Penawaran lama yang Anda kirim"
-              : "Penawaran lama dari vendor"}
+              ? "Penawaran yang Anda kirim"
+              : "Penawaran dari vendor"}
         </p>
         {waiting && (
           <p className="mt-3 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-inset ring-amber-200">
@@ -141,6 +163,33 @@ export default async function QuotationDetailPage({
               </Link>
             )}
           </div>
+        )}
+        {offered && (
+          <div className="mt-3 rounded-2xl bg-sky-50 px-4 py-3 text-sm text-sky-900 ring-1 ring-inset ring-sky-200">
+            <p className="font-semibold">{isCustomer ? "Vendor mengirim penawaran khusus." : "Penawaran terkirim — menunggu keputusan pelanggan."}</p>
+            <p className="mt-0.5">
+              {isCustomer
+                ? "Tinjau item dan total di bawah, lalu terima, minta revisi, atau tolak."
+                : "Pelanggan bisa menerima, meminta revisi, atau menolak. Anda masih bisa mengubah penawaran."}
+              {q.expiresAt ? ` Berlaku sampai ${formatDateTimeID(q.expiresAt)} WIB.` : ""}
+            </p>
+          </div>
+        )}
+        {revising && (
+          <div className="mt-3 rounded-2xl bg-purple-50 px-4 py-3 text-sm text-purple-900 ring-1 ring-inset ring-purple-200">
+            <p className="font-semibold">{isVendor ? "Pelanggan meminta revisi." : "Revisi diminta — menunggu vendor memperbarui penawaran."}</p>
+            {q.revisionNote && <p className="mt-0.5">“{q.revisionNote}”</p>}
+          </div>
+        )}
+        {rejected && (
+          <p className="mt-3 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-800 ring-1 ring-inset ring-red-200">
+            Penawaran ini ditolak pelanggan.
+          </p>
+        )}
+        {expired && (
+          <p className="mt-3 rounded-2xl bg-stone-100 px-4 py-3 text-sm text-stone-700 ring-1 ring-inset ring-stone-200">
+            Penawaran/permintaan ini sudah kedaluwarsa.
+          </p>
         )}
         {declined && (
           <p className="mt-3 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800 ring-1 ring-inset ring-red-200">
@@ -178,18 +227,16 @@ export default async function QuotationDetailPage({
             <div className="flex justify-between"><dt className="text-stone-500">Biaya layanan / lainnya</dt><dd className="font-medium">{formatIDR(q.serviceFee)}</dd></div>
             <div className="flex justify-between"><dt className="text-stone-500">Diskon</dt><dd className="font-medium text-emerald-700">−{formatIDR(q.discount)}</dd></div>
             <div className="flex items-baseline justify-between border-t border-stone-200 pt-2.5">
-              <dt className="font-bold">{confirmed ? "Total nota" : "Estimasi total"}</dt>
+              <dt className="font-bold">{confirmed ? "Total nota" : negotiating ? "Total penawaran" : "Estimasi total"}</dt>
               <dd className="font-display text-2xl font-bold text-brand-800">{formatIDR(q.total)}</dd>
             </div>
           </dl>
         </Card>
         {q.notes && (
           <p className="mt-3 rounded-xl bg-brand-50 px-4 py-3 text-sm text-stone-600 ring-1 ring-inset ring-brand-100">
-            <span className="font-semibold text-brand-800">Catatan pelanggan:</span> {q.notes}
+            <span className="font-semibold text-brand-800">{q.origin === "CUSTOMER_REQUEST" && waiting ? "Catatan pelanggan:" : "Catatan:"}</span> {q.notes}
           </p>
         )}
-        {q.revisionNote && <p className="mt-3 rounded-xl bg-purple-50 px-4 py-3 text-sm text-purple-800 ring-1 ring-inset ring-purple-200">Revisi: {q.revisionNote}</p>}
-        {q.expiresAt && <p className="mt-2 text-xs text-stone-400">Berlaku hingga {formatDateID(q.expiresAt)}</p>}
 
         {isVendor && waiting && (
           <Card className="mt-4 border-brand-100">
@@ -209,6 +256,18 @@ export default async function QuotationDetailPage({
                 ✓ Konfirmasi pesanan
               </SubmitButton>
             </form>
+            <details className="group mt-5 border-t border-stone-100 pt-4">
+              <summary className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700">
+                Ajukan penawaran khusus (ubah item / harga)
+                <span aria-hidden className="transition-transform duration-300 ease-fluid group-open:rotate-180">⌄</span>
+              </summary>
+              <div className="disclose-panel mt-3">
+                <p className="mb-3 text-[13px] text-stone-500">
+                  Gunakan bila menu perlu diganti atau harga disesuaikan. Pelanggan harus menyetujui penawaran sebelum pesanan dibuat.
+                </p>
+                <OfferEditor {...editorProps} submitLabel="Kirim penawaran" />
+              </div>
+            </details>
             <details className="mt-3">
               <summary className="cursor-pointer text-xs font-semibold text-red-600">Tolak permintaan…</summary>
               <form action={declineQuotationRequestAction} className="mt-2 space-y-2">
@@ -219,6 +278,82 @@ export default async function QuotationDetailPage({
                 <SubmitButton variant="danger" className="!py-1.5 !text-xs">Tolak permintaan</SubmitButton>
               </form>
             </details>
+          </Card>
+        )}
+
+        {isVendor && negotiating && (
+          revising ? (
+            <Card className="mt-4">
+              <h2 className="font-display text-2xl text-ink">
+                Perbarui <em>penawaran</em>
+              </h2>
+              <p className="mb-4 text-[13px] text-stone-500">Sesuaikan item atau harga sesuai catatan revisi pelanggan.</p>
+              <OfferEditor {...editorProps} submitLabel="Kirim revisi" />
+            </Card>
+          ) : (
+            <details className="group mt-4 rounded-3xl border border-stone-200 bg-white p-5">
+              <summary className="inline-flex items-center gap-1.5 font-display text-xl text-ink">
+                Ubah penawaran
+                <span aria-hidden className="font-sans text-base transition-transform duration-300 ease-fluid group-open:rotate-180">⌄</span>
+              </summary>
+              <div className="disclose-panel mt-4">
+                <OfferEditor {...editorProps} submitLabel="Kirim ulang penawaran" />
+              </div>
+            </details>
+          )
+        )}
+
+        {isCustomer && negotiating && (
+          <Card className="mt-4 !rounded-4xl shadow-lift">
+            <h2 className="font-display text-3xl text-ink">
+              {offered ? (
+                <>
+                  Setujui <em>penawaran</em>?
+                </>
+              ) : (
+                "Masih ingin memakai versi ini?"
+              )}
+            </h2>
+            <p className="mt-1 text-[13px] text-stone-500">
+              Menerima penawaran langsung membuat pesanan dan mengunci jadwal vendor. Setelah itu Anda punya batas waktu
+              untuk membayar lunas.
+            </p>
+            <form action={decideOfferAction} className="mt-4">
+              <input type="hidden" name="quotationId" value={q.id} />
+              <input type="hidden" name="decision" value="accept" />
+              <FormButton arrow pendingLabel="Membuat pesanan…" className="!px-6 !py-3">
+                Terima {formatIDR(q.total)} & lanjut bayar
+              </FormButton>
+            </form>
+            <div className="mt-5 grid gap-3 border-t border-stone-100 pt-4 sm:grid-cols-2">
+              {offered && (
+                <details className="group">
+                  <summary className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold text-purple-800 transition-colors hover:bg-purple-50">
+                    Minta revisi
+                    <span aria-hidden className="transition-transform duration-300 ease-fluid group-open:rotate-180">⌄</span>
+                  </summary>
+                  <form action={decideOfferAction} className="disclose-panel mt-2 space-y-2">
+                    <input type="hidden" name="quotationId" value={q.id} />
+                    <input type="hidden" name="decision" value="revision" />
+                    <Textarea name="note" rows={2} required minLength={5} maxLength={1000} placeholder="cth. Bisa ganti rendang dengan ayam bakar dan kurangi ongkir?" />
+                    <FormButton variant="secondary" pendingLabel="Mengirim…">Kirim permintaan revisi</FormButton>
+                  </form>
+                </details>
+              )}
+              <details className="group">
+                <summary className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50">
+                  Tolak penawaran
+                  <span aria-hidden className="transition-transform duration-300 ease-fluid group-open:rotate-180">⌄</span>
+                </summary>
+                <form action={decideOfferAction} className="disclose-panel mt-2 space-y-2 rounded-2xl bg-red-50/60 p-3 ring-1 ring-inset ring-red-200">
+                  <input type="hidden" name="quotationId" value={q.id} />
+                  <input type="hidden" name="decision" value="reject" />
+                  <p className="text-[13px] text-red-900">Penawaran ditutup dan tidak bisa diterima lagi.</p>
+                  <Textarea name="note" rows={2} maxLength={1000} placeholder="Alasan (opsional)" />
+                  <FormButton variant="danger" pendingLabel="Menolak…">Ya, tolak</FormButton>
+                </form>
+              </details>
+            </div>
           </Card>
         )}
 

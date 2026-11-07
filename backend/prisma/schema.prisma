@@ -54,6 +54,7 @@ enum QuotationStatus {
 enum QuotationOrigin {
   CUSTOMER_REQUEST
   VENDOR_OFFER
+  VENDOR_OFFLINE // dicatat vendor dari pesanan WA/telepon
 }
 
 enum BookingStatus {
@@ -91,6 +92,10 @@ model User {
   phone         String?
   address       String?
   city          String?
+  /// Izin menerima notifikasi WhatsApp (dipakai bila nomor telepon terisi).
+  whatsappOptIn Boolean   @default(true)
+  /// Akun tersembunyi pemilik pesanan offline (satu per vendor); tidak bisa login.
+  isPlaceholder Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -102,6 +107,7 @@ model User {
   bookingsAsCustomer   Booking[]   @relation("CustomerBookings")
   reviews       Review[]
   notifications Notification[]
+  whatsappMessages WhatsAppMessage[]
   offerMessages OfferMessage[] @relation("OfferMessages")
   quotationActions QuotationHistory[] @relation("QuotationHistoryActor")
 
@@ -171,11 +177,13 @@ model VendorProfile {
   user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   menuItems    MenuItem[]
   packages     Package[]
+  ingredients  Ingredient[]
   availability Availability[]
   quotations   Quotation[]    @relation("VendorQuotations")
   bookings     Booking[]      @relation("VendorBookings")
   reviews      Review[]
   documents    VendorDocument[]
+  invoiceCounters InvoiceCounter[]
 
   @@index([city])
   @@index([verificationStatus])
@@ -237,8 +245,40 @@ model MenuItem {
 
   vendor   VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   packages PackageItem[]
+  recipe   MenuItemIngredient[]
+  quotationItems QuotationItem[]
 
   @@index([vendorId])
+}
+
+/// Bahan baku vendor, dihargai per satuan beli (kg / liter / pcs).
+model Ingredient {
+  id          String   @id @default(cuid())
+  vendorId    String
+  name        String
+  unit        String   @default("kg") // kg | liter | pcs
+  pricePerUnit Int     @default(0) // IDR per satuan beli
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vendor  VendorProfile        @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  recipes MenuItemIngredient[]
+
+  @@unique([vendorId, name])
+  @@index([vendorId])
+}
+
+/// Resep: kebutuhan bahan per porsi menu (gram untuk kg, ml untuk liter, pcs untuk pcs).
+model MenuItemIngredient {
+  menuItemId   String
+  ingredientId String
+  quantity     Float
+
+  menuItem   MenuItem   @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@id([menuItemId, ingredientId])
+  @@index([ingredientId])
 }
 
 model Package {
@@ -247,6 +287,7 @@ model Package {
   name        String
   description String?
   pricePerPax Int // IDR per pax
+  otherCostPerPax Int @default(0) // kemasan, gas, tenaga — bagian HPP di luar bahan baku
   minPax      Int      @default(50)
   maxPax      Int      @default(500)
   imageUrl    String?
@@ -358,8 +399,11 @@ model QuotationItem {
   quantity    Int
   unitPrice   Int
   subtotal    Int
+  /// Menu sumber (untuk lembar produksi). Kosong untuk baris paket/kustom.
+  menuItemId  String?
 
   quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  menuItem  MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
 
   @@index([quotationId])
 }
@@ -382,6 +426,13 @@ model Booking {
   cancelledBy     String? // CUSTOMER | VENDOR | SYSTEM
   refundAmount    Int?
   refundedAt      DateTime?
+  /// Pengingat batas bayar sudah dikirim (agar tidak dobel).
+  paymentReminderSentAt DateTime?
+  /// Nomor invoice berurutan per vendor per tahun, cth. INV/DN/2026/0007.
+  invoiceNumber   String?       @unique
+  source          String        @default("ONLINE") // ONLINE | OFFLINE
+  offlineCustomerName  String?
+  offlineCustomerPhone String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -447,4 +498,37 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, readAt])
+}
+
+/// Outbox WhatsApp: ditulis dalam transaksi yang sama dengan notifikasi,
+/// lalu dikirim oleh dispatcher lewat provider (saat ini: mock).
+model WhatsAppMessage {
+  id         String    @id @default(cuid())
+  userId     String?
+  toPhone    String?   // format 62xxxxxxxxxx
+  body       String
+  event      String
+  status     String    @default("QUEUED") // QUEUED | SENT | FAILED | SKIPPED
+  provider   String?
+  providerMessageId String?
+  error      String?
+  attempts   Int       @default(0)
+  sentAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([toPhone, createdAt])
+}
+
+/// Penghitung nomor invoice per vendor per tahun (diinkremen atomik).
+model InvoiceCounter {
+  vendorId String
+  year     Int
+  last     Int    @default(0)
+
+  vendor VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@id([vendorId, year])
 }

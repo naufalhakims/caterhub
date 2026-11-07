@@ -8,7 +8,7 @@ Fokus: tema hackathon **"Accelerating Digital Transformation for Business and SM
 
 Tujuan: alur demo bersih dari ujung ke ujung, tidak ada celah uang yang bisa ditanyakan juri.
 
-> **Status implementasi:** semua butir di bawah sudah dikerjakan kecuali "Skrip demo + data seed". Ringkasan teknis ada di [GAP_ANALYSIS.md § Status perbaikan P0](./GAP_ANALYSIS.md#status-perbaikan-p0-7-november-2026). Prinsip apple-design juga sudah diterapkan ke komponen dasar (lihat bagian *Saran UI/UX* — butir 1, 2, 3, 6, 7, 8, 9).
+> **Status implementasi:** semua butir di bawah sudah dikerjakan; "Skrip demo + data seed" selesai di v0.9.0 ([DEMO_SCRIPT.md](./DEMO_SCRIPT.md)). Ringkasan teknis ada di [GAP_ANALYSIS.md § Status perbaikan P0](./GAP_ANALYSIS.md#status-perbaikan-p0-7-november-2026). Prinsip apple-design juga sudah diterapkan ke komponen dasar (lihat bagian *Saran UI/UX* — butir 1, 2, 3, 6, 7, 8, 9).
 
 | Pekerjaan | Gap | Estimasi | Catatan implementasi |
 |---|---|---|---|
@@ -25,19 +25,30 @@ Tujuan: alur demo bersih dari ujung ke ujung, tidak ada celah uang yang bisa dit
 
 Pilih 3–4 yang paling sesuai waktu. Diurutkan dari dampak narasi UMKM tertinggi.
 
-### 1. Notifikasi WhatsApp untuk vendor ⭐
+> **Keputusan & status (7 Nov 2026) — Fase 1 selesai.** Dipilih empat fitur, dikerjakan berurutan:
+>
+> | Tahap | Fitur | Status |
+> |---|---|---|
+> | 1 | Negosiasi & kustomisasi menu (#3) | ✅ selesai — v0.5.0, lihat [CHANGELOG](./CHANGELOG.md) |
+> | 2 | Lembar produksi dapur + kalkulator HPP (#2) | ✅ selesai — v0.6.0 |
+> | 3 | Notifikasi WhatsApp (#1) — **adapter mock dulu** | ✅ selesai — v0.7.0 |
+> | 4 | Invoice PDF (#4) + input pesanan offline (#5) | ✅ selesai — v0.8.0 |
+>
+> Rekomendasi cerdas (#6) dan badge kepercayaan (#7) belum dijadwalkan. Skrip demo + seed bercerita (sisa Fase 0) ✅ selesai di v0.9.0.
+
+### 1. Notifikasi WhatsApp untuk vendor ⭐ — ✅ selesai dengan adapter mock (v0.7.0)
 - **Kenapa:** pelaku UMKM catering hidup di WhatsApp. Ini menjawab langsung "layanan pelanggan lebih baik" tanpa memaksa vendor membuka dashboard.
 - **Bagaimana:** abstraksi `Notifier` (seperti `PaymentProvider` yang sudah ada) dengan adapter `db` (sekarang), `whatsapp` (Fonnte/Wablas/WhatsApp Cloud API), `email`. Panggil di titik yang sudah membuat `Notification`. Link "Buka pesanan" langsung ke halaman terkait.
 - **Mode demo:** adapter `console`/mock yang menampilkan pesan di panel samping.
 
-### 2. Lembar produksi dapur & kalkulator bahan baku ⭐
+### 2. Lembar produksi dapur & kalkulator bahan baku ⭐ — ✅ selesai (v0.6.0)
 - **Kenapa:** inilah "produktivitas operasional" yang sesungguhnya. Marketplace biasa tidak punya.
 - **Bagaimana:**
   - Tabel `Ingredient` & `MenuItemIngredient` (gram/porsi, harga satuan).
   - Halaman `/vendor/production?date=` → rekap semua booking `PAID/PREPARING` pada tanggal itu: total porsi per menu, total bahan (kg/liter), daftar belanja, versi cetak.
   - **HPP & margin per paket** di halaman paket: "Paket Nasi Box Rp35.000 → HPP Rp22.400 → margin 36%". Membantu UMKM menetapkan harga yang sehat.
 
-### 3. Negosiasi & kustomisasi menu (aktifkan yang sudah ada) ⭐
+### 3. Negosiasi & kustomisasi menu (aktifkan yang sudah ada) ⭐ — ✅ selesai (v0.5.0)
 - **Kenapa:** API `POST /quotations` dan `/decision` beserta tesnya sudah lengkap (B2). Biaya kecil, nilai demo besar.
 - **Bagaimana:**
   - Pelanggan saat meminta pesanan bisa mencentang menu tambahan (`MenuItem.price` per pax) → baris `QuotationItem` tambahan (B3).
@@ -45,11 +56,11 @@ Pilih 3–4 yang paling sesuai waktu. Diurutkan dari dampak narasi UMKM tertingg
   - Pelanggan: tombol Terima / Minta revisi / Tolak.
   - Tampilkan riwayat versi dari `QuotationHistory` sebagai timeline.
 
-### 4. Nota, invoice, dan kuitansi PDF
+### 4. Nota, invoice, dan kuitansi PDF — ✅ selesai (v0.8.0, halaman cetak)
 - Nomor invoice berurutan per vendor, logo vendor, rincian item, status lunas, QR verifikasi keaslian.
 - Pelanggan korporat butuh untuk reimburse; vendor butuh untuk pembukuan.
 
-### 5. Input pesanan offline (manual) oleh vendor
+### 5. Input pesanan offline (manual) oleh vendor — ✅ selesai (v0.8.0)
 - Vendor mencatat order dari WhatsApp/telepon → ikut memotong kapasitas dan muncul di kalender & lembar produksi.
 - Menjadikan CaterHub **satu-satunya sumber kebenaran** operasional vendor, bukan hanya kanal tambahan. Ini argumen kuat untuk "digitalisasi" (bukan sekadar "marketplace").
 

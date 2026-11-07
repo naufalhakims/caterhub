@@ -8,6 +8,7 @@ import { requireCustomer } from "@/lib/auth-helpers";
 import { apiGet } from "@/lib/api";
 import { changePasswordAction, updateCustomerProfileAction } from "@/server/profile-actions";
 import { Flash } from "@/components/ui/Flash";
+import { WhatsAppSettings } from "@/components/WhatsAppSettings";
 
 type Profile = {
   name: string | null;
@@ -16,6 +17,7 @@ type Profile = {
   address: string | null;
   city: string | null;
   role: string;
+  whatsappOptIn: boolean;
 };
 
 export default async function ProfilePage({
@@ -38,6 +40,12 @@ export default async function ProfilePage({
         <p className="text-sm text-stone-500">Data ini dipakai vendor untuk menghubungi Anda soal acara.</p>
 
         <Flash ok={searchParams?.ok} error={searchParams?.error} />
+        <WhatsAppSettings
+          optIn={user.whatsappOptIn}
+          phone={user.phone}
+          returnTo="/profile"
+          events="Kabar penting dikirim ke WhatsApp: pesanan dikonfirmasi, penawaran baru, pengingat batas bayar, pembatalan & refund."
+        />
 
         <Card className="mt-4 !p-5">
           <div className="flex items-center gap-4">

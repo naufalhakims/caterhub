@@ -8,6 +8,8 @@ import { canReviewBooking, roundRating } from "../domain/review";
 import { NON_REVENUE_BOOKING_STATUSES, cancelBooking } from "../domain/booking";
 import { maybeSweep } from "../domain/expiry";
 import { notify } from "../domain/notify";
+import { dispatchWhatsApp } from "../domain/whatsapp";
+import { ensureInvoiceNumber } from "../domain/invoice";
 
 const cancelSchema = z.object({
   reason: z
@@ -126,6 +128,7 @@ export function adminRouter() {
     "/users",
     asyncHandler(async (_req, res) => {
       const users = await db.user.findMany({
+        where: { isPlaceholder: false },
         select: {
           id: true,
           name: true,
@@ -162,6 +165,30 @@ export function adminRouter() {
     }),
   );
 
+  /** Kotak keluar WhatsApp (outbox) — untuk memantau pesan mock/asli. */
+  router.get(
+    "/whatsapp",
+    asyncHandler(async (_req, res) => {
+      // Kirim antrean dulu agar tampilan selalu terbaru.
+      await dispatchWhatsApp().catch(() => 0);
+      const [messages, counts] = await Promise.all([
+        db.whatsAppMessage.findMany({
+          include: { user: { select: { id: true, name: true, role: true } } },
+          orderBy: { createdAt: "desc" },
+          take: 200,
+        }),
+        db.whatsAppMessage.groupBy({ by: ["status"], _count: { _all: true } }),
+      ]);
+      res.json({
+        data: {
+          provider: "mock",
+          messages,
+          counts: Object.fromEntries(counts.map((c) => [c.status, c._count._all])),
+        },
+      });
+    }),
+  );
+
   /** Admin menandai dana sudah dikembalikan ke pelanggan (transfer manual / API provider). */
   router.post(
     "/bookings/:id/refund",
@@ -183,6 +210,7 @@ export function adminRouter() {
           title: "Dana sudah dikembalikan",
           message: `Refund ${(booking.refundAmount ?? 0).toLocaleString("id-ID")} untuk "${booking.event.name}" telah diproses.${input.note ? ` ${input.note}` : ""}`,
           link: `/bookings/${booking.id}`,
+          whatsapp: true,
         });
         return true;
       });
@@ -195,7 +223,7 @@ export function adminRouter() {
     "/dashboard",
     asyncHandler(async (_req, res) => {
       const [users, vendors, verified, pending, bookings, revenue, recentVendors, refunds] = await Promise.all([
-        db.user.count(),
+        db.user.count({ where: { isPlaceholder: false } }),
         db.vendorProfile.count(),
         db.vendorProfile.count({ where: { verificationStatus: "VERIFIED" } }),
         db.vendorProfile.count({ where: { verificationStatus: { in: ["PENDING", "UNDER_REVIEW", "NEEDS_INFO"] } } }),
@@ -338,6 +366,65 @@ export function bookingsRouter() {
         if (message === "Pesanan tidak ditemukan.") throw new ApiError(404, "BOOKING_NOT_FOUND", message);
         throw new ApiError(409, "CANCEL_REJECTED", message);
       }
+    }),
+  );
+
+  /** Data invoice/kuitansi (nomor diterbitkan bila booking lama belum punya). */
+  router.get(
+    "/:id/invoice",
+    asyncHandler(async (req, res) => {
+      const user = req.user!;
+      const owner = await db.booking.findUnique({
+        where: { id: req.params.id },
+        select: { customerId: true, vendor: { select: { userId: true } } },
+      });
+      if (!owner) return sendError(res, 404, "BOOKING_NOT_FOUND", "Pesanan tidak ditemukan.");
+      if (user.role !== "ADMIN" && user.id !== owner.customerId && user.id !== owner.vendor.userId) {
+        throw new ApiError(403, "FORBIDDEN", "Anda tidak memiliki akses ke invoice ini.");
+      }
+      const invoiceNumber = await db.$transaction((tx) => ensureInvoiceNumber(tx, req.params.id));
+      const b = await db.booking.findUniqueOrThrow({
+        where: { id: req.params.id },
+        include: {
+          event: true,
+          customer: { select: { name: true, email: true, phone: true, address: true, city: true } },
+          vendor: { select: { businessName: true, address: true, city: true, phone: true, logoUrl: true } },
+          quotation: { include: { items: true } },
+          payments: { where: { status: "SETTLEMENT" }, orderBy: { paidAt: "asc" } },
+        },
+      });
+      const paid = b.payments.reduce((s, p) => s + p.amount, 0);
+      const offline = b.source === "OFFLINE";
+      res.json({
+        data: {
+          invoiceNumber,
+          issuedAt: b.createdAt,
+          status: b.status,
+          source: b.source,
+          paidInFull: paid >= b.totalAmount && b.totalAmount > 0,
+          paidAt: b.payments.at(-1)?.paidAt ?? null,
+          paidAmount: paid,
+          vendor: b.vendor,
+          customer: offline
+            ? { name: b.offlineCustomerName, phone: b.offlineCustomerPhone, email: null, address: null, city: null }
+            : b.customer,
+          event: {
+            name: b.event.name,
+            eventDate: b.event.eventDate,
+            eventTime: b.event.eventTime,
+            guestCount: b.event.guestCount,
+            location: b.event.location,
+            city: b.event.city,
+          },
+          items: b.quotation.items.map((i) => ({ name: i.name, quantity: i.quantity, unitPrice: i.unitPrice, subtotal: i.subtotal })),
+          subtotal: b.quotation.subtotal,
+          deliveryFee: b.quotation.deliveryFee,
+          serviceFee: b.quotation.serviceFee,
+          discount: b.quotation.discount,
+          total: b.totalAmount,
+          payments: b.payments.map((p) => ({ id: p.id, amount: p.amount, method: p.method, provider: p.provider, paidAt: p.paidAt })),
+        },
+      });
     }),
   );
 

@@ -246,3 +246,16 @@ details[open] > .disclose-panel {
     box-shadow: 0 1px 0 #57534e;
   }
 }
+
+/* Invoice & lembar produksi: kertas A4 dengan margin wajar saat dicetak. */
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

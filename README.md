@@ -59,7 +59,7 @@ Syarat: Node 18+ (disarankan 20), PostgreSQL 14+.
 npm install                 # memasang workspaces + prisma generate (postinstall backend)
 cp .env.example .env        # isi DATABASE_URL + AUTH_SECRET
 npm run db:migrate          # atau: npm run db:push untuk DB dev baru
-npm run db:seed             # data demo (destruktif untuk data demo lokal)
+npm run db:seed             # reset data transaksi demo + cerita demo (katalog & gambar dipertahankan)
 npm run dev:all             # API :4000 + Next :3000
 ```
 
@@ -96,8 +96,11 @@ Satu `.env` di root dipakai API dan frontend. `frontend/.env.local` opsional men
 | Peran | Email |
 |---|---|
 | Admin | `admin@caterhub.id` |
-| Customer | `pelanggan@demo.id` |
-| Vendor 1–5 | `vendor1@demo.id` … `vendor5@demo.id` |
+| Pelanggan utama | `pelanggan@demo.id` (Budi — permintaan pernikahan menunggu konfirmasi) |
+| Pelanggan lain | `andi@demo.id` (penawaran menunggu keputusan), `sari@demo.id` (pesanan menunggu bayar), `kantor@demo.id` (PT Maju Jaya — revisi penawaran) |
+| Vendor 1–5 | `vendor1@demo.id` (Dapur Nusantara — vendor utama demo) … `vendor5@demo.id` |
+
+Alur presentasi lengkap: [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md). Riwayat perubahan: [`docs/CHANGELOG.md`](docs/CHANGELOG.md).
 
 ## Matriks akses
 

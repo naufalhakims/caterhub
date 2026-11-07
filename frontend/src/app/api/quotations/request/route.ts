@@ -19,6 +19,7 @@ export async function POST(req: Request) {
   const location = String(form.get("location") ?? "").trim();
   const city = String(form.get("city") ?? "").trim() || "Surabaya";
   const notes = String(form.get("notes") ?? "").slice(0, 1000);
+  const addOnIds = form.getAll("addOnIds").map(String).filter(Boolean).slice(0, 30);
 
   if (!vendorId || !packageId || !eventDate || !eventTime || !guestCount || !location) {
     return NextResponse.json(
@@ -37,6 +38,7 @@ export async function POST(req: Request) {
       location,
       city,
       notes: notes || undefined,
+      addOnIds,
     });
     return NextResponse.redirect(new URL(`/quotations/${data.id}`, req.url), 303);
   } catch (error) {

@@ -4,6 +4,7 @@ import { env } from "./env";
 import { db } from "./db";
 import { prismaVendorRepository } from "./vendors/repository";
 import { startExpiryScheduler } from "./domain/expiry";
+import { startWhatsAppDispatcher } from "./domain/whatsapp";
 
 const app = createApp({
   vendors: prismaVendorRepository,
@@ -20,6 +21,8 @@ const server = app.listen(env.port, () => {
 
 // Batalkan booking yang tak dibayar & kedaluwarsakan permintaan basi secara berkala.
 startExpiryScheduler();
+// Kirim antrean WhatsApp (outbox) tiap beberapa detik.
+startWhatsAppDispatcher();
 
 async function shutdown(signal: string) {
   console.log(`[api] ${signal} diterima, menutup server…`);

@@ -3,7 +3,9 @@ import { z } from "zod";
 import { db } from "../db";
 import { requireAuth, requireRole } from "../auth/middleware";
 import { asyncHandler, sendError } from "../http";
-import { calcTotals } from "../domain/quotation";
+import { ApiError } from "../errors";
+import { buildRequestItems, calcTotals } from "../domain/quotation";
+import { notify } from "../domain/notify";
 import {
   canPerformQuotationDecision,
   nextQuotationStatus,
@@ -27,6 +29,8 @@ const sendSchema = z.object({
       z.object({
         name: z.string().min(1),
         description: z.string().optional(),
+        /** Tautan ke menu vendor agar baris ikut terhitung di lembar produksi. */
+        menuItemId: z.string().min(1).optional(),
         quantity: z.coerce.number().int().min(1),
         unitPrice: zIdrWithDefault(0),
       }),
@@ -50,6 +54,8 @@ const requestSchema = z
     packageId: z.string().min(1),
     vendorId: z.string().min(1),
     notes: z.string().max(1000).optional(),
+    /** Menu tambahan (harga add-on per pax) yang dipilih pelanggan. */
+    addOnIds: z.array(z.string().min(1)).max(30).default([]),
   })
   .superRefine((v, ctx) => {
     if (v.eventId) return;
@@ -72,6 +78,7 @@ const confirmSchema = z.object({
 const decisionSchema = z
   .object({
     decision: z.enum(["accept", "reject", "revision"]),
+    /** Wajib untuk revisi; opsional sebagai alasan penolakan. */
     revisionNote: z.string().max(1000).optional(),
   })
   .refine((v) => v.decision !== "revision" || !!v.revisionNote?.trim(), {
@@ -105,6 +112,17 @@ export function quotationsRouter() {
       const pkg = await db.package.findUnique({ where: { id: input.packageId } });
       if (!pkg || pkg.vendorId !== vendor.id || !pkg.isActive) {
         return sendError(res, 400, "INVALID_PACKAGE", "Paket tidak valid.");
+      }
+      const addOnIds = [...new Set(input.addOnIds)];
+      const addOns = addOnIds.length
+        ? await db.menuItem.findMany({
+            where: { id: { in: addOnIds }, vendorId: vendor.id, isAvailable: true, price: { gt: 0 } },
+            select: { id: true, name: true, price: true },
+            orderBy: { name: "asc" },
+          })
+        : [];
+      if (addOns.length !== addOnIds.length) {
+        return sendError(res, 400, "INVALID_ADDON", "Menu tambahan tidak valid atau sudah tidak tersedia.");
       }
 
       let savedEvent: {
@@ -163,7 +181,8 @@ export function quotationsRouter() {
         );
       }
 
-      const estimate = pkg.pricePerPax * guestCount;
+      const requestItems = buildRequestItems(pkg, addOns, guestCount);
+      const estimate = calcTotals(requestItems).subtotal;
       const quotation = await db.$transaction(async (tx) => {
         const event =
           savedEvent ??
@@ -192,16 +211,7 @@ export function quotationsRouter() {
             subtotal: estimate,
             total: estimate,
             notes: input.notes,
-            items: {
-              create: [
-                {
-                  name: `Paket ${pkg.name} (${guestCount} pax)`,
-                  quantity: guestCount,
-                  unitPrice: pkg.pricePerPax,
-                  subtotal: estimate,
-                },
-              ],
-            },
+            items: { create: requestItems },
             history: {
               create: {
                 actorId: user.id,
@@ -213,14 +223,12 @@ export function quotationsRouter() {
           },
         });
       });
-      await db.notification.create({
-        data: {
-          userId: vendor.userId,
-          type: "ORDER_REQUEST",
-          title: "Permintaan pesanan baru",
-          link: `/quotations/${quotation.id}`,
-          message: `"${savedEvent?.name ?? `Pesanan ${pkg.name}`}" (${guestCount} pax, ${input.eventTime ?? savedEvent?.eventTime ?? "jam menyusul"}) menunggu konfirmasi Anda.`,
-        },
+      await notify(db, vendor.userId, {
+        type: "ORDER_REQUEST",
+        title: "Permintaan pesanan baru",
+        link: `/quotations/${quotation.id}`,
+        message: `"${savedEvent?.name ?? `Pesanan ${pkg.name}`}" (${guestCount} pax, ${input.eventTime ?? savedEvent?.eventTime ?? "jam menyusul"}) menunggu konfirmasi Anda.`,
+        whatsapp: true,
       });
       res.status(201).json({ data: { id: quotation.id, existing: false } });
     }),
@@ -248,11 +256,25 @@ export function quotationsRouter() {
       if (!event || event.customerId !== input.customerId) {
         return sendError(res, 403, "FORBIDDEN", "Akses ditolak.");
       }
+      if (input.expiresAt && input.expiresAt <= new Date()) {
+        return sendError(res, 400, "INVALID_EXPIRY", "Masa berlaku penawaran harus di masa depan.");
+      }
+      if (input.packageId) {
+        const ownPkg = await db.package.findFirst({ where: { id: input.packageId, vendorId: vendor.id } });
+        if (!ownPkg) return sendError(res, 400, "INVALID_PACKAGE", "Paket tidak valid.");
+      }
+
+      const linkedIds = [...new Set(input.items.flatMap((i) => (i.menuItemId ? [i.menuItemId] : [])))];
+      if (linkedIds.length) {
+        const owned = await db.menuItem.count({ where: { id: { in: linkedIds }, vendorId: vendor.id } });
+        if (owned !== linkedIds.length) return sendError(res, 400, "INVALID_MENU", "Menu pada penawaran tidak valid.");
+      }
 
       const { subtotal, total } = calcTotals(input.items, input.deliveryFee, input.serviceFee, input.discount);
       const itemsData = input.items.map((i) => ({
         name: i.name,
         description: i.description,
+        menuItemId: i.menuItemId ?? null,
         quantity: i.quantity,
         unitPrice: i.unitPrice,
         subtotal: i.quantity * i.unitPrice,
@@ -280,43 +302,51 @@ export function quotationsRouter() {
             ? "SENT"
             : existing.status;
 
-        await db.quotation.update({
-          where: { id: existing.id },
-          data: {
-            packageId: input.packageId,
-            subtotal,
-            deliveryFee: input.deliveryFee,
-            serviceFee: input.serviceFee,
-            discount: input.discount,
-            total,
-            notes: input.notes,
-            expiresAt: input.expiresAt,
-            origin: existing.origin,
-            status: nextStatus,
-            items: { deleteMany: {}, create: itemsData },
-          },
-        });
-        await db.quotationHistory.create({
-          data: {
-            quotationId: existing.id,
-            actorId: user.id,
-            action: existing.status === "REQUESTED" ? "sent" : "revised",
-            fromStatus: existing.status,
-            toStatus: nextStatus,
-            note:
-              existing.status === "REQUESTED"
-                ? "Vendor mengirim penawaran atas permintaan pelanggan."
-                : "Vendor memperbarui penawaran.",
-          },
-        });
-        await db.notification.create({
-          data: {
-            userId: input.customerId,
+        const history = existing.status === "REQUESTED" ? "sent" : "revised";
+        await db.$transaction(async (tx) => {
+          // Klaim optimistik: jangan menimpa keputusan pelanggan yang masuk bersamaan.
+          const claimed = await tx.quotation.updateMany({
+            where: { id: existing.id, status: existing.status },
+            data: { status: nextStatus },
+          });
+          if (claimed.count === 0) {
+            throw new ApiError(409, "NOT_EDITABLE", "Penawaran baru saja berubah. Muat ulang halaman.");
+          }
+          await tx.quotation.update({
+            where: { id: existing.id },
+            data: {
+              packageId: input.packageId,
+              subtotal,
+              deliveryFee: input.deliveryFee,
+              serviceFee: input.serviceFee,
+              discount: input.discount,
+              total,
+              notes: input.notes,
+              expiresAt: input.expiresAt,
+              revisionNote: null,
+              items: { deleteMany: {}, create: itemsData },
+            },
+          });
+          await tx.quotationHistory.create({
+            data: {
+              quotationId: existing.id,
+              actorId: user.id,
+              action: history,
+              fromStatus: existing.status,
+              toStatus: nextStatus,
+              note:
+                existing.status === "REQUESTED"
+                  ? "Vendor mengirim penawaran khusus atas permintaan pelanggan."
+                  : "Vendor memperbarui penawaran.",
+            },
+          });
+          await notify(tx, input.customerId, {
             type: "QUOTATION",
-            title: existing.status === "REQUESTED" ? "Penawaran untuk permintaan Anda" : "Penawaran diperbarui",
+            title: existing.status === "REQUESTED" ? "Penawaran khusus untuk permintaan Anda" : "Penawaran diperbarui",
             link: `/quotations/${existing.id}`,
-            message: `Vendor ${vendor.businessName} memperbarui penawaran untuk "${event.name}".`,
-          },
+            message: `${vendor.businessName} mengirim penawaran ${total.toLocaleString("id-ID")} untuk "${event.name}". Tinjau lalu terima, minta revisi, atau tolak.`,
+            whatsapp: true,
+          });
         });
         return res.json({ data: { id: existing.id } });
       }
@@ -347,14 +377,12 @@ export function quotationsRouter() {
           },
         },
       });
-      await db.notification.create({
-        data: {
-          userId: input.customerId,
-          type: "QUOTATION",
-          title: "Penawaran baru diterima",
-          link: `/quotations/${q.id}`,
-          message: `Vendor ${vendor.businessName} mengirim penawaran untuk "${event.name}".`,
-        },
+      await notify(db, input.customerId, {
+        type: "QUOTATION",
+        title: "Penawaran baru diterima",
+        link: `/quotations/${q.id}`,
+        message: `Vendor ${vendor.businessName} mengirim penawaran ${total.toLocaleString("id-ID")} untuk "${event.name}".`,
+        whatsapp: true,
       });
       res.status(201).json({ data: { id: q.id } });
     }),
@@ -514,9 +542,13 @@ export function quotationsRouter() {
       const mapped: QuotationDecision =
         input.decision === "accept" ? "accept" : input.decision === "reject" ? "reject" : "request_revision";
 
-      const q = await db.quotation.findUnique({ where: { id: req.params.id } });
+      const q = await db.quotation.findUnique({
+        where: { id: req.params.id },
+        include: { vendor: { select: { userId: true } }, event: { select: { name: true } } },
+      });
       if (!q) return sendError(res, 404, "QUOTATION_NOT_FOUND", "Penawaran tidak ditemukan.");
       if (q.customerId !== user.id) return sendError(res, 403, "FORBIDDEN", "Akses ditolak.");
+      const link = `/quotations/${q.id}`;
       if (
         !canPerformQuotationDecision({
           decision: mapped,
@@ -534,34 +566,58 @@ export function quotationsRouter() {
       }
 
       if (mapped === "reject") {
-        await db.quotation.update({ where: { id: q.id }, data: { status: "REJECTED" } });
-        await db.quotationHistory.create({
-          data: {
-            quotationId: q.id,
-            actorId: user.id,
-            action: "rejected",
-            fromStatus: q.status,
-            toStatus: "REJECTED",
-            note: "Pelanggan menolak penawaran.",
-          },
+        const reason = input.revisionNote?.trim();
+        await db.$transaction(async (tx) => {
+          const claimed = await tx.quotation.updateMany({
+            where: { id: q.id, status: q.status },
+            data: { status: "REJECTED" },
+          });
+          if (claimed.count === 0) throw new ApiError(409, "INVALID_TRANSITION", "Penawaran baru saja berubah. Muat ulang halaman.");
+          await tx.quotationHistory.create({
+            data: {
+              quotationId: q.id,
+              actorId: user.id,
+              action: "rejected",
+              fromStatus: q.status,
+              toStatus: "REJECTED",
+              note: reason || "Pelanggan menolak penawaran.",
+            },
+          });
+          await notify(tx, q.vendor.userId, {
+            type: "QUOTATION",
+            title: "Penawaran ditolak pelanggan",
+            message: `Penawaran untuk "${q.event.name}" ditolak${reason ? `: ${reason}` : "."}`,
+            link,
+          });
         });
         return res.json({ data: { ok: true } });
       }
 
       if (mapped === "request_revision") {
-        await db.quotation.update({
-          where: { id: q.id },
-          data: { status: "REVISION_REQUESTED", revisionNote: input.revisionNote!.trim() },
-        });
-        await db.quotationHistory.create({
-          data: {
-            quotationId: q.id,
-            actorId: user.id,
-            action: "revision_requested",
-            fromStatus: q.status,
-            toStatus: "REVISION_REQUESTED",
-            note: input.revisionNote!.trim(),
-          },
+        const note = input.revisionNote!.trim();
+        await db.$transaction(async (tx) => {
+          const claimed = await tx.quotation.updateMany({
+            where: { id: q.id, status: q.status },
+            data: { status: "REVISION_REQUESTED", revisionNote: note },
+          });
+          if (claimed.count === 0) throw new ApiError(409, "INVALID_TRANSITION", "Penawaran baru saja berubah. Muat ulang halaman.");
+          await tx.quotationHistory.create({
+            data: {
+              quotationId: q.id,
+              actorId: user.id,
+              action: "revision_requested",
+              fromStatus: q.status,
+              toStatus: "REVISION_REQUESTED",
+              note,
+            },
+          });
+          await notify(tx, q.vendor.userId, {
+            type: "QUOTATION",
+            title: "Pelanggan meminta revisi",
+            message: `"${q.event.name}": ${note}`,
+            link,
+            whatsapp: true,
+          });
         });
         return res.json({ data: { ok: true } });
       }

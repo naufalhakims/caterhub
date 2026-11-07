@@ -8,6 +8,8 @@ const NAV = [
   ["/vendor/quotations", "Permintaan masuk", "✎"],
   ["/vendor/menu", "Menu", "☰"],
   ["/vendor/packages", "Paket", "▤"],
+  ["/vendor/production", "Produksi", "▦"],
+  ["/vendor/costing", "Bahan & HPP", "◒"],
   ["/vendor/calendar", "Jadwal acara", "◫"],
   ["/vendor/capacity", "Kapasitas harian", "◍"],
   ["/vendor/analytics", "Analitik", "↗"],
@@ -21,7 +23,7 @@ export default async function VendorLayout({ children }: { children: React.React
     <>
       <Navbar />
       <div className="mx-auto max-w-7xl gap-10 px-4 py-8 sm:px-6 md:flex">
-        <aside className="shrink-0 md:w-56">
+        <aside className="shrink-0 md:w-56 print:hidden">
           <SideNav items={NAV} />
         </aside>
         <div className="min-w-0 flex-1">{children}</div>

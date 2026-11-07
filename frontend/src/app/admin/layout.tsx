@@ -7,6 +7,7 @@ const NAV = [
   ["/admin/vendors", "Vendor", "✓"],
   ["/admin/users", "Pengguna", "○"],
   ["/admin/orders", "Pesanan", "▣"],
+  ["/admin/whatsapp", "Kotak keluar WA", "✆"],
 ] as const;
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

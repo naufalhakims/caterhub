@@ -44,6 +44,7 @@ type Dashboard = {
   pendingQuotes: number;
   profile: { phone: string | null; address: string | null } | null;
   requests: QuoteRow[];
+  offers: (Omit<QuoteRow, "booking"> & { expiresAt: string | null })[];
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -59,7 +60,7 @@ const TYPE_LABEL: Record<string, string> = {
 
 export default async function CustomerDashboard() {
   const user = await requireCustomer();
-  const { events, bookings, pendingQuotes, profile, requests } =
+  const { events, bookings, pendingQuotes, profile, requests, offers } =
     await apiGet<Dashboard>("/api/v1/dashboard");
   const profileIncomplete = !profile?.phone || !profile?.address;
 
@@ -111,6 +112,36 @@ export default async function CustomerDashboard() {
             </div>
           </Card>
         </div>
+
+        {offers.length > 0 && (
+          <section className="mt-6 rounded-4xl bg-gradient-to-r from-mint via-[#F1F5C4] to-sun-200 p-5 sm:p-6">
+            <h2 className="font-display text-3xl text-ink">
+              Penawaran menunggu <em>keputusan</em> Anda
+            </h2>
+            <div className="mt-4 space-y-2">
+              {offers.map((o) => (
+                <Link key={o.id} href={`/quotations/${o.id}`} className="block">
+                  <Card interactive className="flex flex-wrap items-center justify-between gap-2 !p-4">
+                    <div className="min-w-0">
+                      <p className="font-semibold">
+                        {o.event.name} — {o.vendor.businessName}
+                      </p>
+                      <p className="text-sm text-stone-500">
+                        {formatDateID(o.event.eventDate)} · {o.event.guestCount} pax ·{" "}
+                        <span className="font-semibold text-ink">{formatIDR(o.total)}</span>
+                        {o.expiresAt ? ` · berlaku s.d. ${formatDateID(o.expiresAt)}` : ""}
+                      </p>
+                    </div>
+                    <span className="flex items-center gap-2">
+                      <StatusBadge status={o.status} />
+                      <span className="text-sm font-semibold text-brand-700">Tinjau →</span>
+                    </span>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         <div className="mt-8 flex items-center justify-between">
           <div>
