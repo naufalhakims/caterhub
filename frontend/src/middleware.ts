@@ -31,5 +31,6 @@ export const config = {
     "/payments/:path*",
     "/vendor/:path*",
     "/admin/:path*",
+    "/notifications",
   ],
 };

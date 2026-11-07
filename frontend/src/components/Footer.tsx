@@ -1,38 +1,68 @@
 import Link from "next/link";
+import { Logo } from "@/components/Logo";
+
+const COLUMNS: { title: string; links: [string, string][] }[] = [
+  {
+    title: "Pelanggan",
+    links: [
+      ["/catering", "Jelajahi catering"],
+      ["/events/new", "Buat acara"],
+      ["/dashboard", "Pesanan saya"],
+      ["/notifications", "Notifikasi"],
+    ],
+  },
+  {
+    title: "Vendor UMKM",
+    links: [
+      ["/register", "Daftarkan usaha"],
+      ["/vendor/dashboard", "Dashboard vendor"],
+      ["/vendor/capacity", "Atur kapasitas"],
+      ["/vendor/verification", "Verifikasi usaha"],
+    ],
+  },
+  {
+    title: "Bantuan",
+    links: [
+      ["/#cara-kerja", "Cara kerja"],
+      ["/login", "Masuk"],
+      ["/register", "Buat akun"],
+    ],
+  },
+];
 
 export function Footer() {
   return (
-    <footer className="mt-16 border-t border-stone-200/80 bg-white">
-      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:grid-cols-3">
+    <footer className="mt-24 bg-cocoa text-stone-300">
+      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 md:grid-cols-[1.4fr_repeat(3,1fr)]">
         <div>
-          <p className="text-lg font-extrabold tracking-tight">
-            Cater<span className="text-brand-700">Hub</span>
+          <Logo tone="sun" className="text-5xl" />
+          <p className="mt-5 max-w-xs text-sm leading-relaxed text-stone-400">
+            Marketplace dan alat operasional untuk UMKM catering Surabaya Raya — dari permintaan pesanan sampai
+            makanan tiba di meja.
           </p>
-          <p className="mt-2 max-w-xs text-sm text-stone-500">
-            Marketplace dan platform operasional untuk UMKM catering di Surabaya Raya.
-          </p>
         </div>
-        <div>
-          <p className="text-sm font-bold">Pelanggan</p>
-          <ul className="mt-2 space-y-1 text-sm text-stone-600">
-            <li><Link href="/events/new" className="hover:text-brand-700">Buat acara</Link></li>
-            <li><Link href="/catering" className="hover:text-brand-700">Jelajahi catering</Link></li>
-            <li><Link href="/dashboard" className="hover:text-brand-700">Pesanan saya</Link></li>
-          </ul>
-        </div>
-        <div>
-          <p className="text-sm font-bold">Vendor</p>
-          <ul className="mt-2 space-y-1 text-sm text-stone-600">
-            <li><Link href="/register" className="hover:text-brand-700">Daftarkan usaha</Link></li>
-            <li><Link href="/vendor/dashboard" className="hover:text-brand-700">Dashboard vendor</Link></li>
-            <li><Link href="/login" className="hover:text-brand-700">Masuk</Link></li>
-          </ul>
-        </div>
+        {COLUMNS.map((c) => (
+          <div key={c.title}>
+            <p className="font-semibold text-white">{c.title}</p>
+            <ul className="mt-4 space-y-3 text-sm">
+              {c.links.map(([href, label]) => (
+                <li key={label}>
+                  <Link href={href} className="transition-colors hover:text-sun-300">
+                    {label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </div>
-      <div className="border-t border-stone-100">
-        <p className="mx-auto max-w-6xl px-4 py-4 text-xs text-stone-400">
-          CaterHub · Demo kompetisi · Harga dalam Rupiah (IDR), zona waktu Asia/Jakarta.
-        </p>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 py-6 text-sm text-stone-400">
+          <p>
+            ©<span className="font-display text-tangerine">caterhub</span> {new Date().getFullYear()}. Demo kompetisi.
+          </p>
+          <p>Harga dalam Rupiah · Zona waktu WIB</p>
+        </div>
       </div>
     </footer>
   );

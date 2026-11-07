@@ -7,7 +7,7 @@ export default async function AdminUsersPage() {
   const users = await apiGet<AdminUser[]>("/api/v1/admin/users");
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold tracking-tight">Pengguna</h1>
+      <h1 className="font-display text-4xl text-ink sm:text-5xl">Pengguna</h1>
       <p className="text-sm text-stone-500">{users.length} akun terdaftar.</p>
       {users.length === 0 ? (
         <div className="mt-4"><Empty title="Belum ada pengguna." /></div>

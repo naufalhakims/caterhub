@@ -6,6 +6,7 @@ import { apiGet } from "@/lib/api";
 import { requireVendor } from "@/server/vendor-helpers";
 import { upsertPackageAction } from "@/server/vendor-actions";
 import { formatIDR } from "@/lib/format";
+import { Flash } from "@/components/ui/Flash";
 
 type PackageRow = {
   id: string;
@@ -35,13 +36,12 @@ export default async function VendorPackagesPage({
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold tracking-tight">Paket</h1>
+      <h1 className="font-display text-4xl text-ink sm:text-5xl">Paket</h1>
       <p className="text-sm text-stone-500">Rangkai menu jadi paket harga per pax — ini yang muncul di marketplace.</p>
-      {searchParams?.ok && <p className="mt-2 rounded-xl bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-700 ring-1 ring-inset ring-emerald-200">{searchParams.ok}</p>}
-      {searchParams?.error && <p className="mt-2 rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700 ring-1 ring-inset ring-red-200">{searchParams.error}</p>}
+      <Flash ok={searchParams?.ok} error={searchParams?.error} />
 
       <Card className="mt-4">
-        <h2 className="font-display text-lg font-bold">Tambah paket</h2>
+        <h2 className="font-display text-2xl text-ink">Tambah paket</h2>
         <form action={upsertPackageAction} className="mt-3 grid gap-3 sm:grid-cols-2">
           <Field label="Nama paket"><Input name="name" required placeholder="cth. Nusantara Premium" /></Field>
           <Field label="Harga/pax (Rp)"><RupiahInput name="pricePerPax" required placeholder="35.000" /></Field>
@@ -53,7 +53,7 @@ export default async function VendorPackagesPage({
               <input name="image" type="file" accept="image/jpeg,image/png,image/webp" className="block w-full cursor-pointer rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-brand-800" />
             </Field>
           </div>
-          <fieldset className="rounded-xl bg-[#FAF7F1] p-3 ring-1 ring-inset ring-stone-200/70 sm:col-span-2">
+          <fieldset className="rounded-xl bg-paper p-3 ring-1 ring-inset ring-stone-200/70 sm:col-span-2">
             <legend className="px-1 text-sm font-medium text-stone-700">Menu dalam paket</legend>
             <div className="grid gap-1 sm:grid-cols-3">
               {activeMenus.map((m) => (
@@ -117,7 +117,7 @@ export default async function VendorPackagesPage({
                       <option value="off">Nonaktif</option>
                     </select>
                   </Field>
-                  <fieldset className="rounded-xl bg-[#FAF7F1] p-3 ring-1 ring-inset ring-stone-200/70">
+                  <fieldset className="rounded-xl bg-paper p-3 ring-1 ring-inset ring-stone-200/70">
                     <legend className="px-1 text-xs font-medium text-stone-700">Menu dalam paket</legend>
                     <div className="grid gap-1">
                       {activeMenus.map((m) => (

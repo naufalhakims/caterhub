@@ -1,6 +1,19 @@
-export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+export function Card({
+  children,
+  className = "",
+  interactive = false,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  /** Kartu yang bisa diklik: terangkat saat hover, mengecil sedikit saat ditekan. */
+  interactive?: boolean;
+}) {
   return (
-    <div className={`rounded-2xl border border-stone-200/80 bg-white p-5 shadow-soft ${className}`}>
+    <div
+      className={`rounded-3xl border border-stone-200 bg-white p-5 ${
+        interactive ? "pressable hover:shadow-lift" : ""
+      } ${className}`}
+    >
       {children}
     </div>
   );
@@ -8,8 +21,8 @@ export function Card({ children, className = "" }: { children: React.ReactNode; 
 
 export function Empty({ title, hint, action }: { title: string; hint?: string; action?: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-dashed border-stone-300 bg-white/70 p-10 text-center">
-      <p className="font-semibold text-stone-800">{title}</p>
+    <div className="rounded-3xl border border-dashed border-stone-300 bg-paper p-10 text-center">
+      <p className="font-display text-xl text-ink">{title}</p>
       {hint && <p className="mx-auto mt-1 max-w-sm text-sm text-stone-500">{hint}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
@@ -41,6 +54,8 @@ const badgeStyles: Record<string, string> = {
   PREPARING: "bg-sky-100 text-sky-800 ring-sky-200",
   READY: "bg-sky-100 text-sky-800 ring-sky-200",
   DELIVERED: "bg-sky-100 text-sky-800 ring-sky-200",
+  REFUND_PENDING: "bg-orange-100 text-orange-800 ring-orange-200",
+  REFUNDED: "bg-stone-200 text-stone-700 ring-stone-300",
 };
 
 const badgeLabels: Record<string, string> = {
@@ -71,6 +86,8 @@ const badgeLabels: Record<string, string> = {
   PREPARING: "Dipersiapkan",
   READY: "Siap",
   DELIVERED: "Terkirim",
+  REFUND_PENDING: "Menunggu Refund",
+  REFUNDED: "Dana Dikembalikan",
 };
 
 export function StatusBadge({ status }: { status: string }) {

@@ -69,8 +69,8 @@ export default async function CustomerDashboard() {
       <main className="mx-auto max-w-6xl px-4 py-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-700">Dasbor pelanggan</p>
-            <h1 className="mt-1 font-display text-3xl font-bold tracking-tight">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">Dasbor pelanggan</p>
+            <h1 className="mt-1 font-display text-4xl text-ink sm:text-5xl">
               Halo, {user.name?.split(" ")[0] ?? "Kak"} 👋
             </h1>
           </div>
@@ -114,7 +114,7 @@ export default async function CustomerDashboard() {
 
         <div className="mt-8 flex items-center justify-between">
           <div>
-            <h2 className="font-display text-xl font-bold">Acara tersimpan</h2>
+            <h2 className="font-display text-2xl text-ink">Acara tersimpan</h2>
             <p className="text-[13px] text-stone-500">
               Opsional. Simpan tanggal, jam, dan jumlah tamu agar pencarian catering lebih cepat.
             </p>
@@ -135,7 +135,7 @@ export default async function CustomerDashboard() {
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {events.map((e, i) => (
               <Link key={e.id} href={`/events/${e.id}`} className="animate-rise" style={{ animationDelay: `${Math.min(i, 6) * 40}ms` }}>
-                <Card className="h-full transition hover:-translate-y-0.5 hover:shadow-lift">
+                <Card interactive className="h-full">
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-bold leading-tight">{e.name}</p>
                     <span className="shrink-0 rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-bold text-brand-700">
@@ -175,7 +175,7 @@ export default async function CustomerDashboard() {
           <div className="mt-2 space-y-2">
             {requests.map((q) => (
               <Link key={q.id} href={`/quotations/${q.id}`}>
-                <Card className="flex flex-wrap items-center justify-between gap-2 !p-4 transition hover:shadow-lift">
+                <Card interactive className="flex flex-wrap items-center justify-between gap-2 !p-4">
                   <div className="min-w-0">
                     <p className="truncate font-semibold">{q.event.name} — {q.vendor.businessName}</p>
                     <p className="text-sm text-stone-500">

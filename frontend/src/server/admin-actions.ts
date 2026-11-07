@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { ApiError, apiPatch } from "@/lib/api";
+import { ApiError, apiPatch, apiPost } from "@/lib/api";
 import { requireRole } from "@/lib/auth-helpers";
 
 const DECISIONS = ["review", "approve", "verify", "request_info", "reject"] as const;
@@ -35,4 +35,21 @@ export async function verifyVendorAction(formData: FormData): Promise<never> {
   revalidatePath(`/admin/vendors/${id}`);
   revalidatePath("/vendor/verification");
   redirect(`/admin/vendors/${id}?ok=Status verifikasi diperbarui.`);
+}
+
+/** Tandai refund sudah ditransfer ke pelanggan. */
+export async function markRefundedAction(formData: FormData): Promise<never> {
+  await requireRole("ADMIN");
+  const id = String(formData.get("id") ?? "");
+  const note = String(formData.get("note") ?? "").trim();
+  try {
+    await apiPost(`/api/v1/admin/bookings/${id}/refund`, { note: note || undefined });
+  } catch (error) {
+    const message = error instanceof ApiError ? error.message : "Refund gagal ditandai.";
+    redirect(`/admin/orders?filter=refund&error=${encodeURIComponent(message)}`);
+  }
+  revalidatePath("/admin/orders");
+  revalidatePath("/admin/dashboard");
+  revalidatePath(`/bookings/${id}`);
+  redirect("/admin/orders?filter=refund&ok=Refund ditandai selesai dan pelanggan diberi tahu.");
 }

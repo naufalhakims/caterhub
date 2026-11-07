@@ -6,6 +6,7 @@ import { Field, Textarea } from "@/components/ui/Field";
 import { formatDateID } from "@/lib/format";
 import { ApiError, apiGet } from "@/lib/api";
 import { verifyVendorAction } from "@/server/admin-actions";
+import { Flash } from "@/components/ui/Flash";
 
 const DOC_LABEL: Record<string, string> = {
   BUSINESS_LICENSE: "Izin usaha / NIB",
@@ -65,20 +66,19 @@ export default async function AdminVendorDetailPage({
         <Link href="/admin/vendors" className="hover:text-brand-700 hover:underline">← Daftar vendor</Link>
       </p>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-        <h1 className="font-display text-2xl font-bold tracking-tight">{vendor.businessName}</h1>
+        <h1 className="font-display text-4xl text-ink sm:text-5xl">{vendor.businessName}</h1>
         <StatusBadge status={vendor.verificationStatus} />
       </div>
       <p className="mt-1 text-sm text-stone-500">
         {vendor.user.email} · {vendor.city} · bergabung {formatDateID(vendor.createdAt)}
       </p>
 
-      {searchParams?.ok && <p className="mt-3 rounded-xl bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-700 ring-1 ring-inset ring-emerald-200">{searchParams.ok}</p>}
-      {searchParams?.error && <p className="mt-3 rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700 ring-1 ring-inset ring-red-200">{searchParams.error}</p>}
+      <Flash ok={searchParams?.ok} error={searchParams?.error} />
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
         <div>
           <Card>
-            <h2 className="font-display text-lg font-bold">Dokumen verifikasi</h2>
+            <h2 className="font-display text-2xl text-ink">Dokumen verifikasi</h2>
             <p className="text-[13px] text-stone-500">Dokumen privat — tautan hanya bisa dibuka oleh admin dan vendor pemilik.</p>
             {vendor.documents.length === 0 ? (
               <div className="mt-3"><Empty title="Belum ada dokumen." hint="Vendor belum mengunggah bukti apa pun." /></div>
@@ -124,7 +124,7 @@ export default async function AdminVendorDetailPage({
           </Card>
 
           <Card className="mt-4">
-            <h2 className="font-display text-lg font-bold">Data usaha</h2>
+            <h2 className="font-display text-2xl text-ink">Data usaha</h2>
             <dl className="mt-2 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
               <div><dt className="text-xs font-bold uppercase tracking-wide text-stone-400">Alamat</dt><dd className="mt-0.5">{vendor.address || "—"}</dd></div>
               <div><dt className="text-xs font-bold uppercase tracking-wide text-stone-400">Telepon</dt><dd className="mt-0.5">{vendor.phone || "—"}</dd></div>
@@ -136,7 +136,7 @@ export default async function AdminVendorDetailPage({
         </div>
 
         <Card className="h-fit">
-          <h2 className="font-display text-lg font-bold">Keputusan verifikasi</h2>
+          <h2 className="font-display text-2xl text-ink">Keputusan verifikasi</h2>
           <p className="text-[13px] text-stone-500">
             Status saat ini <span className="font-semibold">{vendor.verificationStatus}</span>. Catatan wajib diisi saat menolak atau meminta perbaikan.
           </p>

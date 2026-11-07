@@ -7,6 +7,7 @@ import { apiGet } from "@/lib/api";
 import { requireVendor } from "@/server/vendor-helpers";
 import { upsertMenuAction, deleteMenuAction } from "@/server/vendor-actions";
 import { formatIDR } from "@/lib/format";
+import { Flash } from "@/components/ui/Flash";
 
 const CATS = ["Nasi", "Lauk", "Sayur", "Dessert", "Minuman", "Snack", "Paket Add-on"];
 
@@ -34,13 +35,12 @@ export default async function VendorMenuPage({
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold tracking-tight">Menu</h1>
+      <h1 className="font-display text-4xl text-ink sm:text-5xl">Menu</h1>
       <p className="text-sm text-stone-500">{items.length} item — tampil di profil publik & bisa dirangkai jadi paket.</p>
-      {searchParams?.ok && <p className="mt-2 rounded-xl bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-700 ring-1 ring-inset ring-emerald-200">{searchParams.ok}</p>}
-      {searchParams?.error && <p className="mt-2 rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700 ring-1 ring-inset ring-red-200">{searchParams.error}</p>}
+      <Flash ok={searchParams?.ok} error={searchParams?.error} />
 
       <Card className="mt-4">
-        <h2 className="font-display text-lg font-bold">Tambah menu</h2>
+        <h2 className="font-display text-2xl text-ink">Tambah menu</h2>
         <form action={upsertMenuAction} className="mt-3 grid gap-3 sm:grid-cols-2">
           <Field label="Nama"><Input name="name" required placeholder="cth. Ayam bakar madu" /></Field>
           <Field label="Kategori">

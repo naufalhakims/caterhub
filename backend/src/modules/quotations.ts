@@ -218,6 +218,7 @@ export function quotationsRouter() {
           userId: vendor.userId,
           type: "ORDER_REQUEST",
           title: "Permintaan pesanan baru",
+          link: `/quotations/${quotation.id}`,
           message: `"${savedEvent?.name ?? `Pesanan ${pkg.name}`}" (${guestCount} pax, ${input.eventTime ?? savedEvent?.eventTime ?? "jam menyusul"}) menunggu konfirmasi Anda.`,
         },
       });
@@ -313,6 +314,7 @@ export function quotationsRouter() {
             userId: input.customerId,
             type: "QUOTATION",
             title: existing.status === "REQUESTED" ? "Penawaran untuk permintaan Anda" : "Penawaran diperbarui",
+            link: `/quotations/${existing.id}`,
             message: `Vendor ${vendor.businessName} memperbarui penawaran untuk "${event.name}".`,
           },
         });
@@ -350,6 +352,7 @@ export function quotationsRouter() {
           userId: input.customerId,
           type: "QUOTATION",
           title: "Penawaran baru diterima",
+          link: `/quotations/${q.id}`,
           message: `Vendor ${vendor.businessName} mengirim penawaran untuk "${event.name}".`,
         },
       });
@@ -494,6 +497,7 @@ export function quotationsRouter() {
           userId: q.customerId,
           type: "QUOTATION",
           title: "Permintaan ditolak vendor",
+          link: `/quotations/${q.id}`,
           message: reason ? `Vendor menolak permintaan: ${reason}` : "Vendor tidak dapat memenuhi permintaan ini.",
         },
       });
@@ -600,6 +604,7 @@ export function quotationsRouter() {
           userId: recipientId,
           type: "MESSAGE",
           title: "Pesan baru pada penawaran",
+          link: `/quotations/${q.id}#chat`,
           message: `${user.name ?? "Pengguna"} mengirim pesan tentang "${q.event.name}".`,
         },
       });

@@ -6,6 +6,7 @@ import { RupiahInput } from "@/components/ui/RupiahInput";
 import { formatIDR, formatDateID } from "@/lib/format";
 import { apiGet } from "@/lib/api";
 import { requireVendor } from "@/server/vendor-helpers";
+import { Flash } from "@/components/ui/Flash";
 import {
   confirmQuotationRequestAction,
   declineQuotationRequestAction,
@@ -48,21 +49,12 @@ export default async function VendorQuotationsPage({
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold tracking-tight">Permintaan pesanan</h1>
+      <h1 className="font-display text-4xl text-ink sm:text-5xl">Permintaan pesanan</h1>
       <p className="text-sm text-stone-500">
         Konfirmasi permintaan pelanggan, atau tolak dengan alasan. Setelah dikonfirmasi,
         pelanggan membayar lunas dan Anda baru bisa mulai persiapan.
       </p>
-      {searchParams?.ok && (
-        <p className="mt-2 rounded-xl bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-700 ring-1 ring-inset ring-emerald-200">
-          {searchParams.ok}
-        </p>
-      )}
-      {searchParams?.error && (
-        <p className="mt-2 rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700 ring-1 ring-inset ring-red-200">
-          {searchParams.error}
-        </p>
-      )}
+      <Flash ok={searchParams?.ok} error={searchParams?.error} />
 
       <h2 className="mt-5 font-display text-lg font-bold">
         Menunggu konfirmasi
@@ -94,7 +86,7 @@ export default async function VendorQuotationsPage({
               <StatusBadge status={q.status} />
             </div>
 
-            <details className="mt-3 rounded-xl bg-[#FAF7F1] p-3 ring-1 ring-inset ring-stone-200/70">
+            <details className="mt-3 rounded-xl bg-paper p-3 ring-1 ring-inset ring-stone-200/70">
               <summary className="cursor-pointer text-sm font-semibold text-brand-800">
                 Konfirmasi pesanan & atur biaya tambahan
               </summary>

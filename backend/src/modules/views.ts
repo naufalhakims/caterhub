@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "../db";
 import { requireAuth, requireRole } from "../auth/middleware";
 import { asyncHandler } from "../http";
+import { maybeSweep } from "../domain/expiry";
 
 /**
  * Endpoint baca gabungan (view) untuk halaman.
@@ -17,6 +18,7 @@ export function viewsRouter() {
     requireRole("CUSTOMER"),
     asyncHandler(async (req, res) => {
       const customerId = req.user!.id;
+      await maybeSweep();
       const [events, bookings, pendingQuotes, profile, requests, offers] = await Promise.all([
         db.event.findMany({
           where: { customerId },

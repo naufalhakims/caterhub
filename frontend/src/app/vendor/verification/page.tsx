@@ -1,11 +1,12 @@
 import { Card, Empty, StatusBadge } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { FormButton } from "@/components/ui/FormButton";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { formatDateID } from "@/lib/format";
 import { apiGet } from "@/lib/api";
 import { requireVendor } from "@/server/vendor-helpers";
 import { deleteVendorDocumentAction, uploadVendorDocumentAction } from "@/server/verification-actions";
+import { Flash } from "@/components/ui/Flash";
 
 const DOC_LABEL: Record<string, string> = {
   BUSINESS_LICENSE: "Izin usaha / NIB",
@@ -48,13 +49,12 @@ export default async function VendorVerificationPage({
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold tracking-tight">Verifikasi vendor</h1>
+      <h1 className="font-display text-4xl text-ink sm:text-5xl">Verifikasi vendor</h1>
       <p className="text-sm text-stone-500">
         Dokumen disimpan privat — hanya Anda dan admin yang dapat melihatnya.
       </p>
 
-      {searchParams?.ok && <p className="mt-2 rounded-xl bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-700 ring-1 ring-inset ring-emerald-200">{searchParams.ok}</p>}
-      {searchParams?.error && <p className="mt-2 rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700 ring-1 ring-inset ring-red-200">{searchParams.error}</p>}
+      <Flash ok={searchParams?.ok} error={searchParams?.error} />
 
       <Card className="mt-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -72,7 +72,7 @@ export default async function VendorVerificationPage({
           </p>
         )}
 
-        <div className="mt-4 rounded-xl bg-[#FAF7F1] p-4 ring-1 ring-inset ring-stone-200/70">
+        <div className="mt-4 rounded-xl bg-paper p-4 ring-1 ring-inset ring-stone-200/70">
           <p className="text-sm font-semibold">Kelengkapan dokumen</p>
           <ul className="mt-2 space-y-1.5 text-sm">
             {CHECKLIST.map((c) => {
@@ -100,7 +100,7 @@ export default async function VendorVerificationPage({
       </Card>
 
       <Card className="mt-4">
-        <h2 className="font-display text-lg font-bold">Unggah dokumen</h2>
+        <h2 className="font-display text-2xl text-ink">Unggah dokumen</h2>
         <p className="text-[13px] text-stone-500">JPG, PNG, WEBP, atau PDF. Maksimal 5 MB per file.</p>
         <form action={uploadVendorDocumentAction} className="mt-3 grid gap-3 sm:grid-cols-2">
           <Field label="Jenis dokumen">
@@ -165,7 +165,7 @@ export default async function VendorVerificationPage({
                   {vendor.verificationStatus !== "VERIFIED" && (
                     <form action={deleteVendorDocumentAction}>
                       <input type="hidden" name="id" value={d.id} />
-                      <Button type="submit" variant="ghost" className="!px-2.5 !text-red-600 hover:!bg-red-50">Hapus</Button>
+                      <FormButton variant="ghost" pendingLabel="Menghapus…" className="!px-2.5 !text-red-600 hover:!bg-red-50">Hapus</FormButton>
                     </form>
                   )}
                 </div>

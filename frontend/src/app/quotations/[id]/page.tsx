@@ -14,6 +14,7 @@ import {
 } from "@/server/quotation-actions";
 import { sendOfferMessageAction } from "@/server/chat-actions";
 import { AutoRefresh } from "@/components/AutoRefresh";
+import { Flash } from "@/components/ui/Flash";
 
 const ACTION_LABEL: Record<string, string> = {
   created: "Permintaan pesanan dibuat",
@@ -100,7 +101,7 @@ export default async function QuotationDetailPage({
           <Link href={backHref} className="hover:text-brand-700 hover:underline">← Kembali</Link>
         </p>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">Pesanan — {q.event.name}</h1>
+          <h1 className="font-display text-4xl text-ink sm:text-5xl">Pesanan — {q.event.name}</h1>
           <StatusBadge status={q.status} />
         </div>
         <p className="mt-1 text-sm text-stone-500">
@@ -146,8 +147,7 @@ export default async function QuotationDetailPage({
             Vendor tidak dapat memenuhi permintaan ini. Silakan cari vendor lain.
           </p>
         )}
-        {searchParams.ok && <p className="mt-3 rounded-xl bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-700 ring-1 ring-inset ring-emerald-200">{searchParams.ok}</p>}
-        {searchParams.error && <p className="mt-3 rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700 ring-1 ring-inset ring-red-200">{searchParams.error}</p>}
+        <Flash ok={searchParams?.ok} error={searchParams?.error} />
 
         <Card className="mt-4 overflow-hidden !p-0">
           <div className="overflow-x-auto p-5 pb-2">
@@ -172,7 +172,7 @@ export default async function QuotationDetailPage({
               </tbody>
             </table>
           </div>
-          <dl className="space-y-1.5 bg-[#FAF7F1] px-5 py-4 text-sm ring-1 ring-inset ring-stone-100">
+          <dl className="space-y-1.5 bg-paper px-5 py-4 text-sm ring-1 ring-inset ring-stone-100">
             <div className="flex justify-between"><dt className="text-stone-500">Subtotal</dt><dd className="font-medium">{formatIDR(q.subtotal)}</dd></div>
             <div className="flex justify-between"><dt className="text-stone-500">Ongkos kirim</dt><dd className="font-medium">{formatIDR(q.deliveryFee)}</dd></div>
             <div className="flex justify-between"><dt className="text-stone-500">Biaya layanan / lainnya</dt><dd className="font-medium">{formatIDR(q.serviceFee)}</dd></div>
@@ -193,7 +193,7 @@ export default async function QuotationDetailPage({
 
         {isVendor && waiting && (
           <Card className="mt-4 border-brand-100">
-            <h2 className="font-display text-lg font-bold">Konfirmasi pesanan</h2>
+            <h2 className="font-display text-2xl text-ink">Konfirmasi pesanan</h2>
             <p className="text-[13px] text-stone-500">
               Tambahkan ongkir/biaya lain bila ada. Total nota dihitung otomatis dan langsung
               masuk ke halaman pembayaran pelanggan.
@@ -224,7 +224,7 @@ export default async function QuotationDetailPage({
 
         {history.length > 0 && (
           <Card className="mt-4">
-            <h2 className="font-display text-lg font-bold">Riwayat pesanan</h2>
+            <h2 className="font-display text-2xl text-ink">Riwayat pesanan</h2>
             <ol className="mt-2 space-y-2.5 text-sm">
               {history.map((h) => (
                 <li key={h.id} className="flex gap-2.5">
@@ -247,14 +247,14 @@ export default async function QuotationDetailPage({
           <Card className="mt-4">
             <div id="chat" className="scroll-mt-24">
               <div className="flex items-center justify-between gap-2">
-                <h2 className="font-display text-lg font-bold">Diskusi</h2>
+                <h2 className="font-display text-2xl text-ink">Diskusi</h2>
                 <span className="text-[11px] text-stone-400">{messages.length} pesan</span>
               </div>
               <p className="text-[13px] text-stone-500">
                 Tanya detail menu, lokasi, atau waktu pengiriman. Diskusi tidak mengubah status pesanan.
               </p>
 
-              <div className="mt-3 max-h-80 space-y-2 overflow-y-auto rounded-xl bg-[#FAF7F1] p-3 ring-1 ring-inset ring-stone-200/70">
+              <div className="mt-3 max-h-80 space-y-2 overflow-y-auto rounded-xl bg-paper p-3 ring-1 ring-inset ring-stone-200/70">
                 {messages.length === 0 && (
                   <p className="py-6 text-center text-sm text-stone-400">Belum ada pesan. Mulai percakapan.</p>
                 )}

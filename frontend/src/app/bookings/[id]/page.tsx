@@ -2,24 +2,23 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { Card, StatusBadge } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { FormButton } from "@/components/ui/FormButton";
+import { OrderStepper } from "@/components/OrderStepper";
+import { CancelBookingForm } from "@/components/CancelBookingForm";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { StarRatingInput } from "@/components/ui/StarRatingInput";
 import { Field, Textarea } from "@/components/ui/Field";
-import { formatIDR, formatDateID } from "@/lib/format";
+import { formatIDR, formatDateID, formatDateTimeID, todayDateOnly, toDateOnly } from "@/lib/format";
 import { ApiError, apiGet } from "@/lib/api";
 import { requireUser } from "@/lib/auth-helpers";
 import { createPaymentAction } from "@/server/payment-actions";
 import { createBookingReviewAction } from "@/server/booking-actions";
+import { Flash } from "@/components/ui/Flash";
 
-const TRACK: { key: string; label: string }[] = [
-  { key: "PAYMENT_PENDING", label: "Menunggu bayar" },
-  { key: "PAID", label: "Lunas" },
-  { key: "PREPARING", label: "Dipersiapkan" },
-  { key: "READY", label: "Siap" },
-  { key: "DELIVERED", label: "Terkirim" },
-  { key: "COMPLETED", label: "Selesai" },
-];
+/** Harus sama dengan CUSTOMER_CANCEL_MIN_DAYS di backend (domain/booking.ts). */
+const CUSTOMER_CANCEL_MIN_DAYS = 3;
+const UNPAID_CANCELLABLE = ["PAYMENT_PENDING", "CONFIRMED"];
+const PAID_CANCELLABLE = ["PAID", "PREPARING"];
 
 type BookingDetail = {
   id: string;
@@ -27,6 +26,11 @@ type BookingDetail = {
   totalAmount: number;
   quotationId: string;
   cancelledAt: string | null;
+  cancelReason: string | null;
+  cancelledBy: string | null;
+  paymentDueAt: string | null;
+  refundAmount: number | null;
+  refundedAt: string | null;
   customerId: string;
   event: {
     name: string;
@@ -44,7 +48,7 @@ type BookingDetail = {
     discount: number;
     items: { id: string; name: string; quantity: number; unitPrice: number; subtotal: number }[];
   };
-  payments: { id: string; amount: number; status: string }[];
+  payments: { id: string; amount: number; status: string; expiresAt: string | null }[];
   review: { id: string; rating: number; comment: string | null; createdAt: string } | null;
 };
 
@@ -71,12 +75,22 @@ export default async function BookingDetailPage({
     isCustomer &&
     paid >= booking.totalAmount &&
     ["PAID", "PREPARING", "READY", "DELIVERED", "COMPLETED"].includes(booking.status);
+  const isVendor = user.id === booking.vendor.userId;
   // Kembali ke antarmuka peran masing-masing — admin tidak boleh nyasar ke halaman vendor.
   const backHref = isAdmin ? "/admin/orders" : isCustomer ? "/dashboard" : "/vendor/orders";
-  const TRACK_KEYS = TRACK.map((t) => t.key);
-  const trackIndex = TRACK_KEYS.indexOf(booking.status);
-  const legacyPreBooking = ["QUOTATION_PENDING", "QUOTATION_SENT", "REVISION_REQUESTED"].includes(booking.status);
-  const progress = trackIndex;
+  const dueAt = booking.paymentDueAt ? new Date(booking.paymentDueAt) : null;
+  const daysUntilEvent = Math.round(
+    (toDateOnly(booking.event.eventDate).getTime() - todayDateOnly().getTime()) / 86_400_000,
+  );
+  const canCancel =
+    UNPAID_CANCELLABLE.includes(booking.status) ||
+    (PAID_CANCELLABLE.includes(booking.status) &&
+      (isVendor || daysUntilEvent >= CUSTOMER_CANCEL_MIN_DAYS));
+  const cancelConsequence = paid > 0
+    ? `Dana ${formatIDR(paid)} akan dikembalikan melalui admin. Jadwal vendor pada tanggal ini akan dilepas.`
+    : "Jadwal vendor pada tanggal ini akan dilepas dan tagihan yang belum dibayar dibatalkan.";
+  const cancelledByLabel =
+    booking.cancelledBy === "CUSTOMER" ? "pelanggan" : booking.cancelledBy === "VENDOR" ? "vendor" : booking.cancelledBy === "SYSTEM" ? "sistem" : null;
 
   return (
     <>
@@ -86,65 +100,46 @@ export default async function BookingDetailPage({
           <Link href={backHref} className="hover:text-brand-700 hover:underline">← Kembali</Link>
         </p>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">{booking.event.name}</h1>
+          <h1 className="font-display text-4xl text-ink sm:text-5xl">{booking.event.name}</h1>
           <StatusBadge status={booking.status} />
         </div>
         <p className="mt-1 text-sm text-stone-500">
           {booking.vendor.businessName} · {formatDateID(booking.event.eventDate)}
           {booking.event.eventTime ? ` · ${booking.event.eventTime}` : ""} · {booking.event.guestCount} pax
         </p>
-        {searchParams.ok && <p className="mt-3 rounded-xl bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-700 ring-1 ring-inset ring-emerald-200">{searchParams.ok}</p>}
-        {searchParams.error && <p className="mt-3 rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700 ring-1 ring-inset ring-red-200">{searchParams.error}</p>}
+        <Flash ok={searchParams?.ok} error={searchParams?.error} />
 
-        {/* Tracker */}
-        {booking.status === "CANCELLED" ? (
-          <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 ring-1 ring-inset ring-red-200">
-            Pesanan ini dibatalkan{booking.cancelledAt ? ` pada ${formatDateID(booking.cancelledAt)}` : ""}. Kapasitas vendor sudah dikembalikan.
-          </p>
-        ) : booking.status === "CONFIRMED" ? (
-          <p className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200">
-            Pesanan sudah dikonfirmasi. Menunggu pembayaran.
-          </p>
-        ) : legacyPreBooking ? (
-          <p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 ring-1 ring-inset ring-amber-200">
-            Pesanan ini masih berada pada tahap penawaran. Buka rincian penawaran untuk melihat status terbaru.
-          </p>
-        ) : progress >= 0 ? (
-          <Card className="mt-4">
-            <ol className="flex items-center">
-              {TRACK.map((t, i) => {
-                const done = i < progress;
-                const cur = i === progress;
-                return (
-                  <li key={t.key} className={`flex-1 ${i > 0 ? "pl-1" : ""}`}>
-                    <div className="flex items-center">
-                      {i > 0 && <span className={`h-0.5 flex-1 rounded ${done || cur ? "bg-emerald-500" : "bg-stone-200"}`} />}
-                      <span
-                        className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold ring-2 ${
-                          done ? "bg-emerald-500 text-white ring-emerald-200"
-                          : cur ? "bg-brand-700 text-white ring-brand-200"
-                          : "bg-stone-100 text-stone-400 ring-stone-200"
-                        }`}
-                      >
-                        {done ? "✓" : i + 1}
-                      </span>
-                      {i < TRACK.length - 1 && <span className="hidden" />}
-                    </div>
-                    <p className={`mt-1.5 hidden text-[11px] font-semibold leading-tight sm:block ${done || cur ? "text-stone-800" : "text-stone-400"}`}>
-                      {t.label}
-                    </p>
-                  </li>
-                );
-              })}
-            </ol>
-            <p className="mt-2 text-xs font-semibold text-stone-600 sm:hidden">
-              Tahap: {TRACK[progress]?.label}
+        {/* Tahap & status */}
+        {["CANCELLED", "REFUND_PENDING", "REFUNDED"].includes(booking.status) ? (
+          <Card className="mt-4 !border-red-200 !bg-red-50/60">
+            <p className="font-semibold text-red-800">
+              Pesanan dibatalkan{cancelledByLabel ? ` oleh ${cancelledByLabel}` : ""}
+              {booking.cancelledAt ? ` · ${formatDateTimeID(booking.cancelledAt)}` : ""}
             </p>
+            {booking.cancelReason && <p className="mt-1 text-sm text-red-700">Alasan: {booking.cancelReason}</p>}
+            <p className="mt-1 text-sm text-red-700">Jadwal vendor pada tanggal acara sudah dilepas.</p>
+            {booking.status === "REFUND_PENDING" && (
+              <p className="mt-3 rounded-xl bg-white/80 px-3.5 py-2.5 text-sm font-medium text-orange-800 ring-1 ring-inset ring-orange-200">
+                Refund {formatIDR(booking.refundAmount ?? paid)} sedang diproses admin. Anda akan menerima notifikasi setelah dana dikirim.
+              </p>
+            )}
+            {booking.status === "REFUNDED" && (
+              <p className="mt-3 rounded-xl bg-white/80 px-3.5 py-2.5 text-sm font-medium text-emerald-800 ring-1 ring-inset ring-emerald-200">
+                ✓ Dana {formatIDR(booking.refundAmount ?? paid)} sudah dikembalikan
+                {booking.refundedAt ? ` pada ${formatDateID(booking.refundedAt)}` : ""}.
+              </p>
+            )}
           </Card>
         ) : (
-          <p className="mt-4 rounded-xl bg-stone-100 px-4 py-3 text-sm font-semibold text-stone-700 ring-1 ring-inset ring-stone-200">
-            Status pesanan: {booking.status.replaceAll("_", " ").toLowerCase()}.
-          </p>
+          <Card className="mt-4">
+            <OrderStepper status={booking.status} />
+            {booking.status === "PAYMENT_PENDING" && dueAt && (
+              <p className="mt-3 rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm text-amber-900 ring-1 ring-inset ring-amber-200">
+                Lunasi sebelum <span className="font-semibold">{formatDateTimeID(dueAt)} WIB</span>. Setelah itu pesanan
+                dibatalkan otomatis dan jadwal vendor dibuka untuk pelanggan lain.
+              </p>
+            )}
+          </Card>
         )}
 
         <Card className="mt-4">
@@ -174,7 +169,7 @@ export default async function BookingDetailPage({
                 ))}
               </ul>
             </div>
-            <div className="space-y-1.5 bg-[#FAF7F1] p-4 text-sm">
+            <div className="space-y-1.5 bg-paper p-4 text-sm">
               <div className="flex justify-between"><span className="text-stone-500">Subtotal</span><span className="font-medium">{formatIDR(booking.quotation.subtotal)}</span></div>
               <div className="flex justify-between"><span className="text-stone-500">Ongkos kirim</span><span className="font-medium">{formatIDR(booking.quotation.deliveryFee)}</span></div>
               <div className="flex justify-between"><span className="text-stone-500">Biaya layanan / lainnya</span><span className="font-medium">{formatIDR(booking.quotation.serviceFee)}</span></div>
@@ -193,14 +188,16 @@ export default async function BookingDetailPage({
 
         {isCustomer && canPay && paid < booking.totalAmount && (
           <Card className="mt-4 border-brand-100 !bg-gradient-to-b !from-brand-50 !to-white">
-            <h2 className="font-display text-lg font-bold">Bayar lunas via QRIS</h2>
+            <h2 className="font-display text-2xl text-ink">Bayar lunas via QRIS</h2>
             <p className="text-[13px] text-stone-500">
               Pembayaran hanya satu tahap: lunas sebesar {formatIDR(booking.totalAmount - paid)}.
               Vendor baru mulai persiapan setelah pembayaran diterima.
             </p>
             <form action={createPaymentAction} className="mt-3">
               <input type="hidden" name="bookingId" value={booking.id} />
-              <Button type="submit" className="w-full !py-2.5">Bayar lunas {formatIDR(booking.totalAmount - paid)}</Button>
+              <FormButton className="w-full !py-2.5" pendingLabel="Menyiapkan QRIS…">
+                Bayar lunas {formatIDR(booking.totalAmount - paid)}
+              </FormButton>
             </form>
           </Card>
         )}
@@ -214,18 +211,39 @@ export default async function BookingDetailPage({
                 <StatusBadge status={p.status} />
               </div>
               {p.status === "PENDING" && isCustomer && (
-                <Link href={`/payments/${p.id}`} className="mt-1.5 inline-block text-sm font-semibold text-brand-700 hover:underline">
-                  Buka halaman bayar →
-                </Link>
+                <p className="mt-1.5 text-sm">
+                  <Link href={`/payments/${p.id}`} className="font-semibold text-brand-700 hover:underline">
+                    Buka halaman bayar →
+                  </Link>
+                  {p.expiresAt && (
+                    <span className="text-stone-400"> · berlaku s.d. {formatDateTimeID(p.expiresAt)}</span>
+                  )}
+                </p>
               )}
             </Card>
           ))}
           {booking.payments.length === 0 && <p className="text-sm text-stone-500">Belum ada pembayaran.</p>}
         </div>
 
+        {canCancel && (isCustomer || isVendor) && (
+          <div className="mt-6 border-t border-stone-200 pt-4">
+            <CancelBookingForm
+              bookingId={booking.id}
+              returnTo={`/bookings/${booking.id}`}
+              consequence={cancelConsequence}
+            />
+          </div>
+        )}
+        {isCustomer && PAID_CANCELLABLE.includes(booking.status) && !canCancel && (
+          <p className="mt-6 border-t border-stone-200 pt-4 text-xs text-stone-500">
+            Pembatalan mandiri hanya tersedia sampai H-{CUSTOMER_CANCEL_MIN_DAYS} acara. Untuk perubahan mendesak, hubungi vendor
+            melalui <Link href={`/quotations/${booking.quotationId}#chat`} className="font-semibold text-brand-700 hover:underline">chat pesanan</Link>.
+          </p>
+        )}
+
         {canReview && (
           <Card className="mt-4">
-            <h2 className="font-display text-lg font-bold">
+            <h2 className="font-display text-2xl text-ink">
               {booking.review ? "Ulasan Anda" : "Bagaimana pengalaman Anda?"}
             </h2>
             {!booking.review && (
@@ -243,7 +261,7 @@ export default async function BookingDetailPage({
                   Dikirim {formatDateID(booking.review.createdAt)}
                 </p>
                 {booking.review.comment && (
-                  <p className="mt-2 rounded-xl bg-[#FAF7F1] px-4 py-3 text-sm leading-relaxed text-stone-700 ring-1 ring-inset ring-stone-200/70">
+                  <p className="mt-2 rounded-xl bg-paper px-4 py-3 text-sm leading-relaxed text-stone-700 ring-1 ring-inset ring-stone-200/70">
                     “{booking.review.comment}”
                   </p>
                 )}

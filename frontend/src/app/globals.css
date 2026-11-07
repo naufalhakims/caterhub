@@ -2,9 +2,126 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Fondasi desain (diadaptasi dari prinsip Apple HIG untuk web):
+ * - respons instan saat ditekan, bukan saat dilepas;
+ * - gerak hanya pada transform/opacity dengan kurva "critically damped" (tanpa pantulan);
+ * - tracking & leading menyesuaikan ukuran teks;
+ * - material tembus pandang untuk chrome yang melayang;
+ * - menghormati reduced-motion, reduced-transparency, dan contrast.
+ */
+@layer base {
+  :root {
+    color-scheme: light;
+    /* Kurva mirip spring damping 1.0 / response ≈0.35s. */
+    --ease-fluid: cubic-bezier(0.32, 0.72, 0, 1);
+    --material-bg: rgba(255, 255, 255, 0.82);
+    --material-border: rgba(29, 27, 22, 0.08);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-optical-sizing: auto;
+    text-wrap: balance;
+  }
+
+  /* Judul besar: tracking negatif & leading rapat; teks badan dibiarkan dekat 0. */
+  h1 {
+    letter-spacing: -0.02em;
+    line-height: 1.08;
+  }
+
+  h2 {
+    letter-spacing: -0.014em;
+    line-height: 1.15;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  a,
+  button,
+  summary,
+  [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  :focus-visible {
+    outline: 2px solid #58662a;
+    outline-offset: 2px;
+  }
+
+  summary {
+    list-style: none;
+    cursor: pointer;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+}
+
 ::selection {
-  background-color: #ffedd5;
-  color: #7c2d12;
+  background-color: #fff06a;
+  color: #1d1b16;
+}
+
+/*
+ * Serif display hanya punya satu ketebalan; cegah "faux bold" dari kelas
+ * font-bold lama agar bentuk huruf tetap tajam.
+ */
+.font-display {
+  font-weight: 400 !important;
+  font-synthesis: none;
+  letter-spacing: -0.015em;
+}
+
+/* Kata miring berwarna di dalam judul serif — ciri utama tipografi. */
+.font-display em,
+.font-display i {
+  font-style: italic;
+  color: #58662a;
+}
+
+.font-display em.em-tangerine { color: #ee5a1f; }
+.font-display em.em-berry { color: #c8215e; }
+.font-display em.em-maroon { color: #7a2b24; }
+.font-display em.em-ink { color: #1d1b16; }
+
+/* Penekanan serif di dalam paragraf sans ("rasa *asli* dari dapur UMKM"). */
+.serif-strong strong,
+strong.serif {
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+@layer components {
+  /* Chrome yang melayang (navbar, toolbar): konten bergulir di bawahnya. */
+  .material {
+    background-color: var(--material-bg);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    box-shadow: 0 1px 0 var(--material-border);
+  }
+
+  /* Umpan balik tekan untuk elemen yang bisa diklik selain <Button>. */
+  .pressable {
+    transition: transform 160ms var(--ease-fluid), box-shadow 200ms var(--ease-fluid);
+  }
+
+  .pressable:active {
+    transform: scale(0.98);
+    transition-duration: 80ms;
+  }
 }
 
 /* Subtle dot texture for hero / banner areas */
@@ -30,5 +147,102 @@
 }
 
 .animate-rise {
-  animation: rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: rise 0.55s var(--ease-fluid) both;
+}
+
+/* Toast muncul dari atas (asal yang sama dengan arah keluarnya). */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.98);
+  }
+}
+
+.animate-toast-in {
+  animation: toast-in 380ms var(--ease-fluid) both;
+}
+
+.animate-toast-out {
+  animation: toast-out 220ms var(--ease-fluid) both;
+}
+
+/* Panel konfirmasi yang terbuka dari tombol pemicunya. */
+@keyframes disclose {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+details[open] > .disclose-panel {
+  animation: disclose 260ms var(--ease-fluid) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Ganti geser/skala dengan cross-fade singkat; jangan hilangkan umpan balik. */
+  .animate-rise,
+  .animate-toast-in,
+  details[open] > .disclose-panel {
+    animation: fade-in 160ms ease both;
+  }
+
+  .animate-toast-out {
+    animation: fade-out 120ms ease both;
+  }
+
+  .pressable:active,
+  .pressable {
+    transform: none !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .material {
+    background-color: #ffffff;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .material {
+    background-color: #ffffff;
+    box-shadow: 0 1px 0 #57534e;
+  }
 }

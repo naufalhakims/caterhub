@@ -24,7 +24,7 @@ export default async function VendorCalendarPage() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold tracking-tight">Kalender produksi</h1>
+      <h1 className="font-display text-4xl text-ink sm:text-5xl">Kalender produksi</h1>
       <p className="text-sm text-stone-500">Semua acara yang perlu dimasak, diurut dari yang terdekat.</p>
       {byDate.size === 0 ? (
         <div className="mt-4"><Empty title="Belum ada jadwal." hint="Jadwal terisi otomatis dari pesanan yang dikonfirmasi." /></div>
@@ -43,7 +43,7 @@ export default async function VendorCalendarPage() {
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   {list.map((b) => (
                     <Link key={b.id} href={`/bookings/${b.id}`}>
-                      <Card className="!p-4 transition hover:-translate-y-0.5 hover:shadow-lift">
+                      <Card interactive className="!p-4">
                         <div className="flex items-start justify-between gap-2">
                           <p className="font-semibold leading-tight">{b.event.name}</p>
                           <StatusBadge status={b.status} />

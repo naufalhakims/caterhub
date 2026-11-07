@@ -7,6 +7,7 @@ import { Field, Input } from "@/components/ui/Field";
 import { requireCustomer } from "@/lib/auth-helpers";
 import { apiGet } from "@/lib/api";
 import { changePasswordAction, updateCustomerProfileAction } from "@/server/profile-actions";
+import { Flash } from "@/components/ui/Flash";
 
 type Profile = {
   name: string | null;
@@ -33,11 +34,10 @@ export default async function ProfilePage({
         <p className="text-sm text-stone-500">
           <Link href="/dashboard" className="hover:text-brand-700 hover:underline">← Dashboard</Link>
         </p>
-        <h1 className="mt-1 font-display text-2xl font-bold tracking-tight">Profil saya</h1>
+        <h1 className="mt-1 font-display text-4xl text-ink sm:text-5xl">Profil saya</h1>
         <p className="text-sm text-stone-500">Data ini dipakai vendor untuk menghubungi Anda soal acara.</p>
 
-        {searchParams?.ok && <p className="mt-3 rounded-xl bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-700 ring-1 ring-inset ring-emerald-200">{searchParams.ok}</p>}
-        {searchParams?.error && <p className="mt-3 rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700 ring-1 ring-inset ring-red-200">{searchParams.error}</p>}
+        <Flash ok={searchParams?.ok} error={searchParams?.error} />
 
         <Card className="mt-4 !p-5">
           <div className="flex items-center gap-4">
@@ -72,7 +72,7 @@ export default async function ProfilePage({
         </Card>
 
         <Card className="mt-4 !p-5">
-          <h2 className="font-display text-lg font-bold">Ubah kata sandi</h2>
+          <h2 className="font-display text-2xl text-ink">Ubah kata sandi</h2>
           <p className="text-[13px] text-stone-500">Minimal 8 karakter. Gunakan kombinasi yang tidak dipakai di layanan lain.</p>
           <form action={changePasswordAction} className="mt-3 space-y-3">
             <Field label="Kata sandi saat ini">

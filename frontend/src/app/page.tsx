@@ -3,215 +3,264 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { VendorCard } from "@/components/VendorCard";
 import { SectionHeading } from "@/components/SectionHeading";
+import { FoodArt } from "@/components/FoodArt";
 import { RupiahInput } from "@/components/ui/RupiahInput";
+import { ArrowRight, buttonLink } from "@/components/ui/Button";
 import { apiGet } from "@/lib/api";
 import type { VendorCardDto } from "@/lib/vendor-types";
 
-const CATEGORIES = [
-  { name: "Pernikahan", desc: "Prasmanan & stall 100–1000 pax", mark: "♥" },
-  { name: "Korporat", desc: "Rapat, seminar, gathering", mark: "◈" },
-  { name: "Ulang Tahun", desc: "Paket intimate 20–150 pax", mark: "✦" },
-  { name: "Nasi Kotak", desc: "Harian kantor & hajatan", mark: "▣" },
+type VendorReview = { id: string; rating: number; comment: string | null; customerName: string | null };
+type VendorDetail = { id: string; businessName: string; reviews: VendorReview[] };
+
+const OCCASIONS = [
+  { name: "Pernikahan", hint: "100–1000 pax", mark: "💐", bg: "bg-blush", offset: "sm:mt-16" },
+  { name: "Korporat", hint: "Rapat & seminar", mark: "💼", bg: "bg-[#DCE3FF]", offset: "sm:mt-6" },
+  { name: "Nasi Kotak", hint: "Harian & hajatan", mark: "🍱", bg: "bg-mint", offset: "" },
+  { name: "Ulang Tahun", hint: "20–150 pax", mark: "🎂", bg: "bg-peach", offset: "sm:mt-6" },
+  { name: "Syukuran", hint: "Tumpeng & prasmanan", mark: "🍚", bg: "bg-sun-200", offset: "sm:mt-16" },
 ];
 
+const CITIES = ["Surabaya", "Sidoarjo", "Gresik"];
+
 const STEPS = [
-  { n: "01", t: "Cari vendor", d: "Masukkan tanggal, jam, jumlah tamu, dan paket yang diinginkan." },
-  { n: "02", t: "Kirim permintaan", d: "Pesanan langsung dikirim ke vendor. Tidak wajib membuat acara dulu." },
-  { n: "03", t: "Vendor konfirmasi", d: "Vendor menyetujui dan menambahkan ongkir/biaya lain ke nota." },
-  { n: "04", t: "Bayar lunas & rating", d: "Setelah lunas vendor mulai persiapan, lalu beri rating." },
+  { t: "Cari vendor", d: "Isi tanggal, jam, dan jumlah tamu. Kami tampilkan yang dapurnya masih muat." },
+  { t: "Kirim permintaan", d: "Pilih paket dan kirim — tidak perlu membuat acara lebih dulu." },
+  { t: "Vendor konfirmasi", d: "Ongkir dan biaya lain masuk ke nota, total dikunci sebelum bayar." },
+  { t: "Bayar & nikmati", d: "Lunas via QRIS, pantau status sampai makanan tiba, lalu beri ulasan." },
 ];
+
+async function loadReviews(vendors: VendorCardDto[]) {
+  const details = await Promise.all(
+    vendors.slice(0, 4).map((v) => apiGet<VendorDetail>(`/api/v1/vendors/${v.id}`).catch(() => null)),
+  );
+  return details
+    .flatMap((d) => (d ? d.reviews.filter((r) => r.comment).map((r) => ({ ...r, vendor: d.businessName })) : []))
+    .slice(0, 3);
+}
 
 export default async function LandingPage() {
   const all = await apiGet<VendorCardDto[]>("/api/v1/vendors");
-  const vendors = all.slice(0, 3);
+  const featured = all.slice(0, 4);
+  const reviews = await loadReviews(all);
+  const rated = all.filter((v) => v.reviewCount > 0);
+  const avgRating = rated.length ? rated.reduce((s, v) => s + v.rating, 0) / rated.length : null;
 
   return (
     <>
       <Navbar />
       <main>
-        {/* HERO */}
-        <section className="relative overflow-hidden bg-gradient-to-br from-brand-900 via-brand-800 to-stone-900 text-white">
-          <div className="hero-dots-light absolute inset-0 opacity-60" />
-          <div className="relative mx-auto max-w-6xl px-4 pb-14 pt-16 sm:pt-20">
-            <div className="animate-rise max-w-2xl">
-              <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold ring-1 ring-white/20">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
-                Marketplace + operasional catering UMKM
-              </p>
-              <h1 className="mt-4 font-display text-4xl font-bold leading-[1.08] tracking-tight sm:text-6xl">
-                Temukan Catering yang Tepat untuk Acara Anda
-              </h1>
-              <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-white/80">
-                Cari, bandingkan, sesuaikan, dan pesan catering dalam satu platform —
-                dari acara kantor 50 orang sampai pernikahan 500 tamu.
-              </p>
-              <div className="mt-7 flex flex-wrap gap-3">
-                <Link
-                  href="/catering"
-                  className="rounded-xl bg-white px-6 py-3 font-semibold text-brand-900 shadow-lift transition hover:-translate-y-0.5"
-                >
+        {/* HERO — panel gradien mint → kuning */}
+        <section className="px-3 pt-3 sm:px-4">
+          <div className="relative mx-auto max-w-[88rem] overflow-hidden rounded-4xl bg-gradient-to-br from-mint via-[#EEF4B4] to-sun-400">
+            <div className="grid items-center gap-8 px-6 pb-8 pt-12 sm:px-12 lg:grid-cols-[1.15fr_1fr_0.55fr] lg:pb-12 lg:pt-16">
+              <div className="animate-rise">
+                <h1 className="font-display text-[3.1rem] leading-[1.02] text-ink sm:text-7xl">
+                  Sajikan <em>rasa terbaik</em> di <em className="em-ink">setiap</em> acara.
+                </h1>
+                <p className="serif-strong mt-6 max-w-md text-[17px] leading-relaxed text-stone-800">
+                  Pesan catering dari <strong>dapur UMKM</strong> terverifikasi di Surabaya Raya — dengan{" "}
+                  <strong>nota transparan</strong> dan kapasitas yang <strong>pasti muat</strong>.
+                </p>
+                <Link href="/catering" className={buttonLink("primary", "mt-8 !px-7 !py-3.5 !text-base shadow-[0_8px_20px_-8px_rgba(29,27,22,.35)]")}>
                   Cari Catering
+                  <ArrowRight className="ml-6" />
                 </Link>
-                <Link
-                  href="/events/new"
-                  className="rounded-xl px-6 py-3 font-semibold ring-1 ring-white/40 transition hover:bg-white/10"
-                >
-                  Buat Acara (opsional)
-                </Link>
+              </div>
+
+              <div className="relative hidden h-[22rem] lg:block" aria-hidden>
+                <span className="absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/50 blur-2xl" />
+                <span className="absolute left-[30%] top-[46%] -translate-x-1/2 -translate-y-1/2 text-[9rem] drop-shadow-xl">🍱</span>
+                <span className="absolute left-[64%] top-[30%] -translate-x-1/2 -translate-y-1/2 rotate-12 text-[6rem] drop-shadow-lg">🍗</span>
+                <span className="absolute left-[70%] top-[72%] -translate-x-1/2 -translate-y-1/2 -rotate-6 text-[5.5rem] drop-shadow-lg">🥗</span>
+                <span className="absolute left-[18%] top-[16%] -rotate-12 text-6xl drop-shadow">🌶️</span>
+                <span className="absolute left-[44%] top-[84%] rotate-6 text-5xl drop-shadow">🍋</span>
+              </div>
+
+              <div className="flex flex-row items-end justify-between gap-6 lg:h-full lg:flex-col lg:items-center lg:justify-between lg:text-center">
+                <div className="hidden lg:block">
+                  <span className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-white/70 text-4xl">🍛</span>
+                  <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-stone-700">Dari dapur UMKM</p>
+                </div>
+                <div>
+                  <p className="font-display text-6xl text-ink sm:text-7xl">{all.length}</p>
+                  <p className="mt-1 text-sm font-medium text-stone-800">
+                    Vendor catering
+                    <br />
+                    terverifikasi
+                  </p>
+                </div>
+                {avgRating != null && (
+                  <div className="lg:hidden">
+                    <p className="font-display text-6xl text-ink">{avgRating.toFixed(1)}</p>
+                    <p className="mt-1 text-sm font-medium text-stone-800">Rata-rata rating</p>
+                  </div>
+                )}
               </div>
             </div>
 
+            {/* Pencarian cepat */}
             <form
               action="/catering"
               method="get"
-              className="animate-rise relative mt-10 grid max-w-3xl gap-2 rounded-2xl bg-white p-3 text-stone-900 shadow-lift sm:grid-cols-[1fr_0.8fr_1fr_1fr_auto]"
-              style={{ animationDelay: "120ms" }}
+              className="relative mx-4 mb-4 grid gap-1 rounded-3xl bg-white p-2 text-ink shadow-lift sm:mx-12 sm:mb-10 sm:grid-cols-[1fr_0.8fr_1fr_1.1fr_auto] sm:rounded-full"
             >
-              <label className="block rounded-xl px-3 py-1.5 focus-within:ring-2 focus-within:ring-brand-200">
-                <span className="block text-[11px] font-bold uppercase tracking-wide text-stone-400">Tanggal</span>
-                <input name="date" type="date" required className="w-full bg-transparent text-sm font-medium outline-none" />
-              </label>
-              <label className="block rounded-xl px-3 py-1.5 focus-within:ring-2 focus-within:ring-brand-200">
-                <span className="block text-[11px] font-bold uppercase tracking-wide text-stone-400">Jam</span>
-                <input name="time" type="time" required className="w-full bg-transparent text-sm font-medium outline-none" />
-              </label>
-              <label className="block rounded-xl px-3 py-1.5 focus-within:ring-2 focus-within:ring-brand-200">
-                <span className="block text-[11px] font-bold uppercase tracking-wide text-stone-400">Tamu</span>
-                <input name="guests" type="number" min={10} required placeholder="250" className="w-full bg-transparent text-sm font-medium outline-none placeholder:text-stone-300" />
-              </label>
-              <label className="block rounded-xl px-3 py-1.5 focus-within:ring-2 focus-within:ring-brand-200">
-                <span className="block text-[11px] font-bold uppercase tracking-wide text-stone-400">Budget maks (Rp)</span>
-                <RupiahInput name="budgetMax" variant="bare" placeholder="10.000.000" />
-              </label>
-              <button className="rounded-xl bg-brand-700 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-800">
-                Cari catering
-              </button>
+              {[
+                ["Tanggal acara", <input key="d" name="date" type="date" required className="w-full bg-transparent text-sm font-medium outline-none" />],
+                ["Jam", <input key="t" name="time" type="time" required className="w-full bg-transparent text-sm font-medium outline-none" />],
+                ["Jumlah tamu", <input key="g" name="guests" type="number" min={10} required placeholder="250 pax" className="w-full bg-transparent text-sm font-medium outline-none placeholder:text-stone-300" />],
+                ["Budget maks (Rp)", <RupiahInput key="b" name="budgetMax" variant="bare" placeholder="10.000.000" />],
+              ].map(([label, control]) => (
+                <label
+                  key={label as string}
+                  className="block rounded-full px-5 py-2 transition-colors focus-within:bg-paper hover:bg-paper"
+                >
+                  <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-500">{label}</span>
+                  {control}
+                </label>
+              ))}
+              <button className={buttonLink("dark", "!py-3.5 sm:!px-7")}>Cari catering</button>
             </form>
           </div>
         </section>
 
-        {/* STATS STRIP */}
-        <section className="border-b border-stone-200/70 bg-white">
-          <div className="mx-auto grid max-w-6xl grid-cols-3 gap-4 px-4 py-6 text-center">
-            {[
-              ["5+", "Vendor terverifikasi"],
-              ["Surabaya Raya", "Area layanan"],
-              ["QRIS", "Pembayaran aman"],
-            ].map(([big, small]) => (
-              <div key={small}>
-                <p className="font-display text-xl font-bold sm:text-2xl">{big}</p>
-                <p className="text-xs text-stone-500 sm:text-sm">{small}</p>
-              </div>
+        {/* PILIHAN VENDOR */}
+        <section className="mx-auto max-w-7xl px-4 pt-20 sm:px-6">
+          <div className="flex flex-wrap items-end justify-between gap-6">
+            <SectionHeading title={<><em className="em-ink">Temukan</em> catering pilihan</>} dash />
+            <div className="flex flex-wrap gap-2">
+              <Link href="/catering" className="rounded-full px-5 py-2.5 text-sm font-semibold ring-2 ring-inset ring-ink transition-colors hover:bg-stone-50">
+                Rating tertinggi
+              </Link>
+              {CITIES.map((c) => (
+                <Link
+                  key={c}
+                  href={`/catering?city=${c}`}
+                  className="rounded-full px-5 py-2.5 text-sm font-semibold ring-1 ring-inset ring-stone-300 transition-colors hover:ring-ink"
+                >
+                  {c}
+                </Link>
+              ))}
+            </div>
+          </div>
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {featured.map((v) => (
+              <VendorCard key={v.id} href={`/catering/${v.id}`} v={v} />
             ))}
+            {featured.length === 0 && (
+              <p className="text-sm text-stone-500">Belum ada vendor terverifikasi. Jalankan seed data.</p>
+            )}
           </div>
         </section>
 
-        {/* CATEGORIES */}
-        <section className="mx-auto max-w-6xl px-4 py-12">
+        {/* JENIS ACARA — lingkaran warna */}
+        <section className="mx-auto max-w-7xl px-4 pt-28 sm:px-6">
           <SectionHeading
-            eyebrow="Kategori populer"
-            title="Untuk setiap jenis acara"
-            hint="Mulai dari paket hemat sampai premium — semua dengan rincian harga transparan per pax."
+            align="center"
+            title={
+              <>
+                Satu platform untuk <span aria-hidden className="inline-block -translate-y-1 not-italic">🍽️</span>{" "}
+                <em className="em-tangerine">setiap</em> jenis acara
+              </>
+            }
           />
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {CATEGORIES.map((c) => (
-              <Link
-                key={c.name}
-                href="/catering"
-                className="group rounded-2xl border border-stone-200/80 bg-white p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-lift"
-              >
-                <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-50 text-lg text-brand-700 ring-1 ring-brand-100">
-                  {c.mark}
+          <div className="mt-14 grid grid-cols-2 items-start gap-x-4 gap-y-10 sm:grid-cols-5">
+            {OCCASIONS.map((o) => (
+              <Link key={o.name} href="/catering" className={`group text-center ${o.offset}`}>
+                <span
+                  className={`mx-auto grid aspect-square w-[78%] place-items-center rounded-full ${o.bg} text-6xl transition-transform duration-500 ease-fluid group-hover:-translate-y-1 group-active:scale-95 sm:text-7xl`}
+                >
+                  {o.mark}
                 </span>
-                <p className="mt-3 font-bold group-hover:text-brand-800">{c.name}</p>
-                <p className="text-sm text-stone-500">{c.desc}</p>
+                <p className="mt-4 font-display text-2xl text-ink">{o.name}</p>
+                <p className="text-sm text-stone-500">{o.hint}</p>
               </Link>
             ))}
           </div>
         </section>
 
-        {/* HOW IT WORKS */}
-        <section className="border-y border-stone-200/70 bg-white">
-          <div className="mx-auto max-w-6xl px-4 py-12">
-            <SectionHeading eyebrow="Cara kerja" title="Dari acara ke meja prasmanan" />
-            <ol className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {STEPS.map((s) => (
-                <li key={s.n} className="relative rounded-2xl bg-[#FAF7F1] p-5 ring-1 ring-stone-200/70">
-                  <p className="font-display text-3xl font-bold text-brand-200">{s.n}</p>
-                  <p className="mt-2 font-bold">{s.t}</p>
-                  <p className="mt-1 text-sm leading-relaxed text-stone-500">{s.d}</p>
+        {/* UNTUK UMKM — panel peach → pink */}
+        <section className="px-3 pt-28 sm:px-4">
+          <div className="relative mx-auto grid max-w-[88rem] items-center gap-8 overflow-hidden rounded-4xl bg-gradient-to-r from-peach via-[#FBD3C4] to-[#F9C6D6] px-6 py-12 sm:px-12 lg:grid-cols-[1.2fr_1fr_0.6fr]">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-maroon/80">Untuk UMKM catering</p>
+              <h2 className="mt-3 font-display text-5xl text-maroon sm:text-6xl">
+                Kelola pesanan <em className="em-maroon">tanpa</em> chat berantakan
+              </h2>
+              <p className="serif-strong mt-5 max-w-md text-[17px] leading-relaxed text-stone-800">
+                Terima permintaan, kunci <strong>nota</strong>, atur <strong>kapasitas harian</strong>, dan pantau{" "}
+                <strong>pendapatan</strong> — semuanya dari satu dashboard.
+              </p>
+              <Link href="/register" className={buttonLink("primary", "mt-8 !px-7 !py-3.5 !text-base")}>
+                Daftarkan Usaha
+                <ArrowRight className="ml-6" />
+              </Link>
+            </div>
+            <FoodArt seed="umkm-dapur" size="lg" className="hidden h-72 rounded-3xl !bg-none lg:grid" />
+            <div className="lg:text-center">
+              <p className="font-display text-6xl text-ink sm:text-7xl">24 jam</p>
+              <p className="mt-1 text-sm font-medium text-stone-800">
+                Batas pelunasan — jadwal
+                <br className="hidden lg:block" /> dilepas otomatis bila tak dibayar
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* CARA KERJA */}
+        <section id="cara-kerja" className="mx-auto max-w-7xl scroll-mt-24 px-4 pt-28 sm:px-6">
+          <div className="grid gap-10 lg:grid-cols-[1fr_1.6fr]">
+            <SectionHeading
+              title={
+                <>
+                  Dari <em>permintaan</em> sampai meja prasmanan
+                </>
+              }
+              hint="Empat langkah, satu nota, tanpa bolak-balik konfirmasi lewat chat."
+            />
+            <ol className="grid gap-x-8 gap-y-10 sm:grid-cols-2">
+              {STEPS.map((s, i) => (
+                <li key={s.t} className="border-t border-stone-200 pt-5">
+                  <p className="font-display text-5xl text-tangerine">0{i + 1}</p>
+                  <p className="mt-3 text-lg font-semibold text-ink">{s.t}</p>
+                  <p className="mt-1.5 text-[15px] leading-relaxed text-stone-600">{s.d}</p>
                 </li>
               ))}
             </ol>
           </div>
         </section>
 
-        {/* FEATURED VENDORS */}
-        <section className="mx-auto max-w-6xl px-4 py-12">
-          <div className="flex items-end justify-between gap-4">
-            <SectionHeading
-              eyebrow="Pilihan teratas"
-              title="Vendor favorit pelanggan"
-              hint="Diurutkan berdasarkan rating dan ulasan terverifikasi."
-            />
-            <Link href="/catering" className="shrink-0 rounded-xl px-4 py-2 text-sm font-semibold text-brand-700 ring-1 ring-brand-200 transition hover:bg-brand-50">
-              Lihat semua →
-            </Link>
-          </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {vendors.map((v) => (
-              <VendorCard
-                key={v.id}
-                href={`/catering/${v.id}`}
-                v={{
-                  id: v.id,
-                  businessName: v.businessName,
-                  city: v.city,
-                  rating: v.rating,
-                  reviewCount: v.reviewCount,
-                  startingPrice: v.startingPrice,
-                  remaining: v.remaining,
-                  hasCapacity: v.hasCapacity,
-                  description: v.description,
-                }}
-              />
-            ))}
-            {vendors.length === 0 && (
-              <p className="text-sm text-stone-500">Belum ada vendor terverifikasi. Jalankan seed data.</p>
-            )}
-          </div>
-        </section>
-
-        {/* VENDOR CTA */}
-        <section className="mx-auto max-w-6xl px-4 pb-4">
-          <div className="relative overflow-hidden rounded-3xl bg-stone-900 px-6 py-10 text-white sm:px-10">
-            <div className="hero-dots-light absolute inset-0 opacity-40" />
-            <div className="relative max-w-2xl">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-200">Untuk UMKM catering</p>
-              <h2 className="mt-2 font-display text-2xl font-bold sm:text-3xl">
-                Berhenti kelola pesanan lewat chat berantakan.
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-white/75">
-                Terima permintaan pesanan, konfirmasi ongkir dan biaya lain ke nota,
-                kelola kapasitas harian, dan pantau pendapatan — semua dari satu dashboard.
+        {/* ULASAN NYATA — panel pink */}
+        {reviews.length > 0 && (
+          <section className="px-3 pt-28 sm:px-4">
+            <div className="mx-auto max-w-[88rem] rounded-4xl bg-blush px-5 pb-12 pt-10 sm:px-10">
+              <p className="text-center text-4xl" aria-hidden>
+                😍
               </p>
-              <ul className="mt-4 grid gap-2 text-sm text-white/85 sm:grid-cols-3">
-                {["Konfirmasi pesanan", "Kapasitas otomatis", "Analitik usaha"].map((f) => (
-                  <li key={f} className="flex items-center gap-2">
-                    <span className="grid h-5 w-5 place-items-center rounded-full bg-emerald-400/20 text-xs text-emerald-300">✓</span>
-                    {f}
-                  </li>
+              <h2 className="mt-3 text-center font-display text-5xl text-ink sm:text-6xl">
+                Pelanggan <em className="em-berry">suka</em> hasilnya
+              </h2>
+              <div className="mt-10 grid gap-5 lg:grid-cols-3">
+                {reviews.map((r) => (
+                  <figure key={r.id} className="flex flex-col rounded-3xl bg-white p-7">
+                    <p className="font-display text-2xl text-ink">{r.vendor}</p>
+                    <blockquote className="mt-3 flex-1 text-[15px] leading-relaxed text-stone-700">“{r.comment}”</blockquote>
+                    <figcaption className="mt-6 flex items-center justify-between border-t border-stone-100 pt-5">
+                      <span className="flex items-center gap-3">
+                        <span className="grid h-11 w-11 place-items-center rounded-full bg-sun-300 font-display text-lg text-ink">
+                          {(r.customerName ?? "P").charAt(0).toUpperCase()}
+                        </span>
+                        <span className="font-semibold text-ink">{r.customerName ?? "Pelanggan"}</span>
+                      </span>
+                      <span className="rounded-lg bg-paper px-2.5 py-1 text-sm font-semibold text-ink">
+                        {r.rating.toFixed(1)} <span className="text-amber-500">★</span>
+                      </span>
+                    </figcaption>
+                  </figure>
                 ))}
-              </ul>
-              <Link
-                href="/register"
-                className="mt-6 inline-block rounded-xl bg-white px-6 py-3 text-sm font-semibold text-stone-900 transition hover:-translate-y-0.5"
-              >
-                Daftarkan Usaha Anda — gratis
-              </Link>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
       </main>
       <Footer />
     </>

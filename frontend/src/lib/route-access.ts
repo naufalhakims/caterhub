@@ -5,6 +5,7 @@
  *  - /admin/*    → hanya ADMIN
  *  - /dashboard, /events/*, /profile → hanya CUSTOMER
  *  - /catering*  → tamu & CUSTOMER; vendor/admin dialihkan ke berandanya
+ *  - /notifications → cukup login (semua peran)
  *  - /quotations/[id], /bookings/[id], /payments/[id] → cukup login;
  *    otorisasi per-resource ditegakkan di halaman & server action.
  */
@@ -34,6 +35,10 @@ export function decideRouteAccess(pathname: string, role?: string | null): Route
   if (CUSTOMER_PREFIXES.some((p) => matches(pathname, p))) {
     if (!logged) return "require-login";
     return role === "CUSTOMER" ? "allow" : "redirect-home";
+  }
+
+  if (matches(pathname, "/notifications")) {
+    return logged ? "allow" : "require-login";
   }
 
   if (SHARED_DETAIL_PREFIXES.some((p) => pathname.startsWith(p))) {

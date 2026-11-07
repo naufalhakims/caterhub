@@ -40,6 +40,13 @@ describe("matriks akses rute", () => {
     expect(decideRouteAccess("/admin/users", "CUSTOMER")).toBe("redirect-home");
   });
 
+  it("notifikasi: semua peran yang masuk boleh, tamu diminta login", () => {
+    expect(decideRouteAccess("/notifications", undefined)).toBe("require-login");
+    for (const role of ["CUSTOMER", "VENDOR", "ADMIN"]) {
+      expect(decideRouteAccess("/notifications", role)).toBe("allow");
+    }
+  });
+
   it("tidak tertipu prefix mirip", () => {
     expect(decideRouteAccess("/vendors", "CUSTOMER")).toBe("allow");
     expect(decideRouteAccess("/dashboardx", "VENDOR")).toBe("allow");

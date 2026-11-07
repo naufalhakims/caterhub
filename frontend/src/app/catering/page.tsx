@@ -3,6 +3,8 @@ import { Navbar } from "@/components/Navbar";
 import { VendorCard } from "@/components/VendorCard";
 import { searchVendors } from "@/server/marketplace";
 import { RupiahInput } from "@/components/ui/RupiahInput";
+import { Footer } from "@/components/Footer";
+import { buttonLink } from "@/components/ui/Button";
 
 export default async function CateringPage({
   searchParams,
@@ -15,15 +17,23 @@ export default async function CateringPage({
   return (
     <>
       <Navbar />
-      <main className="mx-auto max-w-6xl px-4 py-8">
-        <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-700">
+      <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
           {showReco ? "Rekomendasi terpersonalisasi" : "Marketplace"}
         </p>
-        <h1 className="mt-1 font-display text-3xl font-bold tracking-tight">
-          {showReco ? "Rekomendasi untuk acara Anda" : "Jelajahi Catering"}
+        <h1 className="mt-2 font-display text-5xl text-ink sm:text-6xl">
+          {showReco ? (
+            <>
+              Pilihan <em>terbaik</em> untuk acara Anda
+            </>
+          ) : (
+            <>
+              <em className="em-ink">Jelajahi</em> catering UMKM <span className="text-stone-400">–</span>
+            </>
+          )}
         </h1>
         {showReco && (searchParams.date || searchParams.guests) && (
-          <p className="mt-1 text-sm text-stone-500">
+          <p className="mt-3 text-[15px] text-stone-600">
             {searchParams.guests ? `${searchParams.guests} tamu` : ""}
             {searchParams.guests && searchParams.date ? " · " : ""}
             {searchParams.date ? `tanggal ${searchParams.date}` : ""}
@@ -35,32 +45,30 @@ export default async function CateringPage({
         <form
           action="/catering"
           method="get"
-          className="mt-5 rounded-2xl border border-stone-200/80 bg-white p-4 shadow-soft"
+          className="mt-8 rounded-4xl bg-gradient-to-r from-mint via-[#F1F5C4] to-sun-200 p-3 sm:p-4"
         >
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_0.85fr_1fr_1fr_auto]">
-            <input name="q" defaultValue={searchParams.q ?? ""} placeholder="Cari nama catering…" aria-label="Cari catering" className="rounded-xl border border-stone-200 bg-[#FAF7F1] px-3 py-2 text-sm outline-none focus:border-brand-500" />
-            <select name="city" defaultValue={searchParams.city ?? ""} aria-label="Kota" className="rounded-xl border border-stone-200 bg-[#FAF7F1] px-3 py-2 text-sm outline-none focus:border-brand-500">
+            <input name="q" defaultValue={searchParams.q ?? ""} placeholder="Cari nama catering…" aria-label="Cari catering" className="rounded-full border border-stone-200 bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-ink" />
+            <select name="city" defaultValue={searchParams.city ?? ""} aria-label="Kota" className="rounded-full border border-stone-200 bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-ink">
               <option value="">Semua kota</option>
               <option value="Surabaya">Surabaya</option>
               <option value="Sidoarjo">Sidoarjo</option>
               <option value="Gresik">Gresik</option>
             </select>
-            <input name="date" type="date" required defaultValue={searchParams.date ?? ""} aria-label="Tanggal acara" className="rounded-xl border border-stone-200 bg-[#FAF7F1] px-3 py-2 text-sm outline-none focus:border-brand-500" />
-            <input name="time" type="time" required defaultValue={searchParams.time ?? ""} aria-label="Jam acara" className="rounded-xl border border-stone-200 bg-[#FAF7F1] px-3 py-2 text-sm outline-none focus:border-brand-500" />
-            <input name="guests" type="number" min={1} required defaultValue={searchParams.guests ?? ""} placeholder="Tamu" aria-label="Jumlah tamu" className="rounded-xl border border-stone-200 bg-[#FAF7F1] px-3 py-2 text-sm outline-none focus:border-brand-500" />
-            <span className="block rounded-xl border border-stone-200 bg-[#FAF7F1] px-3 py-2 focus-within:border-brand-500">
+            <input name="date" type="date" required defaultValue={searchParams.date ?? ""} aria-label="Tanggal acara" className="rounded-full border border-stone-200 bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-ink" />
+            <input name="time" type="time" required defaultValue={searchParams.time ?? ""} aria-label="Jam acara" className="rounded-full border border-stone-200 bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-ink" />
+            <input name="guests" type="number" min={1} required defaultValue={searchParams.guests ?? ""} placeholder="Tamu" aria-label="Jumlah tamu" className="rounded-full border border-stone-200 bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-ink" />
+            <span className="block rounded-full border border-stone-200 bg-white px-4 py-2.5 focus-within:border-ink">
               <RupiahInput name="budgetMax" variant="bare" defaultValue={searchParams.budgetMax ?? ""} placeholder="Budget maks" />
             </span>
-            <button className="rounded-xl bg-brand-700 px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-800">
-              Cari
-            </button>
+            <button className={buttonLink("dark")}>Cari</button>
           </div>
-          <p className="mt-2 text-xs text-stone-400">Tanggal & jam wajib diisi agar kapasitas vendor bisa dicek sebelum pesanan dikirim.</p>
+          <p className="mt-2 px-2 text-xs text-stone-600">Tanggal & jam wajib diisi agar kapasitas vendor bisa dicek sebelum pesanan dikirim.</p>
         </form>
 
-        <div className="mt-6 flex items-center justify-between">
+        <div className="mt-10 flex items-center justify-between">
           <p className="text-sm text-stone-500">
-            <span className="font-bold text-stone-800">{results.length}</span> vendor ditemukan
+            <span className="font-display text-2xl text-ink">{results.length}</span> vendor ditemukan
           </p>
           {showReco && (
             <Link href="/catering" className="text-sm font-semibold text-brand-700 hover:underline">
@@ -69,7 +77,7 @@ export default async function CateringPage({
           )}
         </div>
 
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {results.map((v, i) => (
             <div key={v.id} className="animate-rise" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
               <VendorCard
@@ -104,17 +112,20 @@ export default async function CateringPage({
           ))}
         </div>
         {results.length === 0 && (
-          <div className="mt-6 rounded-2xl border border-dashed border-stone-300 bg-white p-12 text-center">
-            <p className="font-display text-xl font-bold">Tidak ada vendor yang cocok.</p>
+          <div className="mt-6 rounded-4xl bg-blush p-12 text-center">
+            <p className="font-display text-3xl text-ink">
+              Belum ada yang <em className="em-berry">cocok</em>.
+            </p>
             <p className="mx-auto mt-1 max-w-sm text-sm text-stone-500">
               Coba longgarkan budget, ganti tanggal, atau pilih kota lain di Surabaya Raya.
             </p>
-            <Link href="/catering" className="mt-4 inline-block rounded-xl bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white">
+            <Link href="/catering" className={buttonLink("primary", "mt-5")}>
               Lihat semua vendor
             </Link>
           </div>
         )}
       </main>
+      <Footer />
     </>
   );
 }

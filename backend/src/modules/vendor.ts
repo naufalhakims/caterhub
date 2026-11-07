@@ -6,14 +6,15 @@ import { requireAuth, requireRole } from "../auth/middleware";
 import { asyncHandler, sendError } from "../http";
 import { ApiError } from "../errors";
 import {
+  NON_REVENUE_BOOKING_STATUSES,
   canTransitionBooking,
   canVendorSetBookingStatus,
-  cancelBookingAndRelease,
 } from "../domain/booking";
+import { maybeSweep } from "../domain/expiry";
 import { parseDateOnly } from "../lib/date";
 import { setDailyCapacity } from "../domain/capacity";
 import { zIdr, zIdrWithDefault } from "../lib/money";
-import { todayDateOnly } from "../lib/date";
+import { jakartaDateString, todayDateOnly } from "../lib/date";
 import {
   MAX_UPLOAD_BYTES,
   deletePrivateDocument,
@@ -114,6 +115,7 @@ export function vendorRouter() {
     "/dashboard",
     asyncHandler(async (req, res) => {
       const vendor = await requireVendor(req);
+      await maybeSweep();
       const [pendingQuotes, upcoming, revenue, orderAgg, recent, pendingCount, todayAvail] = await Promise.all([
         db.quotation.findMany({
           where: { vendorId: vendor.id, origin: "CUSTOMER_REQUEST", status: "REQUESTED" },
@@ -131,11 +133,14 @@ export function vendorRouter() {
           take: 5,
         }),
         db.payment.aggregate({
-          where: { booking: { vendorId: vendor.id }, status: "SETTLEMENT" },
+          where: {
+            booking: { vendorId: vendor.id, status: { notIn: [...NON_REVENUE_BOOKING_STATUSES] } },
+            status: "SETTLEMENT",
+          },
           _sum: { amount: true },
         }),
         db.booking.aggregate({
-          where: { vendorId: vendor.id, status: { not: "CANCELLED" } },
+          where: { vendorId: vendor.id, status: { notIn: [...NON_REVENUE_BOOKING_STATUSES] } },
           _sum: { totalAmount: true },
         }),
         db.booking.findMany({
@@ -173,7 +178,10 @@ export function vendorRouter() {
       const MONTH_ID = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 
       const payments = await db.payment.findMany({
-        where: { booking: { vendorId: vendor.id }, status: "SETTLEMENT" },
+        where: {
+          booking: { vendorId: vendor.id, status: { notIn: [...NON_REVENUE_BOOKING_STATUSES] } },
+          status: "SETTLEMENT",
+        },
         include: { booking: { include: { quotation: { include: { package: true } } } } },
         orderBy: { paidAt: "asc" },
       });
@@ -181,7 +189,8 @@ export function vendorRouter() {
       const byMonth = new Map<string, number>();
       for (const p of payments) {
         const d = p.paidAt ?? p.createdAt;
-        const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        // Kelompokkan per bulan WIB, bukan zona waktu server.
+        const k = jakartaDateString(d).slice(0, 7);
         byMonth.set(k, (byMonth.get(k) ?? 0) + p.amount);
       }
       const chart = [...byMonth.entries()].slice(-6).map(([key, revenue]) => {
@@ -404,6 +413,7 @@ export function vendorRouter() {
     "/bookings",
     asyncHandler(async (req, res) => {
       const vendor = await requireVendor(req);
+      await maybeSweep();
       const rows = await db.booking.findMany({
         where: { vendorId: vendor.id },
         include: {
@@ -426,18 +436,15 @@ export function vendorRouter() {
       const booking = await db.booking.findUnique({ where: { id: req.params.id } });
       if (!booking || booking.vendorId !== vendor.id) throw new ApiError(403, "FORBIDDEN", "Akses ditolak.");
 
-      // Vendor tidak boleh menandai lunas sendiri; status PAID hanya dari webhook pembayaran.
+      // PAID hanya dari webhook pembayaran; pembatalan lewat POST /bookings/:id/cancel (wajib alasan).
       if (!canVendorSetBookingStatus(to)) {
-        throw new ApiError(403, "FORBIDDEN", "Status ini hanya dapat diubah oleh sistem pembayaran.");
-      }
-
-      if (to === "CANCELLED") {
-        try {
-          await cancelBookingAndRelease(booking.id, { vendorId: vendor.id });
-        } catch (error) {
-          throw new ApiError(409, "CANCEL_FAILED", (error as Error).message);
-        }
-        return res.json({ data: { ok: true } });
+        throw new ApiError(
+          403,
+          "FORBIDDEN",
+          to === "CANCELLED"
+            ? "Gunakan formulir pembatalan dan sertakan alasannya."
+            : "Status ini hanya dapat diubah oleh sistem pembayaran.",
+        );
       }
       if (!canTransitionBooking(booking.status, to)) {
         throw new ApiError(409, "INVALID_TRANSITION", "Transisi status tidak valid.");

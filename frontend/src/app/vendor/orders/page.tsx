@@ -1,27 +1,33 @@
 import Link from "next/link";
 import { Card, Empty, StatusBadge } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { formatIDR, formatDateID } from "@/lib/format";
+import { FormButton } from "@/components/ui/FormButton";
+import { Flash } from "@/components/ui/Flash";
+import { CancelBookingForm } from "@/components/CancelBookingForm";
+import { formatIDR, formatDateID, formatDateTimeID } from "@/lib/format";
 import { apiGet } from "@/lib/api";
 import { requireVendor } from "@/server/vendor-helpers";
 import { advanceBookingAction } from "@/server/vendor-actions";
 
-const NEXT: Record<string, [string, string][]> = {
-  PAYMENT_PENDING: [],
-  PAID: [["PREPARING", "Mulai persiapan"]],
-  PREPARING: [["READY", "Tandai siap"]],
-  READY: [["DELIVERED", "Tandai terkirim"]],
-  DELIVERED: [["COMPLETED", "Selesaikan"]],
+/** Satu langkah produksi berikutnya per status — label menyebut hasilnya. */
+const NEXT: Record<string, [string, string] | undefined> = {
+  PAID: ["PREPARING", "Mulai memasak"],
+  PREPARING: ["READY", "Tandai siap kirim"],
+  READY: ["DELIVERED", "Tandai sudah diantar"],
+  DELIVERED: ["COMPLETED", "Selesaikan pesanan"],
 };
 
-// Status yang masih boleh dibatalkan vendor (lihat VALID_BOOKING_TRANSITIONS).
+// Status yang masih boleh dibatalkan vendor (lihat decideCancellation di backend).
 const CANCELLABLE = new Set(["PAYMENT_PENDING", "CONFIRMED", "PAID", "PREPARING"]);
+const PAID_STATUSES = new Set(["PAID", "PREPARING"]);
 
 type VendorOrder = {
   id: string;
   status: string;
   totalAmount: number;
+  paymentDueAt: string | null;
+  cancelReason: string | null;
   event: { name: string; guestCount: number; location: string; eventDate: string; eventTime: string | null };
+  customer: { name: string | null };
 };
 
 export default async function VendorOrdersPage({
@@ -31,56 +37,81 @@ export default async function VendorOrdersPage({
 }) {
   await requireVendor();
   const orders = await apiGet<VendorOrder[]>("/api/v1/vendor/bookings");
+  const active = orders.filter((o) => !["CANCELLED", "REFUND_PENDING", "REFUNDED", "COMPLETED"].includes(o.status));
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold tracking-tight">Pesanan</h1>
-      <p className="text-sm text-stone-500">{orders.length} pesanan masuk — majukan status seiring produksi.</p>
-      {searchParams?.ok && <p className="mt-2 rounded-xl bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-700 ring-1 ring-inset ring-emerald-200">{searchParams.ok}</p>}
-      {searchParams?.error && <p className="mt-2 rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700 ring-1 ring-inset ring-red-200">{searchParams.error}</p>}
+      <h1 className="font-display text-4xl text-ink sm:text-5xl">Pesanan</h1>
+      <p className="text-sm text-stone-500">
+        {active.length} aktif dari {orders.length} pesanan — majukan status seiring produksi.
+      </p>
+      <Flash ok={searchParams?.ok} error={searchParams?.error} />
       {orders.length === 0 ? (
         <div className="mt-4">
           <Empty title="Belum ada pesanan." hint="Pesanan muncul setelah Anda mengonfirmasi permintaan pelanggan." />
         </div>
       ) : (
         <div className="mt-4 space-y-2.5">
-          {orders.map((o) => (
-            <Card key={o.id} className="!p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <Link href={`/bookings/${o.id}`} className="font-semibold hover:text-brand-700 hover:underline">
-                    {o.event.name} · {o.event.guestCount} pax
-                  </Link>
-                  <p className="text-sm text-stone-500">\n                    {formatDateID(o.event.eventDate)}\n                    {o.event.eventTime ? ` · ${o.event.eventTime}` : ""} · {o.event.location}\n                  </p>
-                  <p className="mt-0.5 text-sm font-bold">{formatIDR(o.totalAmount)}</p>
+          {orders.map((o) => {
+            const next = NEXT[o.status];
+            return (
+              <Card key={o.id} className="!p-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <Link href={`/bookings/${o.id}`} className="font-semibold hover:text-brand-700 hover:underline">
+                      {o.event.name} · {o.event.guestCount} pax
+                    </Link>
+                    <p className="text-sm text-stone-500">
+                      {formatDateID(o.event.eventDate)}
+                      {o.event.eventTime ? ` · ${o.event.eventTime}` : ""} · {o.event.location}
+                    </p>
+                    <p className="mt-0.5 text-sm">
+                      <span className="font-bold">{formatIDR(o.totalAmount)}</span>
+                      {o.customer.name && <span className="text-stone-500"> · {o.customer.name}</span>}
+                    </p>
+                  </div>
+                  <StatusBadge status={o.status} />
                 </div>
-                <StatusBadge status={o.status} />
-              </div>
-              {o.status === "PAYMENT_PENDING" && (
-                <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 ring-1 ring-inset ring-amber-200">
-                  Menunggu pelanggan membayar lunas. Persiapan baru bisa dimulai setelah pembayaran diterima.
-                </p>
-              )}
-              {(NEXT[o.status] ?? []).length > 0 || CANCELLABLE.has(o.status) ? (
-                <div className="mt-3 flex flex-wrap gap-2 border-t border-stone-100 pt-3">
-                  {(NEXT[o.status] ?? []).map(([to, label]) => (
-                    <form key={to} action={advanceBookingAction}>
-                      <input type="hidden" name="id" value={o.id} />
-                      <input type="hidden" name="to" value={to} />
-                      <Button type="submit" variant="secondary">{label} →</Button>
-                    </form>
-                  ))}
-                  {CANCELLABLE.has(o.status) && (
-                    <form action={advanceBookingAction}>
-                      <input type="hidden" name="id" value={o.id} />
-                      <input type="hidden" name="to" value="CANCELLED" />
-                      <Button type="submit" variant="danger">Batalkan & lepas kapasitas</Button>
-                    </form>
-                  )}
-                </div>
-              ) : null}
-            </Card>
-          ))}
+
+                {o.status === "PAYMENT_PENDING" && (
+                  <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 ring-1 ring-inset ring-amber-200">
+                    Menunggu pelanggan melunasi
+                    {o.paymentDueAt ? ` sebelum ${formatDateTimeID(o.paymentDueAt)} WIB` : ""}. Bila lewat, pesanan batal otomatis
+                    dan kapasitas kembali tersedia.
+                  </p>
+                )}
+                {o.cancelReason && (
+                  <p className="mt-2 text-xs text-stone-500">Alasan batal: {o.cancelReason}</p>
+                )}
+
+                {(next || CANCELLABLE.has(o.status)) && (
+                  <div className="mt-3 flex flex-wrap items-start justify-between gap-2 border-t border-stone-100 pt-3">
+                    {next ? (
+                      <form action={advanceBookingAction}>
+                        <input type="hidden" name="id" value={o.id} />
+                        <input type="hidden" name="to" value={next[0]} />
+                        <FormButton pendingLabel="Menyimpan…">{next[1]} →</FormButton>
+                      </form>
+                    ) : (
+                      <span />
+                    )}
+                    {CANCELLABLE.has(o.status) && (
+                      <CancelBookingForm
+                        bookingId={o.id}
+                        returnTo="/vendor/orders"
+                        label="Batalkan"
+                        consequence={
+                          PAID_STATUSES.has(o.status)
+                            ? "Pelanggan sudah membayar lunas — dana akan dikembalikan penuh melalui admin. Pembatalan sepihak menurunkan kepercayaan pelanggan."
+                            : "Kapasitas pada tanggal ini dikembalikan dan pelanggan diberi tahu."
+                        }
+                      />
+                    )}
+                  </div>
+                )}
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

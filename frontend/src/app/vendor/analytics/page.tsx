@@ -23,7 +23,7 @@ export default async function VendorAnalyticsPage() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold tracking-tight">Analitik usaha</h1>
+      <h1 className="font-display text-4xl text-ink sm:text-5xl">Analitik usaha</h1>
       <p className="text-sm text-stone-500">Angka dari transaksi nyata — bukan data hiasan.</p>
 
       {insight && (
@@ -34,7 +34,7 @@ export default async function VendorAnalyticsPage() {
 
       <Card className="mt-4">
         <div className="flex items-baseline justify-between">
-          <h2 className="font-display text-lg font-bold">Pendapatan</h2>
+          <h2 className="font-display text-2xl text-ink">Pendapatan</h2>
           <p className="text-sm font-extrabold text-brand-800">{formatIDR(total)}</p>
         </div>
         {chart.length === 0 ? (
@@ -46,7 +46,7 @@ export default async function VendorAnalyticsPage() {
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <Card>
-          <h2 className="font-display text-lg font-bold">Paket populer</h2>
+          <h2 className="font-display text-2xl text-ink">Paket populer</h2>
           {popular.length === 0 ? (
             <p className="mt-2 text-sm text-stone-500">Belum ada data.</p>
           ) : (
@@ -70,7 +70,7 @@ export default async function VendorAnalyticsPage() {
         </Card>
 
         <Card>
-          <h2 className="font-display text-lg font-bold">Utilisasi 14 hari ke depan</h2>
+          <h2 className="font-display text-2xl text-ink">Utilisasi 14 hari ke depan</h2>
           {avail.length === 0 ? (
             <p className="mt-2 text-sm text-stone-500">Belum ada data kapasitas.</p>
           ) : (

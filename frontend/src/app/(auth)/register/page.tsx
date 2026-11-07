@@ -10,9 +10,9 @@ export default function RegisterPage({
   searchParams?: { error?: string };
 }) {
   return (
-    <Card className="animate-rise w-full !p-7">
-      <h1 className="font-display text-2xl font-bold tracking-tight">Buat akun CaterHub</h1>
-      <p className="mt-1 text-sm text-stone-500">
+    <Card className="animate-rise w-full !border-0 !p-0 sm:!p-2">
+      <h1 className="font-display text-5xl text-ink">Buat <em>akun</em> baru</h1>
+      <p className="mt-3 text-[15px] text-stone-500">
         Sudah punya akun?{" "}
         <Link href="/login" className="font-semibold text-brand-700 hover:underline">
           Masuk
@@ -39,7 +39,7 @@ export default function RegisterPage({
             <option value="VENDOR">Vendor — kelola usaha catering</option>
           </Select>
         </Field>
-        <SubmitButton className="w-full !py-2.5">
+        <SubmitButton arrow className="w-full !py-3 !text-base">
           Buat Akun
         </SubmitButton>
       </form>

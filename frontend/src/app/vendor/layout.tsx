@@ -5,11 +5,11 @@ import { requireRole } from "@/lib/auth-helpers";
 const NAV = [
   ["/vendor/dashboard", "Dashboard", "◈"],
   ["/vendor/orders", "Pesanan", "▣"],
-  ["/vendor/quotations", "Permintaan", "✎"],
+  ["/vendor/quotations", "Permintaan masuk", "✎"],
   ["/vendor/menu", "Menu", "☰"],
   ["/vendor/packages", "Paket", "▤"],
-  ["/vendor/calendar", "Kalender", "◫"],
-  ["/vendor/capacity", "Kapasitas", "◍"],
+  ["/vendor/calendar", "Jadwal acara", "◫"],
+  ["/vendor/capacity", "Kapasitas harian", "◍"],
   ["/vendor/analytics", "Analitik", "↗"],
   ["/vendor/verification", "Verifikasi", "✓"],
   ["/vendor/profile", "Profil", "⚙"],
@@ -20,8 +20,8 @@ export default async function VendorLayout({ children }: { children: React.React
   return (
     <>
       <Navbar />
-      <div className="mx-auto max-w-6xl gap-6 px-4 py-6 md:flex">
-        <aside className="shrink-0 md:w-52">
+      <div className="mx-auto max-w-7xl gap-10 px-4 py-8 sm:px-6 md:flex">
+        <aside className="shrink-0 md:w-56">
           <SideNav items={NAV} />
         </aside>
         <div className="min-w-0 flex-1">{children}</div>

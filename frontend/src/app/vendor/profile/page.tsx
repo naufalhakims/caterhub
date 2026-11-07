@@ -1,10 +1,11 @@
 import { Card, StatusBadge } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { FormButton } from "@/components/ui/FormButton";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Field, Input, Select, Textarea } from "@/components/ui/Field";
 import { requireVendor } from "@/server/vendor-helpers";
 import { updateVendorProfileAction } from "@/server/vendor-actions";
 import { removeVendorImageAction, uploadVendorImageAction } from "@/server/image-actions";
+import { Flash } from "@/components/ui/Flash";
 
 const ACCEPT = "image/jpeg,image/png,image/webp";
 
@@ -37,10 +38,9 @@ export default async function VendorProfilePage({
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold tracking-tight">Profil usaha</h1>
+      <h1 className="font-display text-4xl text-ink sm:text-5xl">Profil usaha</h1>
       <p className="text-sm text-stone-500">Tampil di marketplace — tulis semenarik etalase aslimu.</p>
-      {searchParams?.ok && <p className="mt-2 rounded-xl bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-700 ring-1 ring-inset ring-emerald-200">{searchParams.ok}</p>}
-      {searchParams?.error && <p className="mt-2 rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700 ring-1 ring-inset ring-red-200">{searchParams.error}</p>}
+      <Flash ok={searchParams?.ok} error={searchParams?.error} />
 
       <Card className="mt-4 !bg-gradient-to-r !from-stone-900 !to-brand-900 !text-white !border-transparent">
         <div className="flex items-center gap-4">
@@ -70,7 +70,7 @@ export default async function VendorProfilePage({
       )}
 
       <Card className="mt-4">
-        <h2 className="font-display text-lg font-bold">Etalase</h2>
+        <h2 className="font-display text-2xl text-ink">Etalase</h2>
         <p className="text-[13px] text-stone-500">JPG/PNG/WEBP, maksimal 5 MB. Gambar lama otomatis dihapus saat diganti.</p>
 
         <div className="mt-3 grid gap-4 sm:grid-cols-2">
@@ -84,7 +84,7 @@ export default async function VendorProfilePage({
                   <form action={removeVendorImageAction}>
                     <input type="hidden" name="kind" value="logo" />
                     <input type="hidden" name="url" value={fresh.logoUrl} />
-                    <Button type="submit" variant="ghost" className="!px-2 !py-1 !text-xs !text-red-600 hover:!bg-red-50">Hapus</Button>
+                    <FormButton variant="ghost" pendingLabel="Menghapus…" className="!px-2 !py-1 !text-xs !text-red-600 hover:!bg-red-50">Hapus</FormButton>
                   </form>
                 </>
               ) : (
@@ -104,7 +104,7 @@ export default async function VendorProfilePage({
                   <form action={removeVendorImageAction}>
                     <input type="hidden" name="kind" value="cover" />
                     <input type="hidden" name="url" value={fresh.coverUrl} />
-                    <Button type="submit" variant="ghost" className="!px-2 !py-1 !text-xs !text-red-600 hover:!bg-red-50">Hapus</Button>
+                    <FormButton variant="ghost" pendingLabel="Menghapus…" className="!px-2 !py-1 !text-xs !text-red-600 hover:!bg-red-50">Hapus</FormButton>
                   </form>
                 </div>
               ) : (
@@ -139,7 +139,7 @@ export default async function VendorProfilePage({
       </Card>
 
       <Card className="mt-4">
-        <h2 className="font-display text-lg font-bold">Informasi usaha</h2>
+        <h2 className="font-display text-2xl text-ink">Informasi usaha</h2>
         <form action={updateVendorProfileAction} className="mt-3 grid gap-3 sm:grid-cols-2">
           <Field label="Nama usaha"><Input name="businessName" defaultValue={fresh.businessName} required /></Field>
           <Field label="Telepon / WA"><Input name="phone" defaultValue={fresh.phone ?? ""} placeholder="cth. 0812-3456-7890" /></Field>

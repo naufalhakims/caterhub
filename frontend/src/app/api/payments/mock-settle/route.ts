@@ -15,8 +15,10 @@ export async function POST(req: Request) {
     const data = await apiPost<{ bookingId: string }>(`/api/v1/payments/${paymentId}/mock-settle`);
     return NextResponse.redirect(new URL(`/bookings/${data.bookingId}`, req.url), 303);
   } catch (error) {
-    const status = error instanceof ApiError ? error.status : 500;
+    // Kembali ke halaman bayar dengan pesan, bukan menampilkan JSON mentah.
     const message = error instanceof ApiError ? error.message : "Gagal mensimulasikan pembayaran.";
-    return NextResponse.json({ error: message }, { status });
+    const back = new URL(`/payments/${paymentId}`, req.url);
+    back.searchParams.set("error", message);
+    return NextResponse.redirect(back, 303);
   }
 }

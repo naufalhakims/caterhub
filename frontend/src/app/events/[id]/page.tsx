@@ -53,7 +53,7 @@ export default async function EventDetailPage({ params }: { params: { id: string
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-200">
             {event.eventType === "WEDDING" ? "Pernikahan" : event.eventType}
           </p>
-          <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-3xl">{event.name}</h1>
+          <h1 className="mt-1 font-display text-4xl text-ink sm:text-5xl">{event.name}</h1>
           <p className="mt-2 text-sm text-white/80">
             {formatDateID(event.eventDate)}{event.eventTime ? ` · ${event.eventTime}` : ""} · {event.guestCount} pax
           </p>
@@ -76,7 +76,7 @@ export default async function EventDetailPage({ params }: { params: { id: string
         <div className="mt-2.5 space-y-2">
           {event.quotations.map((q) => (
             <Link key={q.id} href={`/quotations/${q.id}`}>
-              <Card className="flex items-center justify-between !p-4 transition hover:-translate-y-0.5 hover:shadow-lift">
+              <Card interactive className="flex items-center justify-between !p-4">
                 <div>
                   <p className="font-semibold">{q.vendor.businessName}</p>
                   <p className="text-sm text-stone-500">{formatIDR(q.total)}</p>
@@ -96,7 +96,7 @@ export default async function EventDetailPage({ params }: { params: { id: string
         <div className="mt-2.5 space-y-2">
           {event.bookings.map((b) => (
             <Link key={b.id} href={`/bookings/${b.id}`}>
-              <Card className="flex items-center justify-between !p-4 transition hover:-translate-y-0.5 hover:shadow-lift">
+              <Card interactive className="flex items-center justify-between !p-4">
                 <div>
                   <p className="font-semibold">{b.vendor.businessName}</p>
                   <p className="text-sm text-stone-500">{formatIDR(b.totalAmount)}</p>

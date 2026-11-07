@@ -14,8 +14,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <>
       <Navbar />
-      <div className="mx-auto max-w-6xl gap-6 px-4 py-6 md:flex">
-        <aside className="shrink-0 md:w-52">
+      <div className="mx-auto max-w-7xl gap-10 px-4 py-8 sm:px-6 md:flex">
+        <aside className="shrink-0 md:w-56">
           <SideNav items={NAV} />
         </aside>
         <div className="min-w-0 flex-1">{children}</div>

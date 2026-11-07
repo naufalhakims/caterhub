@@ -98,9 +98,5 @@ export async function advanceBookingAction(formData: FormData): Promise<never> {
   }
   revalidatePath("/vendor/orders");
   revalidatePath("/vendor/capacity");
-  redirect(
-    to === "CANCELLED"
-      ? "/vendor/orders?ok=Pesanan dibatalkan dan kapasitas dikembalikan."
-      : "/vendor/orders?ok=Status pesanan diperbarui.",
-  );
+  redirect("/vendor/orders?ok=Status pesanan diperbarui.");
 }

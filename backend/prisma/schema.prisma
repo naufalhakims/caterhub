@@ -68,6 +68,8 @@ enum BookingStatus {
   DELIVERED
   COMPLETED
   CANCELLED
+  REFUND_PENDING
+  REFUNDED
 }
 
 enum PaymentStatus {
@@ -373,7 +375,13 @@ model Booking {
   depositAmount   Int
   remainingAmount Int
   confirmedAt     DateTime?
+  /// Batas waktu pelunasan; lewat dari ini booking dibatalkan otomatis dan kapasitas dilepas.
+  paymentDueAt    DateTime?
   cancelledAt     DateTime?
+  cancelReason    String?
+  cancelledBy     String? // CUSTOMER | VENDOR | SYSTEM
+  refundAmount    Int?
+  refundedAt      DateTime?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -387,6 +395,7 @@ model Booking {
   @@index([vendorId])
   @@index([customerId])
   @@index([status])
+  @@index([status, paymentDueAt])
 }
 
 model Payment {
@@ -398,6 +407,7 @@ model Payment {
   method            String        @default("QRIS")
   status            PaymentStatus @default(PENDING)
   qrPayload         String? // QR string / checkout URL snapshot
+  expiresAt         DateTime?
   paidAt            DateTime?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
@@ -430,10 +440,11 @@ model Notification {
   type      String    @default("INFO")
   title     String
   message   String
+  link      String?
   readAt    DateTime?
   createdAt DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@index([userId, readAt])
 }

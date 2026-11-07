@@ -10,9 +10,9 @@ export default function LoginPage({
   searchParams?: { error?: string };
 }) {
   return (
-    <Card className="animate-rise w-full !p-7">
-      <h1 className="font-display text-2xl font-bold tracking-tight">Selamat datang kembali</h1>
-      <p className="mt-1 text-sm text-stone-500">
+    <Card className="animate-rise w-full !border-0 !p-0 sm:!p-2">
+      <h1 className="font-display text-5xl text-ink">Selamat <em>datang</em> kembali</h1>
+      <p className="mt-3 text-[15px] text-stone-500">
         Belum punya akun?{" "}
         <Link href="/register" className="font-semibold text-brand-700 hover:underline">
           Daftar gratis
@@ -30,11 +30,11 @@ export default function LoginPage({
         <Field label="Kata Sandi">
           <Input name="password" type="password" required placeholder="••••••••" autoComplete="current-password" />
         </Field>
-        <SubmitButton className="w-full !py-2.5">
+        <SubmitButton arrow className="w-full !py-3 !text-base">
           Masuk
         </SubmitButton>
       </form>
-      <div className="mt-5 rounded-xl bg-[#FAF7F1] p-3.5 text-xs leading-relaxed text-stone-500 ring-1 ring-stone-200/70">
+      <div className="mt-5 rounded-xl bg-paper p-3.5 text-xs leading-relaxed text-stone-500 ring-1 ring-stone-200/70">
         <p className="font-bold text-stone-600">Akun demo — kata sandi: demo1234</p>
         <p className="mt-1">pelanggan@demo.id · vendor1@demo.id · admin@caterhub.id</p>
       </div>

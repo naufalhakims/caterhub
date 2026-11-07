@@ -3,7 +3,7 @@
 export default function Error({ reset }: { reset: () => void }) {
   return (
     <main className="mx-auto max-w-md px-4 py-20 text-center">
-      <h1 className="text-xl font-extrabold">Terjadi kesalahan</h1>
+      <h1 className="font-display text-3xl text-ink">Terjadi kesalahan</h1>
       <p className="mt-2 text-sm text-stone-500">Coba muat ulang halaman.</p>
       <button
         onClick={reset}

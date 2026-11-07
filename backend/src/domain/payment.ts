@@ -1,7 +1,13 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { env } from "../env";
 
-export type CreatePaymentInput = { bookingId: string; amount: number; customerEmail?: string | null };
+export type CreatePaymentInput = {
+  bookingId: string;
+  amount: number;
+  customerEmail?: string | null;
+  /** Masa berlaku tagihan di sisi provider; harus sama dengan Payment.expiresAt. */
+  expiresInMinutes: number;
+};
 export type PaymentResult = { providerReference: string; qrPayload: string };
 export type WebhookResult = {
   providerReference: string;
@@ -72,6 +78,8 @@ export class MidtransPaymentProvider implements PaymentProvider {
         transaction_details: { order_id: orderId, gross_amount: input.amount },
         payment_type: "qris",
         customer_details: { email: input.customerEmail ?? undefined },
+        // QR lama tidak boleh tetap bisa dibayar setelah tagihan baru dibuat.
+        expiry: { unit: "minutes", duration: Math.max(1, Math.floor(input.expiresInMinutes)) },
       }),
     });
     if (!res.ok) throw new Error("Gagal membuat pembayaran Midtrans.");

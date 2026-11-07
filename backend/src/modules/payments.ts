@@ -7,6 +7,10 @@ import { asyncHandler, sendError } from "../http";
 import { ApiError } from "../errors";
 import { applyWebhookResult } from "../domain/payment-apply";
 import { MockPaymentProvider, getPaymentProvider } from "../domain/payment";
+import { expireUnpaidBookings } from "../domain/booking";
+
+/** Masa berlaku satu tagihan QRIS (dipotong bila batas pelunasan lebih dulu). */
+const PAYMENT_TTL_MINUTES = 30;
 
 const createSchema = z.object({
   bookingId: z.string().min(1),
@@ -42,41 +46,85 @@ export function paymentsRouter() {
     asyncHandler(async (req, res) => {
       const user = req.user!;
       const input = createSchema.parse(req.body ?? {});
-      const booking = await db.booking.findUnique({ where: { id: input.bookingId } });
-      if (!booking || booking.customerId !== user.id) throw new ApiError(403, "FORBIDDEN", "Akses ditolak.");
-      if (booking.status === "CANCELLED") {
-        throw new ApiError(409, "BOOKING_CANCELLED", "Pesanan dibatalkan.");
-      }
-      if (!["PAYMENT_PENDING", "CONFIRMED"].includes(booking.status)) {
-        throw new ApiError(409, "PAYMENT_NOT_ALLOWED", "Pembayaran tidak tersedia pada status pesanan ini.");
+      const owned = await db.booking.findUnique({
+        where: { id: input.bookingId },
+        select: { customerId: true, status: true, paymentDueAt: true },
+      });
+      if (!owned || owned.customerId !== user.id) throw new ApiError(403, "FORBIDDEN", "Akses ditolak.");
+      if (owned.status === "PAYMENT_PENDING" && owned.paymentDueAt && owned.paymentDueAt < new Date()) {
+        // Lepas kapasitas sekarang juga, jangan menunggu penjadwal.
+        await expireUnpaidBookings();
+        throw new ApiError(
+          409,
+          "PAYMENT_OVERDUE",
+          "Batas waktu pembayaran sudah lewat; pesanan dibatalkan dan jadwal vendor dilepas.",
+        );
       }
 
-      const paid = await db.payment.aggregate({
-        where: { bookingId: booking.id, status: "SETTLEMENT" },
-        _sum: { amount: true },
-      });
-      const paidSoFar = paid._sum.amount ?? 0;
-      const amount = booking.totalAmount - paidSoFar;
-      if (amount <= 0) throw new ApiError(409, "ALREADY_PAID", "Pesanan sudah lunas.");
+      const { payment, reused } = await db.$transaction(
+        async (tx) => {
+          // Kunci baris booking: dua klik "Bayar" bersamaan tidak boleh membuat dua tagihan.
+          await tx.$queryRaw`SELECT "id" FROM "Booking" WHERE "id" = ${input.bookingId} FOR UPDATE`;
+          const booking = await tx.booking.findUniqueOrThrow({ where: { id: input.bookingId } });
+          if (booking.status === "CANCELLED" || booking.status === "REFUND_PENDING" || booking.status === "REFUNDED") {
+            throw new ApiError(409, "BOOKING_CANCELLED", "Pesanan dibatalkan.");
+          }
+          if (!["PAYMENT_PENDING", "CONFIRMED"].includes(booking.status)) {
+            throw new ApiError(409, "PAYMENT_NOT_ALLOWED", "Pembayaran tidak tersedia pada status pesanan ini.");
+          }
 
-      const provider = getPaymentProvider();
-      const result = await provider.createPayment({
-        bookingId: booking.id,
-        amount,
-        customerEmail: user.email,
-      });
-      const payment = await db.payment.create({
-        data: {
-          bookingId: booking.id,
-          provider: provider.name,
-          providerReference: result.providerReference,
-          amount,
-          method: "QRIS",
-          status: "PENDING",
-          qrPayload: result.qrPayload,
+          const now = new Date();
+          const pending = await tx.payment.findFirst({
+            where: { bookingId: booking.id, status: "PENDING" },
+            orderBy: { createdAt: "desc" },
+          });
+          if (pending && (!pending.expiresAt || pending.expiresAt > now)) {
+            return { payment: pending, reused: true };
+          }
+          // Tagihan lama sudah habis masa berlakunya → tandai, lalu buat yang baru.
+          await tx.payment.updateMany({
+            where: { bookingId: booking.id, status: "PENDING" },
+            data: { status: "EXPIRED" },
+          });
+
+          const paid = await tx.payment.aggregate({
+            where: { bookingId: booking.id, status: "SETTLEMENT" },
+            _sum: { amount: true },
+          });
+          const amount = booking.totalAmount - (paid._sum.amount ?? 0);
+          if (amount <= 0) throw new ApiError(409, "ALREADY_PAID", "Pesanan sudah lunas.");
+
+          const expiresAt = new Date(
+            Math.min(
+              now.getTime() + PAYMENT_TTL_MINUTES * 60_000,
+              booking.paymentDueAt?.getTime() ?? Number.POSITIVE_INFINITY,
+            ),
+          );
+          const provider = getPaymentProvider();
+          const result = await provider.createPayment({
+            bookingId: booking.id,
+            amount,
+            customerEmail: user.email,
+            expiresInMinutes: (expiresAt.getTime() - now.getTime()) / 60_000,
+          });
+          const created = await tx.payment.create({
+            data: {
+              bookingId: booking.id,
+              provider: provider.name,
+              providerReference: result.providerReference,
+              amount,
+              method: "QRIS",
+              status: "PENDING",
+              qrPayload: result.qrPayload,
+              expiresAt,
+            },
+          });
+          return { payment: created, reused: false };
         },
-      });
-      res.status(201).json({ data: payment });
+        // Pemanggilan provider eksternal terjadi di dalam transaksi.
+        { timeout: 15_000 },
+      );
+      res.status(reused ? 200 : 201).json({ data: payment });
     }),
   );
 
@@ -119,6 +167,9 @@ export function paymentsRouter() {
       });
       if (!payment || payment.booking.customerId !== req.user!.id) {
         throw new ApiError(403, "FORBIDDEN", "Akses ditolak.");
+      }
+      if (payment.status !== "PENDING" || (payment.expiresAt && payment.expiresAt < new Date())) {
+        throw new ApiError(409, "PAYMENT_NOT_PENDING", "Tagihan ini sudah tidak berlaku. Buat tagihan baru dari halaman pesanan.");
       }
       const mock = new MockPaymentProvider();
       await applyWebhookResult(await mock.simulateSettlement(payment.providerReference));

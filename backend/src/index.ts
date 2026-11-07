@@ -3,6 +3,7 @@ import { createApiRouter } from "./api";
 import { env } from "./env";
 import { db } from "./db";
 import { prismaVendorRepository } from "./vendors/repository";
+import { startExpiryScheduler } from "./domain/expiry";
 
 const app = createApp({
   vendors: prismaVendorRepository,
@@ -16,6 +17,9 @@ const server = app.listen(env.port, () => {
   console.log(`[api] CORS: ${env.corsOrigins.join(", ")}`);
   console.log(`[api] Upload publik: ${env.publicUploadDir}`);
 });
+
+// Batalkan booking yang tak dibayar & kedaluwarsakan permintaan basi secara berkala.
+startExpiryScheduler();
 
 async function shutdown(signal: string) {
   console.log(`[api] ${signal} diterima, menutup server…`);

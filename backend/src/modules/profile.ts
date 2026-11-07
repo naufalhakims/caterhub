@@ -4,6 +4,16 @@ import { db } from "../db";
 import { requireAuth, requireRole } from "../auth/middleware";
 import { asyncHandler } from "../http";
 
+const notificationsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(0).max(100).default(30),
+  unread: z.enum(["1", "true"]).optional(),
+});
+
+const markReadSchema = z.object({
+  /** Kosong = tandai semua sebagai dibaca. */
+  ids: z.array(z.string().min(1)).max(100).optional(),
+});
+
 const PHONE_RE = /^[+]?[\d\s()-]{6,20}$/;
 
 const profileSchema = z.object({
@@ -39,6 +49,42 @@ export function profileRouter() {
         },
       });
       res.json({ data: user });
+    }),
+  );
+
+  /** Notifikasi milik pengguna yang sedang masuk; `limit=0` hanya menghitung belum dibaca. */
+  router.get(
+    "/notifications",
+    asyncHandler(async (req, res) => {
+      const q = notificationsQuerySchema.parse(req.query);
+      const userId = req.user!.id;
+      const [items, unread] = await Promise.all([
+        q.limit === 0
+          ? Promise.resolve([])
+          : db.notification.findMany({
+              where: { userId, ...(q.unread ? { readAt: null } : {}) },
+              orderBy: { createdAt: "desc" },
+              take: q.limit,
+            }),
+        db.notification.count({ where: { userId, readAt: null } }),
+      ]);
+      res.json({ data: { items, unread } });
+    }),
+  );
+
+  router.post(
+    "/notifications/read",
+    asyncHandler(async (req, res) => {
+      const input = markReadSchema.parse(req.body ?? {});
+      const result = await db.notification.updateMany({
+        where: {
+          userId: req.user!.id,
+          readAt: null,
+          ...(input.ids?.length ? { id: { in: input.ids } } : {}),
+        },
+        data: { readAt: new Date() },
+      });
+      res.json({ data: { updated: result.count } });
     }),
   );
 

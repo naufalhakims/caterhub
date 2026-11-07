@@ -9,6 +9,7 @@ type AdminDashboardData = {
   pending: number;
   bookings: number;
   revenue: number;
+  refunds: number;
 };
 
 export default async function AdminDashboard() {
@@ -27,7 +28,7 @@ export default async function AdminDashboard() {
   ];
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold tracking-tight">Ringkasan platform</h1>
+      <h1 className="font-display text-4xl text-ink sm:text-5xl">Ringkasan platform</h1>
       <p className="text-sm text-stone-500">Kesehatan marketplace sekilas.</p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {kpis.map((k) => (
@@ -41,9 +42,17 @@ export default async function AdminDashboard() {
             </div>
           </Card>
         ))}
+        {stats.refunds > 0 && (
+          <Link href="/admin/orders?filter=refund" className="block">
+            <Card interactive className="flex h-full items-center justify-between !border-orange-200 !bg-orange-50 !p-4">
+              <p className="text-sm font-semibold text-orange-900">{stats.refunds} refund menunggu diproses</p>
+              <span className="text-orange-700">→</span>
+            </Card>
+          </Link>
+        )}
         {pendingVendors > 0 && (
-          <Link href="/admin/vendors">
-            <Card className="flex h-full items-center justify-between !border-amber-200 !bg-amber-50 !p-4 transition hover:shadow-lift">
+          <Link href="/admin/vendors" className="block">
+            <Card interactive className="flex h-full items-center justify-between !border-amber-200 !bg-amber-50 !p-4">
               <p className="text-sm font-semibold text-amber-900">{pendingVendors} vendor menunggu verifikasi</p>
               <span className="text-amber-700">→</span>
             </Card>

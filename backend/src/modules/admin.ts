@@ -5,6 +5,21 @@ import { requireAuth, requireRole } from "../auth/middleware";
 import { asyncHandler, sendError } from "../http";
 import { ApiError } from "../errors";
 import { canReviewBooking, roundRating } from "../domain/review";
+import { NON_REVENUE_BOOKING_STATUSES, cancelBooking } from "../domain/booking";
+import { maybeSweep } from "../domain/expiry";
+import { notify } from "../domain/notify";
+
+const cancelSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(5, "Tuliskan alasan pembatalan (minimal 5 karakter).")
+    .max(500, "Alasan maksimal 500 karakter."),
+});
+
+const refundSchema = z.object({
+  note: z.string().trim().max(500, "Catatan maksimal 500 karakter.").optional(),
+});
 
 const decisionSchema = z
   .object({
@@ -99,6 +114,7 @@ export function adminRouter() {
           userId: vendor.userId,
           type: "VERIFICATION",
           title: "Status verifikasi diperbarui",
+          link: "/vendor/verification",
           message: messageByStatus[status] ?? "Status verifikasi diperbarui.",
         },
       });
@@ -128,8 +144,11 @@ export function adminRouter() {
 
   router.get(
     "/orders",
-    asyncHandler(async (_req, res) => {
+    asyncHandler(async (req, res) => {
+      await maybeSweep();
+      const refundOnly = req.query.filter === "refund";
       const bookings = await db.booking.findMany({
+        where: refundOnly ? { status: "REFUND_PENDING" } : undefined,
         include: {
           event: true,
           customer: { select: { id: true, name: true, email: true } },
@@ -143,24 +162,66 @@ export function adminRouter() {
     }),
   );
 
+  /** Admin menandai dana sudah dikembalikan ke pelanggan (transfer manual / API provider). */
+  router.post(
+    "/bookings/:id/refund",
+    asyncHandler(async (req, res) => {
+      const input = refundSchema.parse(req.body ?? {});
+      const booking = await db.booking.findUnique({
+        where: { id: req.params.id },
+        select: { id: true, status: true, customerId: true, refundAmount: true, event: { select: { name: true } } },
+      });
+      if (!booking) return sendError(res, 404, "BOOKING_NOT_FOUND", "Pesanan tidak ditemukan.");
+      const done = await db.$transaction(async (tx) => {
+        const claimed = await tx.booking.updateMany({
+          where: { id: booking.id, status: "REFUND_PENDING" },
+          data: { status: "REFUNDED", refundedAt: new Date() },
+        });
+        if (claimed.count === 0) return false;
+        await notify(tx, booking.customerId, {
+          type: "REFUND",
+          title: "Dana sudah dikembalikan",
+          message: `Refund ${(booking.refundAmount ?? 0).toLocaleString("id-ID")} untuk "${booking.event.name}" telah diproses.${input.note ? ` ${input.note}` : ""}`,
+          link: `/bookings/${booking.id}`,
+        });
+        return true;
+      });
+      if (!done) return sendError(res, 409, "NOT_REFUNDABLE", "Pesanan ini tidak sedang menunggu refund.");
+      res.json({ data: { ok: true } });
+    }),
+  );
+
   router.get(
     "/dashboard",
     asyncHandler(async (_req, res) => {
-      const [users, vendors, verified, pending, bookings, revenue, recentVendors] = await Promise.all([
+      const [users, vendors, verified, pending, bookings, revenue, recentVendors, refunds] = await Promise.all([
         db.user.count(),
         db.vendorProfile.count(),
         db.vendorProfile.count({ where: { verificationStatus: "VERIFIED" } }),
         db.vendorProfile.count({ where: { verificationStatus: { in: ["PENDING", "UNDER_REVIEW", "NEEDS_INFO"] } } }),
         db.booking.count(),
-        db.payment.aggregate({ where: { status: "SETTLEMENT" }, _sum: { amount: true } }),
+        db.payment.aggregate({
+          where: { status: "SETTLEMENT", booking: { status: { notIn: [...NON_REVENUE_BOOKING_STATUSES] } } },
+          _sum: { amount: true },
+        }),
         db.vendorProfile.findMany({
           include: { user: { select: { name: true, email: true } } },
           orderBy: { createdAt: "desc" },
           take: 5,
         }),
+        db.booking.count({ where: { status: "REFUND_PENDING" } }),
       ]);
       res.json({
-        data: { users, vendors, verified, pending, bookings, revenue: revenue._sum.amount ?? 0, recentVendors },
+        data: {
+          users,
+          vendors,
+          verified,
+          pending,
+          bookings,
+          revenue: revenue._sum.amount ?? 0,
+          recentVendors,
+          refunds,
+        },
       });
     }),
   );
@@ -239,6 +300,7 @@ export function bookingsRouter() {
               userId: booking.vendor.userId,
               type: "REVIEW",
               title: "Ulasan baru diterima",
+              link: `/bookings/${booking.id}`,
               message: `${user.name ?? "Pelanggan"} memberi ${input.rating} bintang untuk "${booking.event.name}".`,
             },
           });
@@ -256,9 +318,33 @@ export function bookingsRouter() {
     }),
   );
 
+  /** Pembatalan oleh pelanggan atau vendor pemilik pesanan (kebijakan di domain/booking). */
+  router.post(
+    "/:id/cancel",
+    requireRole("CUSTOMER", "VENDOR"),
+    asyncHandler(async (req, res) => {
+      const input = cancelSchema.parse(req.body ?? {});
+      const user = req.user!;
+      try {
+        const result = await cancelBooking({
+          bookingId: req.params.id,
+          actor: { role: user.role as "CUSTOMER" | "VENDOR", userId: user.id },
+          reason: input.reason,
+        });
+        res.json({ data: result });
+      } catch (error) {
+        const message = (error as Error).message;
+        if (message === "Akses ditolak.") throw new ApiError(403, "FORBIDDEN", message);
+        if (message === "Pesanan tidak ditemukan.") throw new ApiError(404, "BOOKING_NOT_FOUND", message);
+        throw new ApiError(409, "CANCEL_REJECTED", message);
+      }
+    }),
+  );
+
   router.get(
     "/:id",
     asyncHandler(async (req, res) => {
+      await maybeSweep();
       const booking = await db.booking.findUnique({
         where: { id: req.params.id },
         include: {

@@ -38,7 +38,8 @@ describe("canTransitionBooking", () => {
   it("vendor tidak boleh menandai PAID sendiri", () => {
     expect(canVendorSetBookingStatus("PAID")).toBe(false);
     expect(canVendorSetBookingStatus("PREPARING")).toBe(true);
-    expect(canVendorSetBookingStatus("CANCELLED")).toBe(true);
+    // Pembatalan wajib lewat endpoint cancel (dengan alasan), bukan tombol status.
+    expect(canVendorSetBookingStatus("CANCELLED")).toBe(false);
   });
 });
 

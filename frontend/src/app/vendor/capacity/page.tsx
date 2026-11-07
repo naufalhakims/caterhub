@@ -6,6 +6,7 @@ import { todayDateOnly } from "@/lib/date";
 import { apiGet } from "@/lib/api";
 import { requireVendor } from "@/server/vendor-helpers";
 import { upsertCapacityAction } from "@/server/vendor-actions";
+import { Flash } from "@/components/ui/Flash";
 
 type CapacityRow = { id: string; date: string; maxPax: number; reservedPax: number };
 
@@ -22,15 +23,14 @@ export default async function VendorCapacityPage({
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold tracking-tight">Kapasitas</h1>
+      <h1 className="font-display text-4xl text-ink sm:text-5xl">Kapasitas</h1>
       <p className="text-sm text-stone-500">
         Default <span className="font-bold text-stone-700">{vendor.maxPax} pax/hari</span> — turunkan di tanggal padat, naikkan saat dapur longgar.
       </p>
-      {searchParams?.ok && <p className="mt-2 rounded-xl bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-700 ring-1 ring-inset ring-emerald-200">{searchParams.ok}</p>}
-      {searchParams?.error && <p className="mt-2 rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700 ring-1 ring-inset ring-red-200">{searchParams.error}</p>}
+      <Flash ok={searchParams?.ok} error={searchParams?.error} />
 
       <Card className="mt-4">
-        <h2 className="font-display text-lg font-bold">Atur kapasitas tanggal</h2>
+        <h2 className="font-display text-2xl text-ink">Atur kapasitas tanggal</h2>
         <p className="mt-0.5 text-[13px] text-stone-500">
           Kapasitas tidak bisa diturunkan di bawah jumlah pax yang sudah dipesan pada tanggal tersebut.
         </p>

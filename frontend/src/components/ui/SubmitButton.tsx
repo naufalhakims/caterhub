@@ -1,7 +1,9 @@
+/// <reference types="react-dom/canary" />
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Button, type ButtonProps } from "./Button";
+import { useFormStatus } from "react-dom";
+import { Button, Spinner, type ButtonProps } from "./Button";
 
 type Props = Omit<ButtonProps, "type" | "disabled"> & {
   /** Tombol hanya aktif bila isi form berubah. Matikan untuk aksi keputusan. */
@@ -84,14 +86,24 @@ export function SubmitButton({
     };
   }, [requireDirty, requiredKey]);
 
+  const { pending } = useFormStatus();
+
   return (
     <Button
       ref={ref}
       type="submit"
-      disabled={forceDisabled || !ready}
+      disabled={forceDisabled || !ready || pending}
+      aria-busy={pending}
       {...rest}
     >
-      {children}
+      {pending ? (
+        <>
+          <Spinner />
+          Memproses…
+        </>
+      ) : (
+        children
+      )}
     </Button>
   );
 }

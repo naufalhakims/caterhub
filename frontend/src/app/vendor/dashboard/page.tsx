@@ -54,8 +54,8 @@ export default async function VendorDashboard() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-700">Dasbor vendor</p>
-          <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-3xl">{v.businessName}</h1>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">Dasbor vendor</p>
+          <h1 className="mt-1 font-display text-4xl text-ink sm:text-5xl">{v.businessName}</h1>
         </div>
         {v.verificationStatus !== "VERIFIED" && <StatusBadge status={v.verificationStatus} />}
       </div>
@@ -75,7 +75,7 @@ export default async function VendorDashboard() {
       <div className="mt-2.5 space-y-2">
         {pendingQuotes.map((q) => (
           <Link key={q.id} href={`/quotations/${q.id}`}>
-            <Card className="flex items-center justify-between !p-4 transition hover:-translate-y-0.5 hover:shadow-lift">
+            <Card interactive className="flex items-center justify-between !p-4">
               <div>
                 <p className="font-semibold">{q.event.name} · {q.event.guestCount} pax</p>
                 <p className="text-sm text-stone-500">
@@ -116,7 +116,7 @@ export default async function VendorDashboard() {
       <div className="mt-2.5 space-y-2">
         {recent.map((b) => (
           <Link key={b.id} href={`/bookings/${b.id}`}>
-            <Card className="flex items-center justify-between !p-4 transition hover:shadow-lift">
+            <Card interactive className="flex items-center justify-between !p-4">
               <div>
                 <p className="font-semibold">{b.event.name}</p>
                 <p className="text-sm text-stone-500">{formatIDR(b.totalAmount)}</p>
