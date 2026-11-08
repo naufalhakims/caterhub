@@ -99,6 +99,20 @@ const vendorProfileSchema = z
   })
   .refine((v) => v.minPax <= v.maxPax, { message: "Min pax tidak boleh lebih besar dari maks pax." });
 
+const deliverySchema = z
+  .object({
+    latitude: z.coerce.number().min(-90).max(90),
+    longitude: z.coerce.number().min(-180).max(180),
+    deliveryBaseFee: zIdr,
+    deliveryBaseKm: z.coerce.number().min(0, "Jarak dasar tidak boleh negatif.").max(100),
+    deliveryPerKm: zIdr,
+    deliveryMaxKm: z.coerce.number().min(1, "Radius minimal 1 km.").max(200, "Radius maksimal 200 km."),
+  })
+  .refine((v) => v.deliveryBaseKm <= v.deliveryMaxKm, {
+    message: "Jarak tarif dasar tidak boleh melebihi radius maksimal.",
+    path: ["deliveryBaseKm"],
+  });
+
 const capacitySchema = z.object({
   date: z.string().min(1, "Tanggal wajib diisi."),
   maxPax: z.coerce.number().int().min(0, "Kapasitas tidak boleh negatif."),
@@ -261,6 +275,17 @@ export function vendorRouter() {
           address: input.address ?? "",
         },
       });
+      res.json({ data: updated });
+    }),
+  );
+
+  /** Lokasi dapur & tarif ongkir otomatis. */
+  router.patch(
+    "/me/delivery",
+    asyncHandler(async (req, res) => {
+      const vendor = await requireVendor(req);
+      const input = deliverySchema.parse(req.body ?? {});
+      const updated = await db.vendorProfile.update({ where: { id: vendor.id }, data: input });
       res.json({ data: updated });
     }),
   );

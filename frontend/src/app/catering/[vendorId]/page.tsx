@@ -6,6 +6,8 @@ import { buttonLink } from "@/components/ui/Button";
 import { FoodArt, backdropFor } from "@/components/FoodArt";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { LiveEstimate } from "@/components/LiveEstimate";
+import { LocationPicker } from "@/components/LocationPicker";
+import { describeRate } from "@/lib/delivery";
 import { formatIDR } from "@/lib/format";
 import { apiGet, ApiError } from "@/lib/api";
 import type { VendorDetailDto } from "@/lib/vendor-types";
@@ -24,6 +26,8 @@ export default async function VendorDetailPage({
     guests?: string;
     city?: string;
     error?: string;
+    lat?: string;
+    lng?: string;
   };
 }) {
   let vendor: VendorDetailDto;
@@ -52,6 +56,25 @@ export default async function VendorDetailPage({
     if (!menusByCat[m.category]) menusByCat[m.category] = [];
     menusByCat[m.category].push(m);
   }
+  // Ongkir otomatis aktif bila vendor sudah memasang lokasi dapur.
+  const kitchen =
+    vendor.latitude != null && vendor.longitude != null && vendor.deliveryBaseFee != null
+      ? {
+          latitude: vendor.latitude,
+          longitude: vendor.longitude,
+          rate: {
+            deliveryBaseFee: vendor.deliveryBaseFee,
+            deliveryBaseKm: vendor.deliveryBaseKm ?? 0,
+            deliveryPerKm: vendor.deliveryPerKm ?? 0,
+            deliveryMaxKm: vendor.deliveryMaxKm ?? 25,
+          },
+        }
+      : null;
+  const pinFromSearch =
+    searchParams.lat && searchParams.lng && Number.isFinite(Number(searchParams.lat)) && Number.isFinite(Number(searchParams.lng))
+      ? { latitude: Number(searchParams.lat), longitude: Number(searchParams.lng) }
+      : null;
+
   // Menu dengan harga add-on > 0 bisa ditambahkan pelanggan per pax.
   const addOnMenus = vendor.menuItems.filter((m) => m.price > 0);
   const cheapest = vendor.packages.length
@@ -280,6 +303,21 @@ export default async function VendorDetailPage({
                       <span className="mb-1 block text-[13px] font-medium text-stone-600">Lokasi acara <span className="text-red-500">*</span></span>
                       <input name="location" required minLength={3} maxLength={300} placeholder="cth. Gedung Sasono Utomo" className="w-full rounded-2xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-ink focus:ring-4 focus:ring-sun-200 placeholder:text-stone-400" />
                     </label>
+                    {kitchen && (
+                      <div className="text-sm">
+                        <span className="mb-1 block text-[13px] font-medium text-stone-600">
+                          Titik antar <span className="text-red-500">*</span>
+                          <span className="ml-1 font-normal text-stone-400">— untuk menghitung ongkir</span>
+                        </span>
+                        <LocationPicker
+                          initial={pinFromSearch}
+                          reference={{ latitude: kitchen.latitude, longitude: kitchen.longitude, label: `Dapur ${vendor.businessName}` }}
+                          addressInputName="location"
+                          height={220}
+                          label="Titik antar"
+                        />
+                      </div>
+                    )}
                     <label className="block text-sm">
                       <span className="mb-1 block text-[13px] font-medium text-stone-600">Kota</span>
                       <select name="city" defaultValue={searchParams.city ?? "Surabaya"} className="w-full rounded-2xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-ink focus:ring-4 focus:ring-sun-200">
@@ -321,12 +359,23 @@ export default async function VendorDetailPage({
                     <LiveEstimate
                       packages={vendor.packages.map((p) => ({ id: p.id, pricePerPax: p.pricePerPax }))}
                       addOns={addOnMenus.map((m) => ({ id: m.id, price: m.price }))}
+                      delivery={kitchen}
                     />
-                    <SubmitButton requireDirty={false} arrow className="w-full !py-3">Kirim permintaan pesanan</SubmitButton>
+                    <SubmitButton
+                      requireDirty={false}
+                      requiredFields={kitchen ? ["latitude", "longitude"] : undefined}
+                      arrow
+                      className="w-full !py-3"
+                    >
+                      Kirim permintaan pesanan
+                    </SubmitButton>
                   </form>
                 )}
                 <div className="mt-4 border-t border-stone-100 pt-4 text-xs leading-relaxed text-stone-500">
-                  <StatusBadge status="VERIFIED" /> Vendor mengonfirmasi dulu. Ongkir & biaya lain ditambahkan otomatis ke nota saat pembayaran lunas.
+                  <StatusBadge status="VERIFIED" /> Vendor mengonfirmasi dulu.{" "}
+                  {kitchen
+                    ? `Ongkir otomatis dari jarak dapur: ${describeRate(kitchen.rate, formatIDR)}.`
+                    : "Ongkir & biaya lain ditetapkan vendor saat konfirmasi."}
                 </div>
               </Card>
             </div>

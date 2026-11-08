@@ -11,6 +11,8 @@ export function scoreVendor(v: {
   budgetFit: boolean | null;
   cityMatch: boolean | null;
   rating: number;
+  /** Jarak nyata (km) bila diketahui — menggantikan label "Lokasi dekat" generik. */
+  distanceKm?: number | null;
 }): { score: number; reasons: string[] } {
   let score = 0;
   const reasons: string[] = [];
@@ -30,7 +32,7 @@ export function scoreVendor(v: {
   }
   if (v.cityMatch === true) {
     score += 15;
-    reasons.push("Lokasi dekat");
+    reasons.push(v.distanceKm != null ? `±${v.distanceKm} km dari lokasi` : "Lokasi dekat");
   } else if (v.cityMatch === null) {
     score += 7;
   }

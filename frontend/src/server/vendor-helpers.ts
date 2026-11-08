@@ -16,6 +16,12 @@ export type VendorProfile = {
   reviewCount: number;
   minPax: number;
   maxPax: number;
+  latitude: number | null;
+  longitude: number | null;
+  deliveryBaseFee: number;
+  deliveryBaseKm: number;
+  deliveryPerKm: number;
+  deliveryMaxKm: number;
   verificationStatus: string;
   verificationNote: string | null;
   reviewedAt: string | null;

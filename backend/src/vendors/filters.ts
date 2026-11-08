@@ -32,6 +32,9 @@ export const searchFilterSchema = z.object({
     emptyToUndefined,
     z.coerce.number().int().min(0, "Budget tidak boleh negatif.").optional(),
   ),
+  /** Lokasi acara (pin/GPS) untuk jarak & ongkir. */
+  lat: z.preprocess(emptyToUndefined, z.coerce.number().min(-90).max(90).optional()),
+  lng: z.preprocess(emptyToUndefined, z.coerce.number().min(-180).max(180).optional()),
 });
 
 export type SearchFilters = z.infer<typeof searchFilterSchema>;
@@ -58,6 +61,8 @@ export function parseSearchFilters(query: Record<string, unknown>): SearchFilter
     time: pick("time"),
     guests: pick("guests"),
     budgetMax: pick("budgetMax") ?? pick("budget"),
+    lat: pick("lat"),
+    lng: pick("lng"),
   });
 }
 

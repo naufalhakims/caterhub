@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { ApiError, apiDelete, apiForm, apiPatch, apiPost } from "@/lib/api";
 import { requireVendor } from "@/server/vendor-helpers";
+import { parseIDR } from "@/lib/money";
 
 function fail(to: string, message: string): never {
   redirect(`${to}?error=${encodeURIComponent(message)}`);
@@ -126,4 +127,26 @@ export async function startCookingAllAction(formData: FormData): Promise<never> 
   revalidatePath("/vendor/production");
   revalidatePath("/vendor/orders");
   redirect(`/vendor/production?date=${date}&ok=${encodeURIComponent(`${count} pesanan masuk tahap masak.`)}`);
+}
+
+/** Lokasi dapur & tarif ongkir otomatis. */
+export async function saveDeliverySettingsAction(formData: FormData): Promise<never> {
+  await requireVendor();
+  const num = (k: string) => Number(String(formData.get(k) ?? "").replace(",", "."));
+  if (!formData.get("latitude")) fail("/vendor/profile", "Taruh pin lokasi dapur di peta terlebih dahulu.");
+  try {
+    await apiPatch("/api/v1/vendor/me/delivery", {
+      latitude: num("latitude"),
+      longitude: num("longitude"),
+      deliveryBaseFee: parseIDR(formData.get("deliveryBaseFee")) ?? 0,
+      deliveryBaseKm: num("deliveryBaseKm"),
+      deliveryPerKm: parseIDR(formData.get("deliveryPerKm")) ?? 0,
+      deliveryMaxKm: num("deliveryMaxKm"),
+    });
+  } catch (error) {
+    fail("/vendor/profile", errorMessage(error, "Pengaturan ongkir gagal disimpan."));
+  }
+  revalidatePath("/vendor/profile");
+  revalidatePath("/catering");
+  redirect("/vendor/profile?ok=Lokasi dapur & tarif ongkir disimpan.");
 }

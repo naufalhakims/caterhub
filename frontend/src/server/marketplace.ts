@@ -9,6 +9,8 @@ export const searchFilterSchema = z.object({
   time: z.string().optional(),
   guests: z.coerce.number().int().min(1).optional(),
   budgetMax: z.coerce.number().int().min(0).optional(),
+  lat: z.coerce.number().min(-90).max(90).optional(),
+  lng: z.coerce.number().min(-180).max(180).optional(),
 });
 
 export type SearchFilters = z.infer<typeof searchFilterSchema>;
@@ -60,6 +62,8 @@ export async function searchVendors(raw: Record<string, string | undefined>): Pr
     time: raw.time || undefined,
     guests: raw.guests || undefined,
     budgetMax: raw.budgetMax || undefined,
+    lat: raw.lat || undefined,
+    lng: raw.lng || undefined,
   });
 
   const qs = new URLSearchParams();

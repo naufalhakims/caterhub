@@ -34,7 +34,7 @@ Pilih 3–4 yang paling sesuai waktu. Diurutkan dari dampak narasi UMKM tertingg
 > | 3 | Notifikasi WhatsApp (#1) — **adapter mock dulu** | ✅ selesai — v0.7.0 |
 > | 4 | Invoice PDF (#4) + input pesanan offline (#5) | ✅ selesai — v0.8.0 |
 >
-> Rekomendasi cerdas (#6) dan badge kepercayaan (#7) belum dijadwalkan. Skrip demo + seed bercerita (sisa Fase 0) ✅ selesai di v0.9.0.
+> Rekomendasi cerdas (#6): bagian **jarak nyata & ongkir otomatis** selesai di v0.11.0 (sisa: `eventType`/budget minimum & asisten AI). Badge kepercayaan (#7) belum dijadwalkan. Skrip demo + seed bercerita (sisa Fase 0) ✅ selesai di v0.9.0.
 
 ### 1. Notifikasi WhatsApp untuk vendor ⭐ — ✅ selesai dengan adapter mock (v0.7.0)
 - **Kenapa:** pelaku UMKM catering hidup di WhatsApp. Ini menjawab langsung "layanan pelanggan lebih baik" tanpa memaksa vendor membuka dashboard.

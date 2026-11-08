@@ -2,6 +2,29 @@
 
 Catatan perubahan per tahap pengembangan. Versi mengikuti milestone roadmap ([ROADMAP_PENGEMBANGAN.md](./ROADMAP_PENGEMBANGAN.md)), bukan rilis npm.
 
+## v0.11.0 — Lokasi & ongkir otomatis (9 Nov 2026)
+
+**Masalah**: ongkir diketik manual oleh vendor di setiap pesanan — lambat, tidak konsisten, dan pelanggan baru tahu ongkir setelah konfirmasi.
+
+**Keputusan** (disetujui): tarif **dasar + per km** (tarif dasar menanggung N km pertama, sisa km dibulatkan ke atas, radius maksimal); jarak = **garis lurus × 1,3** (perkiraan jalan, tanpa API); input lokasi lewat **peta Leaflet + OpenStreetMap + GPS + pencarian alamat (Nominatim)**; ongkir **terisi otomatis tetapi bisa diubah** vendor, perubahan tercatat.
+
+**Fitur**
+- **Profil usaha → Lokasi dapur & tarif ongkir**: pin dapur di peta, tarif dasar, jarak tarif dasar, per km, radius maks., plus tabel contoh (±2/5/10/20 km).
+- **Form pesanan pelanggan**: peta "Titik antar" (wajib bila vendor sudah memasang lokasi) menampilkan dapur & titik antar; estimasi kini **Subtotal + Ongkir (±x km) = Estimasi total**; peringatan bila di luar jangkauan. Pencarian alamat mengisi kolom lokasi bila masih kosong.
+- **Backend**: permintaan dengan pin menghitung ongkir sesuai tarif → `deliveryFee` & total, menyimpan `distanceKm` + `suggestedDeliveryFee` (snapshot) dan koordinat acara; di luar radius → `400 OUT_OF_DELIVERY_RANGE`. Tanpa pin tetap didukung (ongkir 0, diisi vendor).
+- **Konfirmasi vendor**: kolom ongkir terisi dari tarif dengan keterangan jarak; bila diubah → riwayat "Ongkir disesuaikan vendor dari X (tarif ±y km) menjadi Z".
+- **Katalog**: tombol **"Dekat lokasi saya"** (GPS) → kartu vendor menampilkan ±km & ongkir ke lokasi Anda; vendor di luar radius ditandai; rekomendasi "Lokasi dekat" kini memakai **jarak nyata** (≤10 km) — sebagian roadmap #6.
+- **Pesanan offline**: peta titik antar + kolom ongkir **terisi otomatis** dari tarif (tetap bisa diubah); koordinat & jarak tersimpan.
+
+**Teknis**
+- `backend/src/domain/delivery.ts` (`haversineKm`, `roadDistanceKm`, `quoteDelivery`, `quoteDeliveryBetween`) dengan salinan `frontend/src/lib/delivery.ts` untuk estimasi langsung (keduanya diuji dengan kasus yang sama).
+- API: `PATCH /api/v1/vendor/me/delivery`; `POST /quotations/request` & `/vendor/bookings/offline` menerima `latitude`/`longitude`; `GET /vendors` menerima `lat`/`lng`; detail vendor memuat lokasi & tarif.
+- Migrasi `20261108174858_delivery_fee`: `VendorProfile.deliveryBaseFee/BaseKm/PerKm/MaxKm`, `Event.latitude/longitude`, `Quotation.distanceKm/suggestedDeliveryFee`.
+- Komponen baru: `LocationPicker` (Leaflet dimuat dinamis di klien, penanda tanpa gambar), `AutoDeliveryFee`, `DeliverySettings`, `NearMeButton`; `LiveEstimate` kini menghitung ongkir. Dependensi baru: `leaflet` (+ `@types/leaflet`). Tile peta & pencarian alamat memakai layanan publik OSM (perlu internet; atribusi ditampilkan).
+- Seed: titik dapur & tarif berbeda untuk 5 vendor, koordinat lokasi acara cerita Dapur Nusantara (permintaan Budi kini memuat ongkir sesuai tarif); teks ulasan seed kini bergiliran (sebelumnya berulang).
+
+**Verifikasi**: 117 unit test (backend 82 termasuk `delivery.test.ts`, frontend 35 termasuk `delivery.test.ts`), typecheck & lint bersih, smoke test E2E 12 cek (validasi tarif, kartu katalog ±6,1 km → Rp31.000, lokasi Malang ±100 km ditolak, snapshot ongkir & koordinat, tanpa pin, penyesuaian ongkir tercatat, offline) lulus; tampilan peta diperiksa via screenshot; data uji dibersihkan dengan seed ulang.
+
 ## v0.10.0 — Progres pesanan otomatis (9 Nov 2026)
 
 **Masalah**: setelah lunas, vendor harus menekan 4 tombol per pesanan (*Mulai memasak → Siap kirim → Sudah diantar → Selesai*); di dapur yang sibuk status mudah tertinggal sehingga pelanggan tidak tahu progres dan ulasan tidak terpicu.

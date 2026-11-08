@@ -6,6 +6,7 @@ import { asyncHandler, sendError } from "../http";
 import { ApiError } from "../errors";
 import { buildRequestItems, calcTotals } from "../domain/quotation";
 import { notify } from "../domain/notify";
+import { quoteDeliveryBetween } from "../domain/delivery";
 import {
   canPerformQuotationDecision,
   nextQuotationStatus,
@@ -56,6 +57,9 @@ const requestSchema = z
     notes: z.string().max(1000).optional(),
     /** Menu tambahan (harga add-on per pax) yang dipilih pelanggan. */
     addOnIds: z.array(z.string().min(1)).max(30).default([]),
+    /** Pin lokasi acara (peta) — dipakai menghitung jarak & ongkir otomatis. */
+    latitude: z.coerce.number().min(-90).max(90).optional(),
+    longitude: z.coerce.number().min(-180).max(180).optional(),
   })
   .superRefine((v, ctx) => {
     if (v.eventId) return;
@@ -132,6 +136,8 @@ export function quotationsRouter() {
         guestCount: number;
         eventDate: Date;
         eventTime: string | null;
+        latitude: number | null;
+        longitude: number | null;
       } | null = null;
       if (input.eventId) {
         savedEvent = await db.event.findUnique({ where: { id: input.eventId } });
@@ -183,6 +189,22 @@ export function quotationsRouter() {
 
       const requestItems = buildRequestItems(pkg, addOns, guestCount);
       const estimate = calcTotals(requestItems).subtotal;
+
+      // Ongkir otomatis dari tarif vendor bila kedua titik lokasi tersedia.
+      const pin = {
+        latitude: input.latitude ?? savedEvent?.latitude ?? undefined,
+        longitude: input.longitude ?? savedEvent?.longitude ?? undefined,
+      };
+      const delivery = quoteDeliveryBetween(vendor, pin);
+      if (delivery && !delivery.inRange) {
+        return sendError(
+          res,
+          400,
+          "OUT_OF_DELIVERY_RANGE",
+          `Lokasi acara ±${delivery.distanceKm} km dari dapur — di luar jangkauan antar vendor (maks. ${delivery.maxKm} km).`,
+        );
+      }
+      const deliveryFee = delivery?.inRange ? delivery.fee : 0;
       const quotation = await db.$transaction(async (tx) => {
         const event =
           savedEvent ??
@@ -197,6 +219,8 @@ export function quotationsRouter() {
               city: input.city || "Surabaya",
               guestCount,
               notes: input.notes,
+              latitude: pin.latitude ?? null,
+              longitude: pin.longitude ?? null,
             },
           }));
 
@@ -209,7 +233,10 @@ export function quotationsRouter() {
             origin: "CUSTOMER_REQUEST",
             status: "REQUESTED",
             subtotal: estimate,
-            total: estimate,
+            deliveryFee,
+            total: estimate + deliveryFee,
+            distanceKm: delivery?.distanceKm ?? null,
+            suggestedDeliveryFee: delivery?.inRange ? delivery.fee : null,
             notes: input.notes,
             items: { create: requestItems },
             history: {
@@ -472,6 +499,16 @@ export function quotationsRouter() {
 
       try {
         const booking = await confirmQuotationAndBook(q.id, vendor.id, input);
+        if (q.suggestedDeliveryFee != null && q.suggestedDeliveryFee !== input.deliveryFee) {
+          await db.quotationHistory.create({
+            data: {
+              quotationId: q.id,
+              actorId: user.id,
+              action: "fee_adjusted",
+              note: `Ongkir disesuaikan vendor dari ${q.suggestedDeliveryFee.toLocaleString("id-ID")} (tarif ±${q.distanceKm ?? "?"} km) menjadi ${input.deliveryFee.toLocaleString("id-ID")}.`,
+            },
+          });
+        }
         res.json({ data: { bookingId: booking.id } });
       } catch (error) {
         return sendError(res, 409, "CONFIRM_FAILED", (error as Error).message);

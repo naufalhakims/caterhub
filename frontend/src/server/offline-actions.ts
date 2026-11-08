@@ -36,6 +36,9 @@ export async function createOfflineOrderAction(formData: FormData): Promise<neve
       discount: parseIDR(formData.get("discount")) ?? 0,
       notes: str("notes") || undefined,
       payment: str("payment") || "NONE",
+      ...(str("latitude") && str("longitude")
+        ? { latitude: Number(str("latitude")), longitude: Number(str("longitude")) }
+        : {}),
     });
     bookingId = result.bookingId;
   } catch (error) {

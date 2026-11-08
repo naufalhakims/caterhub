@@ -5,6 +5,8 @@ import { RupiahInput } from "@/components/ui/RupiahInput";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Flash } from "@/components/ui/Flash";
 import { LiveEstimate } from "@/components/LiveEstimate";
+import { LocationPicker } from "@/components/LocationPicker";
+import { AutoDeliveryFee } from "@/components/AutoDeliveryFee";
 import { apiGet } from "@/lib/api";
 import { formatIDR, jakartaDateString } from "@/lib/format";
 import { requireVendor } from "@/server/vendor-helpers";
@@ -25,6 +27,19 @@ export default async function NewOfflineOrderPage({ searchParams }: { searchPara
   ]);
   const activePackages = packages.filter((p) => p.isActive);
   const addOns = menus.filter((m) => m.price > 0 && m.isAvailable);
+  const kitchen =
+    vendor.latitude != null && vendor.longitude != null
+      ? {
+          latitude: vendor.latitude,
+          longitude: vendor.longitude,
+          rate: {
+            deliveryBaseFee: vendor.deliveryBaseFee,
+            deliveryBaseKm: vendor.deliveryBaseKm,
+            deliveryPerKm: vendor.deliveryPerKm,
+            deliveryMaxKm: vendor.deliveryMaxKm,
+          },
+        }
+      : null;
 
   return (
     <div>
@@ -90,6 +105,17 @@ export default async function NewOfflineOrderPage({ searchParams }: { searchPara
                     <Input name="location" required minLength={3} maxLength={300} placeholder="cth. Balai RW, Jl. Ketintang 12" />
                   </Field>
                 </div>
+                <div className="sm:col-span-2">
+                  <span className="mb-1.5 block text-sm font-semibold text-ink">
+                    Titik antar <span className="font-normal text-stone-500">(opsional — untuk ongkir otomatis)</span>
+                  </span>
+                  <LocationPicker
+                    reference={kitchen ? { latitude: kitchen.latitude, longitude: kitchen.longitude, label: "Dapur Anda" } : null}
+                    addressInputName="location"
+                    height={220}
+                    label="Titik antar"
+                  />
+                </div>
               </div>
             </Card>
 
@@ -122,7 +148,7 @@ export default async function NewOfflineOrderPage({ searchParams }: { searchPara
                   </fieldset>
                 )}
                 <div className="grid gap-3 sm:grid-cols-3">
-                  <Field label="Ongkos kirim (Rp)"><RupiahInput name="deliveryFee" /></Field>
+                  <Field label="Ongkos kirim (Rp)"><AutoDeliveryFee vendor={kitchen} /></Field>
                   <Field label="Biaya layanan (Rp)"><RupiahInput name="serviceFee" /></Field>
                   <Field label="Diskon (Rp)"><RupiahInput name="discount" /></Field>
                 </div>

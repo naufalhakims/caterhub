@@ -160,6 +160,11 @@ model VendorProfile {
   city               String             @default("Surabaya")
   latitude           Float?
   longitude          Float?
+  /// Tarif ongkir: dasar untuk N km pertama, lalu per km (dibulatkan ke atas), hingga radius maks.
+  deliveryBaseFee    Int                @default(15000)
+  deliveryBaseKm     Float              @default(3)
+  deliveryPerKm      Int                @default(4000)
+  deliveryMaxKm      Float              @default(25)
   verificationStatus VerificationStatus @default(PENDING)
   verificationNote   String?
   reviewedAt         DateTime?
@@ -217,6 +222,9 @@ model Event {
   location   String
   city       String    @default("Surabaya")
   guestCount Int
+  /// Titik lokasi acara (pin peta) untuk menghitung jarak & ongkir.
+  latitude   Float?
+  longitude  Float?
   budgetMin  Int?
   budgetMax  Int?
   notes      String?
@@ -342,6 +350,9 @@ model Quotation {
   notes       String?
   expiresAt   DateTime?
   revisionNote String?
+  /// Snapshot jarak (km, perkiraan jalan) & ongkir sesuai tarif saat permintaan dibuat.
+  distanceKm  Float?
+  suggestedDeliveryFee Int?
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 

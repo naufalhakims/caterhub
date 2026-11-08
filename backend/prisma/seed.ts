@@ -14,6 +14,7 @@ import bcrypt from "bcryptjs";
 import { formatWhatsAppMessage, normalizeIndonesianPhone } from "../src/domain/whatsapp";
 import { formatInvoiceNumber, vendorInvoicePrefix } from "../src/domain/invoice";
 import { computePaymentDueAt } from "../src/domain/booking";
+import { quoteDeliveryBetween } from "../src/domain/delivery";
 import { jakartaDateString } from "../src/lib/date";
 
 const db = new PrismaClient();
@@ -120,33 +121,37 @@ type VendorSeed = {
   basePrice: number;
   minPax: number;
   maxPax: number;
+  /** Perkiraan titik dapur (alamat di atas) & tarif ongkir. */
+  lat: number;
+  lng: number;
+  rate: [baseFee: number, baseKm: number, perKm: number, maxKm: number];
 };
 
 const VENDORS: VendorSeed[] = [
   {
     businessName: "Dapur Nusantara", city: "Surabaya", phone: "0811-1111-111", address: "Jl. Raya Nginden No. 12, Surabaya",
     desc: "Spesialis prasmanan Jawa-Timuran untuk pernikahan & korporat. Dapur 500 pax/hari, tim pramusaji berseragam, dan stall live-cooking.",
-    rating: 4.8, reviews: 214, basePrice: 35000, minPax: 50, maxPax: 600,
+    rating: 4.8, reviews: 214, basePrice: 35000, minPax: 50, maxPax: 600, lat: -7.2999, lng: 112.7684, rate: [15000, 3, 4000, 25],
   },
   {
     businessName: "Rasa Prima Catering", city: "Surabaya", phone: "0812-2222-222", address: "Jl. Manyar Kertoarjo V No. 8, Surabaya",
     desc: "Catering modern dengan sentuhan internasional — teriyaki, pasta corner, dan dessert premium. Favorit gathering kantor.",
-    rating: 4.6, reviews: 167, basePrice: 32000, minPax: 50, maxPax: 500,
+    rating: 4.6, reviews: 167, basePrice: 32000, minPax: 50, maxPax: 500, lat: -7.2793, lng: 112.7621, rate: [20000, 5, 3500, 20],
   },
   {
     businessName: "Sajian Kita", city: "Sidoarjo", phone: "0813-3333-333", address: "Jl. Pahlawan No. 45, Sidoarjo",
     desc: "Harga bersahabat untuk hajatan kampung, arisan, dan nasi kotak harian. Bisa dadakan H-3 untuk di bawah 200 pax.",
-    rating: 4.5, reviews: 189, basePrice: 28000, minPax: 30, maxPax: 400,
+    rating: 4.5, reviews: 189, basePrice: 28000, minPax: 30, maxPax: 400, lat: -7.4479, lng: 112.7186, rate: [10000, 3, 3000, 20],
   },
   {
     businessName: "Pawon Ibu", city: "Gresik", phone: "0814-4444-444", address: "Jl. Veteran No. 21, Gresik",
     desc: "Masakan rumahan resep keluarga — liwet, botok, dan sayur lodeh yang bikin tamu nambah. Spesialis tasyakuran & aqiqah.",
-    rating: 4.4, reviews: 132, basePrice: 25000, minPax: 30, maxPax: 350,
+    rating: 4.4, reviews: 132, basePrice: 25000, minPax: 30, maxPax: 350, lat: -7.1660, lng: 112.6530, rate: [12000, 4, 3000, 30],
   },
   {
     businessName: "Kitchen 88", city: "Surabaya", phone: "0815-5555-555", address: "Jl. HR Muhammad No. 88, Surabaya",
     desc: "Segmen premium: bahan pilihan, plating cantik, dan coffee break corner. Langganan seminar hotel & wedding gedung.",
-    rating: 4.7, reviews: 98, basePrice: 40000, minPax: 50, maxPax: 500,
+    rating: 4.7, reviews: 98, basePrice: 40000, minPax: 50, maxPax: 500, lat: -7.2885, lng: 112.6830, rate: [25000, 5, 5000, 30],
   },
 ];
 
@@ -177,6 +182,7 @@ function day(n: number): Date {
 }
 const hoursFromNow = (h: number) => new Date(Date.now() + h * 3_600_000);
 
+let reviewSeq = 0;
 const invoiceSeq = new Map<string, number>();
 function nextInvoice(vendor: { id: string; businessName: string }, at: Date) {
   const year = Number(jakartaDateString(at).slice(0, 4));
@@ -243,14 +249,14 @@ async function resetDemoData(vendorIds: string[], userIds: string[]) {
 // ---------------------------------------------------------------------------
 
 type Ctx = {
-  vendors: { id: string; userId: string; businessName: string; maxPax: number; packages: Record<string, { id: string; name: string; pricePerPax: number }>; menus: Map<string, { id: string; price: number }> }[];
+  vendors: { id: string; userId: string; businessName: string; maxPax: number; lat: number; lng: number; rate: VendorSeed["rate"]; packages: Record<string, { id: string; name: string; pricePerPax: number }>; menus: Map<string, { id: string; price: number }> }[];
   customers: Record<CustomerKey, { id: string; name: string }>;
 };
 
 type OrderSpec = {
   vendorIdx: number;
   customer: CustomerKey | { offlineName: string; offlinePhone?: string };
-  event: { name: string; type?: "WEDDING" | "BIRTHDAY" | "CORPORATE" | "MEETING" | "GATHERING" | "OTHER"; dayOffset: number; time: string; guests: number; location: string; city?: string };
+  event: { name: string; type?: "WEDDING" | "BIRTHDAY" | "CORPORATE" | "MEETING" | "GATHERING" | "OTHER"; dayOffset: number; time: string; guests: number; location: string; city?: string; at?: [number, number] };
   pkg: "hemat" | "premium";
   addOns?: string[];
   extraItems?: { name: string; quantity: number; unitPrice: number }[];
@@ -299,7 +305,15 @@ async function createOrder(ctx: Ctx, s: OrderSpec) {
     ...(s.extraItems ?? []).map((i) => ({ ...i, menuItemId: null })),
   ];
   const subtotal = items.reduce((t, i) => t + i.quantity * i.unitPrice, 0);
-  const deliveryFee = s.fees?.deliveryFee ?? 0;
+  const delivery = s.event.at
+    ? quoteDeliveryBetween(
+        { latitude: vendor.lat, longitude: vendor.lng, deliveryBaseFee: vendor.rate[0], deliveryBaseKm: vendor.rate[1], deliveryPerKm: vendor.rate[2], deliveryMaxKm: vendor.rate[3] },
+        { latitude: s.event.at[0], longitude: s.event.at[1] },
+      )
+    : null;
+  const suggestedFee = delivery?.inRange ? delivery.fee : null;
+  // Tanpa ongkir eksplisit, pakai tarif (seperti permintaan sungguhan).
+  const deliveryFee = s.fees?.deliveryFee ?? suggestedFee ?? 0;
   const serviceFee = s.fees?.serviceFee ?? 0;
   const discount = s.fees?.discount ?? 0;
   const total = Math.max(0, subtotal + deliveryFee + serviceFee - discount);
@@ -309,6 +323,7 @@ async function createOrder(ctx: Ctx, s: OrderSpec) {
     data: {
       customerId, name: s.event.name, eventType: s.event.type ?? "OTHER", eventDate, eventTime: s.event.time,
       location: s.event.location, city: s.event.city ?? "Surabaya", guestCount: guests, notes: s.notes, createdAt,
+      latitude: s.event.at?.[0] ?? null, longitude: s.event.at?.[1] ?? null,
     },
   });
   const quotation = await db.quotation.create({
@@ -316,6 +331,7 @@ async function createOrder(ctx: Ctx, s: OrderSpec) {
       eventId: event.id, packageId: pkg.id, vendorId: vendor.id, customerId, origin: s.origin, status: s.quotationStatus,
       subtotal, deliveryFee, serviceFee, discount, total, notes: s.notes, revisionNote: s.revisionNote ?? null,
       expiresAt: s.expiresInHours ? hoursFromNow(s.expiresInHours) : null, createdAt,
+      distanceKm: delivery?.distanceKm ?? null, suggestedDeliveryFee: suggestedFee,
       items: { create: items.map((i) => ({ name: i.name, quantity: i.quantity, unitPrice: i.unitPrice, subtotal: i.quantity * i.unitPrice, menuItemId: i.menuItemId })) },
       history: {
         create: [
@@ -365,7 +381,8 @@ async function createOrder(ctx: Ctx, s: OrderSpec) {
     });
   }
   if (b.review && !offline) {
-    const text = REVIEW_TEXTS[Math.abs(booking.id.charCodeAt(5)) % REVIEW_TEXTS.length];
+    // Bergiliran agar ulasan di halaman vendor tidak berulang.
+    const text = REVIEW_TEXTS[reviewSeq++ % REVIEW_TEXTS.length];
     await db.review.create({ data: { bookingId: booking.id, customerId, vendorId: vendor.id, rating: b.review, comment: text[1], createdAt: hoursFromNow(-20) } });
   }
   return { quotation, event, vendor, booking };
@@ -428,10 +445,14 @@ async function main() {
       update: {
         businessName: v.businessName, city: v.city, phone: v.phone, address: v.address, description: v.desc,
         verificationStatus: "VERIFIED", rating: v.rating, reviewCount: v.reviews, minPax: v.minPax, maxPax: v.maxPax,
+        latitude: v.lat, longitude: v.lng,
+        deliveryBaseFee: v.rate[0], deliveryBaseKm: v.rate[1], deliveryPerKm: v.rate[2], deliveryMaxKm: v.rate[3],
       },
       create: {
         userId: user.id, businessName: v.businessName, city: v.city, phone: v.phone, address: v.address, description: v.desc,
         verificationStatus: "VERIFIED", rating: v.rating, reviewCount: v.reviews, minPax: v.minPax, maxPax: v.maxPax,
+        latitude: v.lat, longitude: v.lng,
+        deliveryBaseFee: v.rate[0], deliveryBaseKm: v.rate[1], deliveryPerKm: v.rate[2], deliveryMaxKm: v.rate[3],
       },
     });
     for (const [cat, list] of Object.entries(MENUS)) {
@@ -470,7 +491,7 @@ async function main() {
       "Paket lengkap: nasi pilihan, 2 lauk premium, sayur, 2 dessert, minuman + pramusaji.",
       pick("Nasi kuning gurih", "Beef teriyaki", "Rendang sapi empuk", "Sop kimlo hangat", "Buah potong segar", "Es campur / es teler", "Jeruk peras hangat"),
     );
-    vendors.push({ id: profile.id, userId: user.id, businessName: v.businessName, maxPax: v.maxPax, packages: { hemat, premium }, menus });
+    vendors.push({ id: profile.id, userId: user.id, businessName: v.businessName, maxPax: v.maxPax, lat: v.lat, lng: v.lng, rate: v.rate, packages: { hemat, premium }, menus });
   }
 
   // Reset transaksi demo (termasuk data uji sebelumnya)
@@ -527,7 +548,7 @@ async function main() {
   const req = await createOrder(ctx, {
     vendorIdx: 0, customer: "budi", pkg: "premium", addOns: ["Kopi tubruk + teh"], origin: "CUSTOMER_REQUEST", quotationStatus: "REQUESTED",
     createdDaysAgo: 0.1, notes: "Mohon ada stall siomay live cooking bila bisa.",
-    event: { name: "Pernikahan Budi & Sari", type: "WEDDING", dayOffset: 30, time: "10:00", guests: 250, location: "Gedung Sasono Utomo" },
+    event: { name: "Pernikahan Budi & Sari", type: "WEDDING", dayOffset: 30, time: "10:00", guests: 250, location: "Gedung Sasono Utomo", at: [-7.2650, 112.7450] },
   });
   await addNotification(dn.userId, {
     type: "ORDER_REQUEST", title: "Permintaan pesanan baru", whatsapp: true, at: hoursFromNow(-2),
@@ -540,7 +561,7 @@ async function main() {
     createdDaysAgo: 1, expiresInHours: 60, fees: { deliveryFee: 50000, discount: 100000 },
     extraItems: [{ name: "Nasi kotak anak (porsi kecil)", quantity: 30, unitPrice: 18000 }],
     notes: "Kami tambahkan 30 nasi kotak anak dan potongan Rp100.000 untuk langganan.",
-    event: { name: "Aqiqah Baby Arka", type: "GATHERING", dayOffset: 12, time: "09:00", guests: 150, location: "Rumah, Pondok Mutiara", city: "Sidoarjo" },
+    event: { name: "Aqiqah Baby Arka", type: "GATHERING", dayOffset: 12, time: "09:00", guests: 150, location: "Rumah, Pondok Mutiara", city: "Sidoarjo", at: [-7.4370, 112.7210] },
     history: [{ action: "sent", to: "SENT", actor: "vendor", hoursAgo: 20, note: "Vendor mengirim penawaran khusus atas permintaan pelanggan." }],
   });
   await addNotification(customers.andi.id, {
@@ -553,7 +574,7 @@ async function main() {
     vendorIdx: 0, customer: "kantor", pkg: "premium", origin: "CUSTOMER_REQUEST", quotationStatus: "REVISION_REQUESTED",
     createdDaysAgo: 2, expiresInHours: 30, fees: { deliveryFee: 100000 },
     revisionNote: "Bisa ganti rendang dengan ayam bakar dan ongkir digratiskan? Budget kami Rp6 juta.",
-    event: { name: "Rapat Kerja Q4 PT Maju Jaya", type: "CORPORATE", dayOffset: 18, time: "12:00", guests: 180, location: "Kantor Pusat, Rungkut" },
+    event: { name: "Rapat Kerja Q4 PT Maju Jaya", type: "CORPORATE", dayOffset: 18, time: "12:00", guests: 180, location: "Kantor Pusat, Rungkut", at: [-7.3260, 112.7720] },
     history: [
       { action: "sent", to: "SENT", actor: "vendor", hoursAgo: 30, note: "Vendor mengirim penawaran khusus atas permintaan pelanggan." },
       { action: "revision_requested", to: "REVISION_REQUESTED", actor: "customer", hoursAgo: 5, note: "Bisa ganti rendang dengan ayam bakar dan ongkir digratiskan? Budget kami Rp6 juta." },
@@ -568,7 +589,7 @@ async function main() {
   const unpaid = await createOrder(ctx, {
     vendorIdx: 0, customer: "sari", pkg: "hemat", origin: "CUSTOMER_REQUEST", quotationStatus: "ACCEPTED", createdDaysAgo: 0.5,
     fees: { deliveryFee: 75000 },
-    event: { name: "Arisan Keluarga Wijaya", type: "GATHERING", dayOffset: 9, time: "11:00", guests: 90, location: "Perum Graha Famili B-12" },
+    event: { name: "Arisan Keluarga Wijaya", type: "GATHERING", dayOffset: 9, time: "11:00", guests: 90, location: "Perum Graha Famili B-12", at: [-7.2967, 112.6886] },
     booking: { status: "PAYMENT_PENDING", paymentDueInHours: 18 },
   });
   await addNotification(customers.sari.id, {
@@ -580,7 +601,7 @@ async function main() {
   const paid = await createOrder(ctx, {
     vendorIdx: 0, customer: "kantor", pkg: "premium", addOns: ["Kopi tubruk + teh"], origin: "CUSTOMER_REQUEST", quotationStatus: "ACCEPTED",
     createdDaysAgo: 6, fees: { deliveryFee: 100000 },
-    event: { name: "Syukuran Ulang Tahun PT Maju Jaya", type: "CORPORATE", dayOffset: 3, time: "11:30", guests: 120, location: "Rungkut Industri III/18" },
+    event: { name: "Syukuran Ulang Tahun PT Maju Jaya", type: "CORPORATE", dayOffset: 3, time: "11:30", guests: 120, location: "Rungkut Industri III/18", at: [-7.3330, 112.7650] },
     booking: { status: "PAID", paid: true },
   });
   await addNotification(dn.userId, {
@@ -590,13 +611,13 @@ async function main() {
   await createOrder(ctx, {
     vendorIdx: 0, customer: { offlineName: "Ibu Ratna (RT 05)", offlinePhone: "0813-1111-2222" }, pkg: "hemat", addOns: ["Buah potong segar"],
     origin: "VENDOR_OFFLINE", quotationStatus: "ACCEPTED", createdDaysAgo: 4, fees: { deliveryFee: 30000 },
-    event: { name: "Arisan Ibu-ibu RT 05", dayOffset: 3, time: "15:00", guests: 70, location: "Balai RW 3, Jl. Ketintang Baru" },
+    event: { name: "Arisan Ibu-ibu RT 05", dayOffset: 3, time: "15:00", guests: 70, location: "Balai RW 3, Jl. Ketintang Baru", at: [-7.3150, 112.7270] },
     booking: { status: "PAID", paid: true, method: "CASH" },
   });
   await createOrder(ctx, {
     vendorIdx: 0, customer: { offlineName: "Pak Hendra", offlinePhone: "0812-3333-4444" }, pkg: "hemat",
     origin: "VENDOR_OFFLINE", quotationStatus: "ACCEPTED", createdDaysAgo: 1,
-    event: { name: "Rapat Karang Taruna", dayOffset: 3, time: "19:00", guests: 40, location: "Pos Kamling RW 2" },
+    event: { name: "Rapat Karang Taruna", dayOffset: 3, time: "19:00", guests: 40, location: "Pos Kamling RW 2", at: [-7.3100, 112.7300] },
     booking: { status: "PAYMENT_PENDING" },
   });
 
@@ -604,7 +625,7 @@ async function main() {
   const otw = await createOrder(ctx, {
     vendorIdx: 0, customer: "budi", pkg: "hemat", origin: "CUSTOMER_REQUEST", quotationStatus: "ACCEPTED", createdDaysAgo: 8,
     fees: { deliveryFee: 50000 },
-    event: { name: "Pengajian Bulanan Masjid Al-Ikhlas", type: "GATHERING", dayOffset: 0, time: "18:30", guests: 100, location: "Masjid Al-Ikhlas, Ketintang" },
+    event: { name: "Pengajian Bulanan Masjid Al-Ikhlas", type: "GATHERING", dayOffset: 0, time: "18:30", guests: 100, location: "Masjid Al-Ikhlas, Ketintang", at: [-7.3165, 112.7290] },
     booking: { status: "DELIVERED", paid: true, departedHoursAgo: 0.5 },
   });
   await addNotification(customers.budi.id, {
@@ -616,7 +637,7 @@ async function main() {
   // 7) Refund menunggu admin
   const refunded = await createOrder(ctx, {
     vendorIdx: 0, customer: "andi", pkg: "premium", origin: "CUSTOMER_REQUEST", quotationStatus: "ACCEPTED", createdDaysAgo: 10,
-    event: { name: "Reuni SMA Angkatan 2010", type: "GATHERING", dayOffset: 25, time: "17:00", guests: 80, location: "Resto Taman Bungkul" },
+    event: { name: "Reuni SMA Angkatan 2010", type: "GATHERING", dayOffset: 25, time: "17:00", guests: 80, location: "Resto Taman Bungkul", at: [-7.2910, 112.7395] },
     booking: { status: "REFUND_PENDING", paid: true, cancel: { by: "CUSTOMER", reason: "Acara diundur ke tahun depan" } },
   });
   await addNotification(admin.id, {

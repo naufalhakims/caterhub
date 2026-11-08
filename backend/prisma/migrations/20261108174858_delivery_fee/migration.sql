@@ -1,0 +1,13 @@
+-- AlterTable
+ALTER TABLE "Event" ADD COLUMN     "latitude" DOUBLE PRECISION,
+ADD COLUMN     "longitude" DOUBLE PRECISION;
+
+-- AlterTable
+ALTER TABLE "Quotation" ADD COLUMN     "distanceKm" DOUBLE PRECISION,
+ADD COLUMN     "suggestedDeliveryFee" INTEGER;
+
+-- AlterTable
+ALTER TABLE "VendorProfile" ADD COLUMN     "deliveryBaseFee" INTEGER NOT NULL DEFAULT 15000,
+ADD COLUMN     "deliveryBaseKm" DOUBLE PRECISION NOT NULL DEFAULT 3,
+ADD COLUMN     "deliveryMaxKm" DOUBLE PRECISION NOT NULL DEFAULT 25,
+ADD COLUMN     "deliveryPerKm" INTEGER NOT NULL DEFAULT 4000;

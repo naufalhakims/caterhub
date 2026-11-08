@@ -16,6 +16,10 @@ export type VendorCardDto = {
   description: string | null;
   logoUrl: string | null;
   coverUrl: string | null;
+  /** Diisi bila pencarian menyertakan lokasi acara dan vendor sudah memasang lokasi dapur. */
+  distanceKm?: number | null;
+  deliveryFee?: number | null;
+  deliveryInRange?: boolean | null;
 };
 
 export type VendorPackageItemDto = {
@@ -66,6 +70,13 @@ export type VendorDetailDto = {
   reviewCount: number;
   minPax: number;
   maxPax: number;
+  /** Lokasi dapur & tarif ongkir (estimasi ongkir di form pesanan). */
+  latitude?: number | null;
+  longitude?: number | null;
+  deliveryBaseFee?: number;
+  deliveryBaseKm?: number;
+  deliveryPerKm?: number;
+  deliveryMaxKm?: number;
   packages: VendorPackageDto[];
   menuItems: VendorMenuDto[];
   reviews: VendorReviewDto[];

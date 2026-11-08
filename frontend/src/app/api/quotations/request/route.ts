@@ -20,6 +20,9 @@ export async function POST(req: Request) {
   const city = String(form.get("city") ?? "").trim() || "Surabaya";
   const notes = String(form.get("notes") ?? "").slice(0, 1000);
   const addOnIds = form.getAll("addOnIds").map(String).filter(Boolean).slice(0, 30);
+  const lat = Number(form.get("latitude"));
+  const lng = Number(form.get("longitude"));
+  const pin = form.get("latitude") && Number.isFinite(lat) && Number.isFinite(lng) ? { latitude: lat, longitude: lng } : {};
 
   if (!vendorId || !packageId || !eventDate || !eventTime || !guestCount || !location) {
     return NextResponse.json(
@@ -39,6 +42,7 @@ export async function POST(req: Request) {
       city,
       notes: notes || undefined,
       addOnIds,
+      ...pin,
     });
     return NextResponse.redirect(new URL(`/quotations/${data.id}`, req.url), 303);
   } catch (error) {
@@ -48,6 +52,10 @@ export async function POST(req: Request) {
     back.searchParams.set("date", eventDate);
     back.searchParams.set("time", eventTime);
     back.searchParams.set("guests", String(guestCount));
+    if ("latitude" in pin) {
+      back.searchParams.set("lat", String(pin.latitude));
+      back.searchParams.set("lng", String(pin.longitude));
+    }
     return NextResponse.redirect(back, 303);
   }
 }

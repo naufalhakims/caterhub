@@ -28,6 +28,7 @@ const ACTION_LABEL: Record<string, string> = {
   revision_requested: "Revisi diminta",
   declined: "Permintaan ditolak vendor",
   expired: "Kedaluwarsa",
+  fee_adjusted: "Ongkir disesuaikan vendor",
 };
 
 type QuotationDetail = {
@@ -44,6 +45,8 @@ type QuotationDetail = {
   notes: string | null;
   revisionNote: string | null;
   expiresAt: string | null;
+  distanceKm: number | null;
+  suggestedDeliveryFee: number | null;
   event: {
     id: string;
     name: string;
@@ -242,8 +245,10 @@ export default async function QuotationDetailPage({
           <Card className="mt-4 border-brand-100">
             <h2 className="font-display text-2xl text-ink">Konfirmasi pesanan</h2>
             <p className="text-[13px] text-stone-500">
-              Tambahkan ongkir/biaya lain bila ada. Total nota dihitung otomatis dan langsung
-              masuk ke halaman pembayaran pelanggan.
+              {q.suggestedDeliveryFee != null
+                ? `Ongkir sudah terisi sesuai tarif Anda (±${q.distanceKm?.toLocaleString("id-ID")} km → ${formatIDR(q.suggestedDeliveryFee)}). Sesuaikan bila perlu — perubahan tercatat di riwayat.`
+                : "Tambahkan ongkir/biaya lain bila ada. Atur lokasi dapur & tarif di Profil agar ongkir terhitung otomatis."}{" "}
+              Total nota langsung masuk ke halaman pembayaran pelanggan.
             </p>
             <form action={confirmQuotationRequestAction} className="mt-3 space-y-3">
               <input type="hidden" name="quotationId" value={q.id} />

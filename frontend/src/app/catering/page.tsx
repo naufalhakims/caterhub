@@ -3,6 +3,7 @@ import { Navbar } from "@/components/Navbar";
 import { VendorCard } from "@/components/VendorCard";
 import { searchVendors } from "@/server/marketplace";
 import { RupiahInput } from "@/components/ui/RupiahInput";
+import { NearMeButton } from "@/components/NearMeButton";
 import { Footer } from "@/components/Footer";
 import { buttonLink } from "@/components/ui/Button";
 
@@ -12,7 +13,9 @@ export default async function CateringPage({
   searchParams: Record<string, string | undefined>;
 }) {
   const results = await searchVendors(searchParams);
-  const showReco = !!(searchParams.date || searchParams.time || searchParams.guests || searchParams.budgetMax);
+  const located = !!(searchParams.lat && searchParams.lng);
+  const showReco = !!(searchParams.date || searchParams.time || searchParams.guests || searchParams.budgetMax || located);
+  const pinParams: Record<string, string> = located ? { lat: searchParams.lat!, lng: searchParams.lng! } : {};
 
   return (
     <>
@@ -63,12 +66,21 @@ export default async function CateringPage({
             </span>
             <button className={buttonLink("dark")}>Cari</button>
           </div>
+          {located && (
+            <>
+              <input type="hidden" name="lat" value={searchParams.lat} />
+              <input type="hidden" name="lng" value={searchParams.lng} />
+            </>
+          )}
           <p className="mt-2 px-2 text-xs text-stone-600">Tanggal & jam wajib diisi agar kapasitas vendor bisa dicek sebelum pesanan dikirim.</p>
         </form>
 
-        <div className="mt-10 flex items-center justify-between">
-          <p className="text-sm text-stone-500">
-            <span className="font-display text-2xl text-ink">{results.length}</span> vendor ditemukan
+        <div className="mt-10 flex flex-wrap items-center justify-between gap-3">
+          <p className="flex flex-wrap items-center gap-3 text-sm text-stone-500">
+            <span>
+              <span className="font-display text-2xl text-ink">{results.length}</span> vendor ditemukan
+            </span>
+            <NearMeButton active={located} />
           </p>
           {showReco && (
             <Link href="/catering" className="text-sm font-semibold text-brand-700 hover:underline">
@@ -82,12 +94,13 @@ export default async function CateringPage({
             <div key={v.id} className="animate-rise" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
               <VendorCard
                 href={`/catering/${v.id}${
-                  searchParams.date
+                  searchParams.date || located
                     ? `?${new URLSearchParams({
-                        date: searchParams.date,
-                        time: searchParams.time ?? "",
-                        guests: searchParams.guests ?? "",
+                        ...(searchParams.date
+                          ? ({ date: searchParams.date, time: searchParams.time ?? "", guests: searchParams.guests ?? "" } as Record<string, string>)
+                          : {}),
                         ...(searchParams.city ? { city: searchParams.city } : {}),
+                        ...pinParams,
                       }).toString()}`
                     : ""
                 }`}
@@ -106,6 +119,9 @@ export default async function CateringPage({
                   description: v.description,
                   logoUrl: v.logoUrl,
                   coverUrl: v.coverUrl,
+                  distanceKm: v.distanceKm,
+                  deliveryFee: v.deliveryFee,
+                  deliveryInRange: v.deliveryInRange,
                 }}
               />
             </div>

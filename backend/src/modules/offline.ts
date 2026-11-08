@@ -23,6 +23,8 @@ const offlineSchema = z.object({
   discount: zIdrWithDefault(0),
   notes: z.string().max(1000).optional(),
   payment: z.enum(["NONE", "CASH", "TRANSFER"]).default("NONE"),
+  latitude: z.coerce.number().min(-90).max(90).optional(),
+  longitude: z.coerce.number().min(-180).max(180).optional(),
 });
 
 const manualPaymentSchema = z.object({ method: z.enum(["CASH", "TRANSFER"]) });

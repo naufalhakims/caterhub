@@ -5,6 +5,7 @@ import { Field, Input, Select, Textarea } from "@/components/ui/Field";
 import { requireVendor } from "@/server/vendor-helpers";
 import { apiGet } from "@/lib/api";
 import { WhatsAppSettings } from "@/components/WhatsAppSettings";
+import { DeliverySettings } from "@/components/DeliverySettings";
 import { updateVendorProfileAction } from "@/server/vendor-actions";
 import { removeVendorImageAction, uploadVendorImageAction } from "@/server/image-actions";
 import { Flash } from "@/components/ui/Flash";
@@ -44,6 +45,7 @@ export default async function VendorProfilePage({
       <h1 className="font-display text-4xl text-ink sm:text-5xl">Profil usaha</h1>
       <p className="text-sm text-stone-500">Tampil di marketplace — tulis semenarik etalase aslimu.</p>
       <Flash ok={searchParams?.ok} error={searchParams?.error} />
+      <DeliverySettings vendor={fresh} />
       <WhatsAppSettings
         optIn={me.whatsappOptIn}
         phone={fresh.phone || me.phone}

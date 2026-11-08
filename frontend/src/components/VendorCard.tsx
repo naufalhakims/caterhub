@@ -16,6 +16,9 @@ export type VendorCardData = {
   description?: string | null;
   logoUrl?: string | null;
   coverUrl?: string | null;
+  distanceKm?: number | null;
+  deliveryFee?: number | null;
+  deliveryInRange?: boolean | null;
 };
 
 /** Kartu produk: gambar besar, nama, lalu bar harga kuning seperti referensi. */
@@ -45,6 +48,15 @@ export function VendorCard({ v, href, showScore }: { v: VendorCardData; href: st
             <span className={`h-1.5 w-1.5 rounded-full ${v.hasCapacity ? "bg-emerald-500" : "bg-red-500"}`} />
             {v.hasCapacity ? `Sisa ${v.remaining} pax` : "Penuh"}
           </span>
+          {v.distanceKm != null && (
+            <span
+              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                v.deliveryInRange === false ? "bg-red-50 text-red-700" : "bg-white/95 text-ink"
+              }`}
+            >
+              {v.deliveryInRange === false ? "Di luar jangkauan" : `±${v.distanceKm.toLocaleString("id-ID")} km`}
+            </span>
+          )}
           {showScore && v.score != null && (
             <span className="rounded-full bg-ink px-2.5 py-1 text-[11px] font-semibold text-white">Cocok {v.score}%</span>
           )}
@@ -65,6 +77,11 @@ export function VendorCard({ v, href, showScore }: { v: VendorCardData; href: st
           {v.city} · <span className="font-semibold text-ink">★ {v.rating.toFixed(1)}</span>
           <span className="text-stone-400"> ({v.reviewCount} ulasan)</span>
         </p>
+        {v.deliveryFee != null && (
+          <p className="mt-1 text-[13px] text-stone-600">
+            Ongkir <span className="font-semibold text-ink">{formatIDR(v.deliveryFee)}</span> ke lokasi Anda
+          </p>
+        )}
         {showScore && v.reasons && v.reasons.length > 0 && (
           <p className="mt-2 line-clamp-1 text-[13px] text-brand-700">{v.reasons.slice(0, 2).join(" · ")}</p>
         )}

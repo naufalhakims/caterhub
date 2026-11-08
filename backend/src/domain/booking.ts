@@ -2,6 +2,7 @@ import { db } from "../db";
 import { OVERBOOK_MSG, toDateLiteral } from "./capacity";
 import { buildRequestItems, calcTotals } from "./quotation";
 import { nextInvoiceNumber } from "./invoice";
+import { quoteDeliveryBetween } from "./delivery";
 import { diffInDays, todayDateOnly } from "../lib/date";
 import { notify, notifyAdmins, type Db } from "./notify";
 
@@ -440,6 +441,8 @@ export type OfflineOrderInput = {
   discount: number;
   notes?: string | null;
   payment: "NONE" | OfflinePaymentMethod;
+  latitude?: number;
+  longitude?: number;
 };
 
 /**
@@ -451,7 +454,10 @@ export async function createOfflineBooking(input: OfflineOrderInput) {
   return db.$transaction(async (tx) => {
     const vendor = await tx.vendorProfile.findUnique({
       where: { userId: input.vendorUserId },
-      select: { id: true, businessName: true, userId: true },
+      select: {
+        id: true, businessName: true, userId: true, latitude: true, longitude: true,
+        deliveryBaseFee: true, deliveryBaseKm: true, deliveryPerKm: true, deliveryMaxKm: true,
+      },
     });
     if (!vendor) throw new Error("Profil vendor belum dibuat.");
     if (input.eventDate < todayDateOnly()) throw new Error("Tanggal acara sudah lewat.");
@@ -473,6 +479,8 @@ export async function createOfflineBooking(input: OfflineOrderInput) {
     if (total <= 0) throw new Error("Total nota harus lebih dari 0.");
 
     const customer = await offlineCustomer(tx, vendor);
+    // Ongkir offline diisi vendor (form sudah menghitung dari tarif); jarak disimpan sebagai catatan.
+    const delivery = quoteDeliveryBetween(vendor, { latitude: input.latitude, longitude: input.longitude });
     const event = await tx.event.create({
       data: {
         customerId: customer.id,
@@ -484,6 +492,8 @@ export async function createOfflineBooking(input: OfflineOrderInput) {
         city: input.city,
         guestCount: input.guestCount,
         notes: input.notes ?? undefined,
+        latitude: input.latitude ?? null,
+        longitude: input.longitude ?? null,
       },
     });
     const quotation = await tx.quotation.create({
@@ -494,6 +504,8 @@ export async function createOfflineBooking(input: OfflineOrderInput) {
         customerId: customer.id,
         origin: "VENDOR_OFFLINE",
         status: "ACCEPTED",
+        distanceKm: delivery?.distanceKm ?? null,
+        suggestedDeliveryFee: delivery?.inRange ? delivery.fee : null,
         subtotal,
         deliveryFee: input.deliveryFee,
         serviceFee: input.serviceFee,

@@ -27,8 +27,9 @@ npm run dev:all        # API :4000 + web :3000 (restart bila sudah berjalan)
 ### 1. Pelanggan menemukan & memesan — 1,5 menit (Jendela A)
 1. **Beranda** → tunjukkan statistik nyata (jumlah vendor terverifikasi) dan pencarian tanggal/jam/tamu/budget.
 2. Cari dengan tanggal ±2 minggu lagi, 150 tamu → kartu vendor menampilkan **sisa kapasitas** dan **alasan rekomendasi**.
-3. Buka **Dapur Nusantara** → pilih paket, centang **menu tambahan**; tunjukkan **estimasi harga berubah langsung**. (Tidak perlu mengirim — permintaan Budi untuk pernikahan sudah ada.)
-4. Buka **Dasbor** → permintaan "Pernikahan Budi & Sari" berstatus *Menunggu konfirmasi*.
+3. Tekan **📍 Dekat lokasi saya** (atau buka URL dengan `?lat=-7.2650&lng=112.7450`) → kartu vendor menampilkan **±km & ongkir ke lokasi Anda**; vendor di luar radius ditandai.
+4. Buka **Dapur Nusantara** → pilih paket, centang **menu tambahan**, geser **pin titik antar** di peta; tunjukkan **Subtotal + Ongkir (±km) = Estimasi total** berubah langsung. (Tidak perlu mengirim — permintaan Budi untuk pernikahan sudah ada.)
+5. Buka **Dasbor** → permintaan "Pernikahan Budi & Sari" berstatus *Menunggu konfirmasi* (ongkir sudah terhitung dari jarak).
 
 **Pesan:** pelanggan langsung tahu vendor mana yang *masih muat* di tanggalnya — tidak perlu chat satu per satu.
 
@@ -36,7 +37,7 @@ npm run dev:all        # API :4000 + web :3000 (restart bila sudah berjalan)
 1. **Lonceng notifikasi** (badge) → "Permintaan pesanan baru". Sebut: *pesan yang sama juga dikirim ke WhatsApp vendor*.
 2. **Permintaan masuk** → ada tiga jenis tugas: *Revisi diminta*, *Permintaan baru*, *Menunggu keputusan pelanggan*.
 3. Buka **Rapat Kerja Q4 PT Maju Jaya** (revisi): pelanggan minta ganti rendang & gratis ongkir. Di **Perbarui penawaran**: ubah baris, set ongkir 0 → total terhitung ulang → **Kirim revisi**.
-4. Buka **Pernikahan Budi & Sari** → **Konfirmasi pesanan** dengan ongkir Rp150.000 → pesanan terbentuk, **kapasitas tanggal itu terkunci**, nomor invoice terbit.
+4. Buka **Pernikahan Budi & Sari** → kolom ongkir **sudah terisi dari tarif** (±km) — ubah bila perlu (tercatat di riwayat) → **Konfirmasi pesanan** → pesanan terbentuk, **kapasitas tanggal itu terkunci**, nomor invoice terbit. Tunjukkan **Profil → Lokasi dapur & tarif ongkir** (Rp15.000 s.d. 3 km, +Rp4.000/km).
 
 **Pesan:** negosiasi yang biasanya berceceran di chat kini tercatat, berversi, dan berakhir di satu nota.
 
@@ -79,6 +80,7 @@ npm run dev:all        # API :4000 + web :3000 (restart bila sudah berjalan)
 | Pertanyaan | Jawaban singkat & bukti |
 |---|---|
 | Bagaimana mencegah overbooking? | Kapasitas dikunci dalam transaksi dengan `SELECT … FOR UPDATE` (`backend/src/domain/booking.ts`). |
+| Ongkir dihitung bagaimana? | Tarif vendor: dasar untuk N km pertama + per km (dibulatkan ke atas), radius maks.; jarak = garis lurus × 1,3 sebagai perkiraan jalan, tanpa API berbayar (`domain/delivery.ts`). Vendor tetap bisa menyesuaikan saat konfirmasi. |
 | Vendor harus update status satu per satu? | Tidak: masak otomatis 00:00 hari acara, vendor hanya "Berangkat antar", pelanggan konfirmasi terima, selesai otomatis 24 jam setelah acara (`domain/progress.ts`). |
 | Bagaimana jika pelanggan tidak bayar? | Batas pelunasan 24 jam (maks. H-0 WIB); pengingat WA 3 jam sebelumnya; lewat batas → batal otomatis & kapasitas dilepas (`domain/expiry.ts`). |
 | Aman dari pembayaran ganda? | Satu tagihan aktif per pesanan, webhook Midtrans diverifikasi signature & idempoten; pembayaran telat untuk pesanan batal otomatis menjadi refund. |

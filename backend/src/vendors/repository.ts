@@ -2,6 +2,10 @@ import { db } from "../db";
 import type { SearchFilters } from "./filters";
 import { toDateOnly } from "./filters";
 import { scoreVendor } from "./scoring";
+import { quoteDeliveryBetween } from "../domain/delivery";
+
+/** Dalam radius ini vendor dianggap "dekat" (poin lokasi penuh). */
+const NEAR_KM = 10;
 import type { VendorCardDto, VendorDetailDto, VendorRepository } from "./dto";
 
 const ACTIVE_PACKAGES = {
@@ -37,6 +41,12 @@ function toCard(
     reviewCount: number;
     minPax: number;
     maxPax: number;
+    latitude: number | null;
+    longitude: number | null;
+    deliveryBaseFee: number;
+    deliveryBaseKm: number;
+    deliveryPerKm: number;
+    deliveryMaxKm: number;
     packages: { pricePerPax: number }[];
   },
   availability: { maxPax: number; reservedPax: number } | undefined,
@@ -52,8 +62,27 @@ function toCard(
     filters.budgetMax == null || !guests || startingPrice == null
       ? null
       : startingPrice * guests <= filters.budgetMax;
-  const cityMatch = !filters.city ? null : v.city.toLowerCase() === filters.city.toLowerCase();
-  const { score, reasons } = scoreVendor({ hasCapacity, capacityFit, budgetFit, cityMatch, rating: v.rating });
+  // Jarak nyata bila lokasi acara diketahui; selain itu cocokkan nama kota.
+  const delivery = quoteDeliveryBetween(v, { latitude: filters.lat, longitude: filters.lng });
+  const cityMatch = delivery
+    ? delivery.inRange
+      ? delivery.distanceKm <= NEAR_KM
+        ? true
+        : null
+      : false
+    : !filters.city
+      ? null
+      : v.city.toLowerCase() === filters.city.toLowerCase();
+  const scored = scoreVendor({
+    hasCapacity,
+    capacityFit,
+    budgetFit,
+    cityMatch,
+    rating: v.rating,
+    distanceKm: delivery?.distanceKm ?? null,
+  });
+  const score = scored.score;
+  const reasons = delivery && !delivery.inRange ? ["Di luar jangkauan antar", ...scored.reasons] : scored.reasons;
 
   return {
     id: v.id,
@@ -69,6 +98,9 @@ function toCard(
     description: v.description,
     logoUrl: v.logoUrl,
     coverUrl: v.coverUrl,
+    distanceKm: delivery?.distanceKm ?? null,
+    deliveryFee: delivery?.inRange ? delivery.fee : null,
+    deliveryInRange: delivery ? delivery.inRange : null,
   };
 }
 
@@ -142,6 +174,12 @@ export const prismaVendorRepository: VendorRepository = {
       reviewCount: v.reviewCount,
       minPax: v.minPax,
       maxPax: v.maxPax,
+      latitude: v.latitude,
+      longitude: v.longitude,
+      deliveryBaseFee: v.deliveryBaseFee,
+      deliveryBaseKm: v.deliveryBaseKm,
+      deliveryPerKm: v.deliveryPerKm,
+      deliveryMaxKm: v.deliveryMaxKm,
       packages: v.packages.map((p) => ({
         id: p.id,
         name: p.name,
