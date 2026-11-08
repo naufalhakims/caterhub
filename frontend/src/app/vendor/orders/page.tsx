@@ -10,12 +10,23 @@ import { advanceBookingAction } from "@/server/vendor-actions";
 import { recordManualPaymentAction } from "@/server/offline-actions";
 import { ArrowRight, buttonLink } from "@/components/ui/Button";
 
-/** Satu langkah produksi berikutnya per status — label menyebut hasilnya. */
+/**
+ * Satu-satunya klik yang dibutuhkan setelah lunas: "Berangkat antar". Mulai
+ * masak terjadi otomatis di hari acara; selesai dikonfirmasi pelanggan atau
+ * otomatis 24 jam setelah acara ("Tandai selesai" hanya untuk koreksi).
+ */
 const NEXT: Record<string, [string, string] | undefined> = {
-  PAID: ["PREPARING", "Mulai memasak"],
-  PREPARING: ["READY", "Tandai siap kirim"],
-  READY: ["DELIVERED", "Tandai sudah diantar"],
-  DELIVERED: ["COMPLETED", "Selesaikan pesanan"],
+  PAID: ["DELIVERED", "Berangkat antar"],
+  PREPARING: ["DELIVERED", "Berangkat antar"],
+  READY: ["DELIVERED", "Berangkat antar"],
+  DELIVERED: ["COMPLETED", "Tandai selesai"],
+};
+
+const PROGRESS_HINT: Record<string, string> = {
+  PAID: "Otomatis masuk tahap masak pukul 00:00 pada hari acara.",
+  PREPARING: "Sedang dimasak. Tekan “Berangkat antar” saat makanan dikirim — pelanggan mendapat WhatsApp.",
+  READY: "Siap kirim. Tekan “Berangkat antar” saat makanan dikirim.",
+  DELIVERED: "Menunggu pelanggan mengonfirmasi penerimaan — selesai otomatis 24 jam setelah acara.",
 };
 
 // Status yang masih boleh dibatalkan vendor (lihat decideCancellation di backend).
@@ -123,6 +134,7 @@ export default async function VendorOrdersPage({
                 {o.cancelReason && (
                   <p className="mt-2 text-xs text-stone-500">Alasan batal: {o.cancelReason}</p>
                 )}
+                {PROGRESS_HINT[o.status] && <p className="mt-2 text-xs text-stone-500">{PROGRESS_HINT[o.status]}</p>}
 
                 {(next || CANCELLABLE.has(o.status)) && (
                   <div className="mt-3 flex flex-wrap items-start justify-between gap-2 border-t border-stone-100 pt-3">
@@ -130,7 +142,10 @@ export default async function VendorOrdersPage({
                       <form action={advanceBookingAction}>
                         <input type="hidden" name="id" value={o.id} />
                         <input type="hidden" name="to" value={next[0]} />
-                        <FormButton pendingLabel="Menyimpan…">{next[1]} →</FormButton>
+                        <FormButton variant={next[0] === "COMPLETED" ? "ghost" : "primary"} pendingLabel="Menyimpan…">
+                          {next[1]}
+                          {next[0] === "COMPLETED" ? "" : " →"}
+                        </FormButton>
                       </form>
                     ) : (
                       <span />

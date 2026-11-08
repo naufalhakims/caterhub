@@ -14,7 +14,7 @@ import { formatIDR, formatDateID, formatDateTimeID, todayDateOnly, toDateOnly } 
 import { ApiError, apiGet } from "@/lib/api";
 import { requireUser } from "@/lib/auth-helpers";
 import { createPaymentAction } from "@/server/payment-actions";
-import { createBookingReviewAction } from "@/server/booking-actions";
+import { confirmReceiptAction, createBookingReviewAction } from "@/server/booking-actions";
 import { Flash } from "@/components/ui/Flash";
 
 /** Harus sama dengan CUSTOMER_CANCEL_MIN_DAYS di backend (domain/booking.ts). */
@@ -33,6 +33,9 @@ type BookingDetail = {
   paymentDueAt: string | null;
   refundAmount: number | null;
   refundedAt: string | null;
+  departedAt: string | null;
+  receivedAt: string | null;
+  completedBy: string | null;
   source: string;
   invoiceNumber: string | null;
   offlineCustomerName: string | null;
@@ -171,8 +174,46 @@ export default async function BookingDetailPage({
                 dibatalkan otomatis dan jadwal vendor dibuka untuk pelanggan lain.
               </p>
             )}
+            {booking.status === "DELIVERED" && booking.departedAt && !isCustomer && (
+              <p className="mt-3 text-sm text-stone-600">
+                Berangkat {formatDateTimeID(booking.departedAt)} WIB — menunggu konfirmasi pelanggan; selesai otomatis 24 jam
+                setelah acara.
+              </p>
+            )}
+            {booking.status === "COMPLETED" && (
+              <p className="mt-3 text-sm text-stone-600">
+                {booking.completedBy === "CUSTOMER"
+                  ? `Diterima pelanggan${booking.receivedAt ? ` · ${formatDateTimeID(booking.receivedAt)} WIB` : ""}.`
+                  : booking.completedBy === "SYSTEM"
+                    ? "Selesai otomatis 24 jam setelah acara."
+                    : "Ditandai selesai oleh vendor."}
+              </p>
+            )}
           </Card>
         )}
+
+        {isCustomer &&
+          (booking.status === "DELIVERED" ||
+            (["PAID", "PREPARING", "READY"].includes(booking.status) && daysUntilEvent <= 0)) && (
+            <Card className="mt-4 !rounded-4xl !border-transparent !bg-gradient-to-r !from-mint !to-sun-200">
+              <h2 className="font-display text-3xl text-ink">
+                Pesanan sudah <em>sampai</em>?
+              </h2>
+              <p className="mt-1 text-sm text-stone-700">
+                {booking.status === "DELIVERED"
+                  ? `${booking.vendor.businessName} sedang mengantar pesanan Anda${booking.departedAt ? ` (berangkat ${formatDateTimeID(booking.departedAt)} WIB)` : ""}.`
+                  : "Hari acara sudah tiba."}{" "}
+                Konfirmasi saat makanan diterima agar pesanan selesai dan Anda bisa memberi ulasan.
+              </p>
+              <form action={confirmReceiptAction} className="mt-4">
+                <input type="hidden" name="bookingId" value={booking.id} />
+                <FormButton arrow pendingLabel="Menyimpan…" className="!px-6 !py-3">
+                  Ya, pesanan sudah diterima
+                </FormButton>
+              </form>
+              <p className="mt-2 text-xs text-stone-600">Ada masalah? Sampaikan lewat chat pesanan sebelum mengonfirmasi.</p>
+            </Card>
+          )}
 
         <Card className="mt-4">
           <div className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">

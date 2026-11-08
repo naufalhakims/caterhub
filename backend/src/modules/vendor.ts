@@ -11,6 +11,7 @@ import {
   canVendorSetBookingStatus,
 } from "../domain/booking";
 import { maybeSweep } from "../domain/expiry";
+import { markDeparted, startCookingForDate } from "../domain/progress";
 import { parseDateOnly } from "../lib/date";
 import { setDailyCapacity } from "../domain/capacity";
 import { zIdr, zIdrWithDefault } from "../lib/money";
@@ -449,8 +450,36 @@ export function vendorRouter() {
       if (!canTransitionBooking(booking.status, to)) {
         throw new ApiError(409, "INVALID_TRANSITION", "Transisi status tidak valid.");
       }
-      const updated = await db.booking.update({ where: { id: booking.id }, data: { status: to as never } });
+      if (to === "DELIVERED") {
+        // "Berangkat antar": catat waktu + WA ke pelanggan untuk konfirmasi terima.
+        try {
+          await markDeparted(booking.id, req.user!.id);
+        } catch (error) {
+          throw new ApiError(409, "DEPART_FAILED", (error as Error).message);
+        }
+        return res.json({ data: { ok: true } });
+      }
+      const updated = await db.booking.update({
+        where: { id: booking.id },
+        data: { status: to as never, ...(to === "COMPLETED" ? { completedBy: "VENDOR" } : {}) },
+      });
       res.json({ data: updated });
+    }),
+  );
+
+  /** "Mulai masak semua" — semua pesanan lunas pada tanggal produksi. */
+  router.post(
+    "/production/start",
+    asyncHandler(async (req, res) => {
+      await requireVendor(req);
+      let day: Date;
+      try {
+        day = parseDateOnly(String(req.body?.date ?? ""));
+      } catch {
+        throw new ApiError(400, "INVALID_DATE", "Tanggal tidak valid.");
+      }
+      const count = await startCookingForDate(req.user!.id, day);
+      res.json({ data: { count } });
     }),
   );
 

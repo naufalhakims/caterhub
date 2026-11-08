@@ -69,3 +69,19 @@ export async function cancelBookingAction(formData: FormData): Promise<never> {
       : "Pesanan dibatalkan dan jadwal vendor dilepas.";
   redirect(`${back}?ok=${encodeURIComponent(ok)}`);
 }
+
+/** Pelanggan mengonfirmasi makanan sudah diterima → pesanan selesai. */
+export async function confirmReceiptAction(formData: FormData): Promise<never> {
+  await requireCustomer();
+  const bookingId = String(formData.get("bookingId") ?? "");
+  try {
+    await apiPost(`/api/v1/bookings/${bookingId}/received`);
+  } catch (error) {
+    const message = error instanceof ApiError ? error.message : "Konfirmasi gagal disimpan.";
+    redirect(`/bookings/${bookingId}?error=${encodeURIComponent(message)}`);
+  }
+  revalidatePath(`/bookings/${bookingId}`);
+  revalidatePath("/dashboard");
+  revalidatePath("/vendor/orders");
+  redirect(`/bookings/${bookingId}?ok=${encodeURIComponent("Terima kasih! Pesanan selesai — silakan beri ulasan untuk vendor.")}`);
+}

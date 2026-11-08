@@ -91,12 +91,39 @@ export async function advanceBookingAction(formData: FormData): Promise<never> {
   await requireVendor();
   const id = String(formData.get("id") ?? "");
   const to = String(formData.get("to") ?? "");
+  // Kembali ke halaman asal (daftar pesanan atau lembar produksi tanggal tertentu).
+  const date = String(formData.get("productionDate") ?? "");
+  const back = /^\d{4}-\d{2}-\d{2}$/.test(date) ? `/vendor/production?date=${date}` : "/vendor/orders";
+  const sep = back.includes("?") ? "&" : "?";
   try {
     await apiPost(`/api/v1/vendor/bookings/${id}/advance`, { to });
   } catch (error) {
-    fail("/vendor/orders", errorMessage(error, "Status pesanan gagal diperbarui."));
+    redirect(`${back}${sep}error=${encodeURIComponent(errorMessage(error, "Status pesanan gagal diperbarui."))}`);
   }
   revalidatePath("/vendor/orders");
+  revalidatePath("/vendor/production");
   revalidatePath("/vendor/capacity");
-  redirect("/vendor/orders?ok=Status pesanan diperbarui.");
+  revalidatePath(`/bookings/${id}`);
+  const ok =
+    to === "DELIVERED"
+      ? "Ditandai berangkat. Pelanggan mendapat WhatsApp untuk mengonfirmasi penerimaan."
+      : to === "COMPLETED"
+        ? "Pesanan ditandai selesai."
+        : "Status pesanan diperbarui.";
+  redirect(`${back}${sep}ok=${encodeURIComponent(ok)}`);
+}
+
+/** "Mulai masak semua" — semua pesanan lunas pada tanggal produksi. */
+export async function startCookingAllAction(formData: FormData): Promise<never> {
+  await requireVendor();
+  const date = String(formData.get("date") ?? "");
+  let count = 0;
+  try {
+    count = (await apiPost<{ count: number }>("/api/v1/vendor/production/start", { date })).count;
+  } catch (error) {
+    redirect(`/vendor/production?date=${date}&error=${encodeURIComponent(errorMessage(error, "Gagal memulai produksi."))}`);
+  }
+  revalidatePath("/vendor/production");
+  revalidatePath("/vendor/orders");
+  redirect(`/vendor/production?date=${date}&ok=${encodeURIComponent(`${count} pesanan masuk tahap masak.`)}`);
 }

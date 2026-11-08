@@ -2,6 +2,31 @@
 
 Catatan perubahan per tahap pengembangan. Versi mengikuti milestone roadmap ([ROADMAP_PENGEMBANGAN.md](./ROADMAP_PENGEMBANGAN.md)), bukan rilis npm.
 
+## v0.10.0 — Progres pesanan otomatis (9 Nov 2026)
+
+**Masalah**: setelah lunas, vendor harus menekan 4 tombol per pesanan (*Mulai memasak → Siap kirim → Sudah diantar → Selesai*); di dapur yang sibuk status mudah tertinggal sehingga pelanggan tidak tahu progres dan ulasan tidak terpicu.
+
+**Keputusan** (disetujui): otomatis + konfirmasi pelanggan; mulai masak otomatis **00:00 WIB hari acara**; tahap *Siap kirim* **digabung** ke *Sedang diantar*.
+
+| Transisi | Sekarang |
+|---|---|
+| Lunas → Dimasak | **Otomatis** 00:00 WIB hari acara + ringkasan pagi ke vendor (app + WA: "N pesanan, X porsi masuk tahap masak"); atau **Mulai masak semua** di Lembar Produksi untuk memasak lebih awal |
+| Dimasak → Sedang diantar | **1 klik "Berangkat antar"** (Lembar Produksi / daftar pesanan), mencatat `departedAt` + WA ke pelanggan berisi tautan konfirmasi |
+| Sedang diantar → Selesai | Pelanggan **"Ya, pesanan sudah diterima"** (`receivedAt`, `completedBy=CUSTOMER`) → langsung bisa memberi ulasan; atau **otomatis 24 jam setelah jam acara** (`completedBy=SYSTEM`) + ajakan ulasan |
+| Pengaman | Jam acara lewat & belum berangkat → **pengingat sekali** ke vendor (app + WA). Pelanggan boleh konfirmasi sejak hari acara walau vendor lupa klik. Pesanan offline selesai otomatis tanpa notifikasi ke placeholder. "Tandai selesai" manual tetap ada untuk koreksi |
+
+Klik vendor per pesanan: **4 → 0–1**.
+
+**Teknis**
+- `backend/src/domain/progress.ts`: `eventStartAt` (jam acara WIB → instant; format "10:00", "10.00–14.00", default 12:00), `canConfirmReceipt`, `markDeparted`, `confirmReceipt`, `startCookingForDate`, `autoStartCooking`, `remindLateDelivery`, `autoCompleteBookings` — dijalankan penjadwal 5 menit (`expiry.ts`) dengan klaim baris anti-dobel.
+- Transisi baru `PAID/PREPARING → DELIVERED`; advance vendor ke `DELIVERED` memakai `markDeparted`.
+- API: `POST /api/v1/bookings/:id/received` (pelanggan), `POST /api/v1/vendor/production/start` (`{ date }`).
+- Migrasi `20261108172310_auto_progress`: `Booking.departedAt`, `receivedAt`, `completedBy`, `lateReminderSentAt`.
+- UI: stepper *Permintaan → Pembayaran → Lunas → Dimasak → Diantar → Selesai*; label `DELIVERED` = "Sedang diantar"; kartu **"Pesanan sudah sampai?"** di detail pesanan pelanggan; petunjuk progres per status di daftar pesanan vendor; banner **Mulai masak semua** + tombol **Berangkat antar** per pesanan di Lembar Produksi (pesanan yang sedang diantar tetap tampil di lembar hari itu).
+- Seed: "Pengajian Bulanan" kini **sedang diantar hari ini** untuk demo konfirmasi penerimaan oleh Budi.
+
+**Verifikasi**: 109 unit test (backend 76 termasuk `progress.test.ts`, frontend 33), typecheck & lint bersih, smoke test E2E 14 cek (masak otomatis + ringkasan, pengingat telat sekali, berangkat antar + WA, konfirmasi terima → ulasan, akses ditolak untuk pelanggan lain, selesai otomatis 23 j vs 25 j, mulai masak semua, konfirmasi terlalu dini ditolak, offline tanpa notifikasi) lulus; data uji dibersihkan dengan seed ulang; tampilan diperiksa via screenshot.
+
 ## v0.9.0 — Seed demo bercerita + skrip demo (7 Nov 2026) — sisa Fase 0 selesai
 
 **Seed baru** (`backend/prisma/seed.ts`, `npm run db:seed`)

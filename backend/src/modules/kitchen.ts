@@ -16,7 +16,8 @@ import {
 } from "../domain/costing";
 
 /** Pesanan yang pasti diproduksi (sudah lunas) vs tentatif (menunggu bayar). */
-const CONFIRMED_STATUSES = ["PAID", "PREPARING", "READY"] as const;
+/** Termasuk "Sedang diantar" agar pesanan yang sedang dikirim tetap terlihat di lembar hari itu. */
+const CONFIRMED_STATUSES = ["PAID", "PREPARING", "READY", "DELIVERED"] as const;
 const TENTATIVE_STATUSES = ["PAYMENT_PENDING", "CONFIRMED"] as const;
 
 const ingredientSchema = z.object({

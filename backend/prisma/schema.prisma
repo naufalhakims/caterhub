@@ -428,6 +428,11 @@ model Booking {
   refundedAt      DateTime?
   /// Pengingat batas bayar sudah dikirim (agar tidak dobel).
   paymentReminderSentAt DateTime?
+  /// Progres otomatis: vendor berangkat antar, pelanggan konfirmasi terima.
+  departedAt      DateTime?
+  receivedAt      DateTime?
+  completedBy     String? // CUSTOMER | VENDOR | SYSTEM
+  lateReminderSentAt DateTime?
   /// Nomor invoice berurutan per vendor per tahun, cth. INV/DN/2026/0007.
   invoiceNumber   String?       @unique
   source          String        @default("ONLINE") // ONLINE | OFFLINE

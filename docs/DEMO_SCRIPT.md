@@ -44,11 +44,14 @@ npm run dev:all        # API :4000 + web :3000 (restart bila sudah berjalan)
 1. Lonceng → "Pesanan dikonfirmasi vendor" → **Bayar lunas via QRIS** → QR asli (mock) dengan masa berlaku.
 2. Klik **Simulasikan bayar** → status **Lunas**, stepper maju.
 3. **Lihat kuitansi** → nomor `INV/DN/…`, cap **LUNAS**, tombol **Cetak / Unduh PDF**.
+4. Dasbor → pesanan **"Pengajian Bulanan Masjid Al-Ikhlas"** (sedang diantar hari ini) → kartu **"Pesanan sudah sampai?"** → **Ya, pesanan sudah diterima** → pesanan selesai dan form ulasan langsung muncul.
+
+**Pesan (progres otomatis):** vendor tidak perlu mengklik tiap tahap — masak dimulai otomatis di hari acara, vendor cukup sekali "Berangkat antar", pelanggan yang menutup pesanan (atau otomatis 24 jam setelah acara).
 
 **Pesan:** pelanggan korporat butuh kuitansi resmi untuk reimburse — otomatis.
 
 ### 4. Dapur yang terencana — 2 menit (Jendela B)
-1. **Produksi** (tanggal H+3): 2 pesanan lunas (satu dari aplikasi, satu **offline** dari WA) → **porsi per menu**, **daftar belanja** (kg/liter/pcs + estimasi biaya), **jadwal kirim**; pesanan belum bayar terpisah sebagai *tentatif*. Tunjukkan **Cetak lembar** untuk ditempel di dapur.
+1. **Produksi** (tanggal H+3): 2 pesanan lunas (satu dari aplikasi, satu **offline** dari WA) → **porsi per menu**, **daftar belanja** (kg/liter/pcs + estimasi biaya), **jadwal kirim**; pesanan belum bayar terpisah sebagai *tentatif*. Tunjukkan banner **Mulai masak semua** (otomatis 00:00 hari acara), tombol **Berangkat antar** per pesanan, dan **Cetak lembar** untuk ditempel di dapur.
 2. **Bahan & HPP → Paket & margin**: HPP dan margin setiap paket dari resep nyata.
 3. Simulasi **harga daging sapi naik**: tab **Bahan baku** → ubah *Daging sapi* dari Rp130.000 menjadi Rp160.000/kg → kembali ke **Paket & margin** → margin paket berisi rendang langsung turun.
 
@@ -76,6 +79,7 @@ npm run dev:all        # API :4000 + web :3000 (restart bila sudah berjalan)
 | Pertanyaan | Jawaban singkat & bukti |
 |---|---|
 | Bagaimana mencegah overbooking? | Kapasitas dikunci dalam transaksi dengan `SELECT … FOR UPDATE` (`backend/src/domain/booking.ts`). |
+| Vendor harus update status satu per satu? | Tidak: masak otomatis 00:00 hari acara, vendor hanya "Berangkat antar", pelanggan konfirmasi terima, selesai otomatis 24 jam setelah acara (`domain/progress.ts`). |
 | Bagaimana jika pelanggan tidak bayar? | Batas pelunasan 24 jam (maks. H-0 WIB); pengingat WA 3 jam sebelumnya; lewat batas → batal otomatis & kapasitas dilepas (`domain/expiry.ts`). |
 | Aman dari pembayaran ganda? | Satu tagihan aktif per pesanan, webhook Midtrans diverifikasi signature & idempoten; pembayaran telat untuk pesanan batal otomatis menjadi refund. |
 | WhatsApp-nya sungguhan? | Arsitektur *transactional outbox* sudah final; saat ini adapter **mock** — provider asli (Fonnte/WhatsApp Cloud API) cukup satu kelas baru (`domain/whatsapp.ts`). |

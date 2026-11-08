@@ -84,8 +84,8 @@ const badgeLabels: Record<string, string> = {
   NEEDS_INFO: "Perlu Perbaikan",
   COMPLETED: "Selesai",
   PREPARING: "Dipersiapkan",
-  READY: "Siap",
-  DELIVERED: "Terkirim",
+  READY: "Siap kirim",
+  DELIVERED: "Sedang diantar",
   REFUND_PENDING: "Menunggu Refund",
   REFUNDED: "Dana Dikembalikan",
 };

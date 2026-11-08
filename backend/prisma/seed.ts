@@ -266,6 +266,8 @@ type OrderSpec = {
     paid?: boolean;
     method?: "QRIS" | "CASH" | "TRANSFER";
     paymentDueInHours?: number;
+    /** Sudah berangkat antar N jam lalu (status DELIVERED). */
+    departedHoursAgo?: number;
     cancel?: { by: "CUSTOMER" | "VENDOR"; reason: string };
     review?: number;
   };
@@ -348,6 +350,7 @@ async function createOrder(ctx: Ctx, s: OrderSpec) {
       cancelReason: b.cancel?.reason ?? null,
       cancelledBy: b.cancel?.by ?? null,
       refundAmount: refund ? total : null,
+      departedAt: b.departedHoursAgo != null ? hoursFromNow(-b.departedHoursAgo) : null,
     },
   });
   if (b.paid) {
@@ -597,12 +600,17 @@ async function main() {
     booking: { status: "PAYMENT_PENDING" },
   });
 
-  // 6) Sedang dimasak (besok)
-  await createOrder(ctx, {
+  // 6) Sedang diantar (hari ini) — untuk demo "Pesanan sudah diterima" oleh Budi
+  const otw = await createOrder(ctx, {
     vendorIdx: 0, customer: "budi", pkg: "hemat", origin: "CUSTOMER_REQUEST", quotationStatus: "ACCEPTED", createdDaysAgo: 8,
     fees: { deliveryFee: 50000 },
-    event: { name: "Pengajian Bulanan Masjid Al-Ikhlas", type: "GATHERING", dayOffset: 1, time: "18:30", guests: 100, location: "Masjid Al-Ikhlas, Ketintang" },
-    booking: { status: "PREPARING", paid: true, review: 5 },
+    event: { name: "Pengajian Bulanan Masjid Al-Ikhlas", type: "GATHERING", dayOffset: 0, time: "18:30", guests: 100, location: "Masjid Al-Ikhlas, Ketintang" },
+    booking: { status: "DELIVERED", paid: true, departedHoursAgo: 0.5 },
+  });
+  await addNotification(customers.budi.id, {
+    type: "DELIVERY", title: "Pesanan sedang diantar", whatsapp: true, at: hoursFromNow(-0.5),
+    message: `Dapur Nusantara sedang mengantar pesanan "Pengajian Bulanan Masjid Al-Ikhlas". Tekan "Pesanan sudah diterima" saat makanan tiba.`,
+    link: `/bookings/${otw.booking!.id}`,
   });
 
   // 7) Refund menunggu admin
@@ -637,7 +645,7 @@ async function main() {
   console.log("Seed demo selesai:");
   console.log("  • 5 vendor terverifikasi, katalog, riwayat 6 bulan + ulasan");
   console.log("  • Dapur Nusantara: bahan baku & resep lengkap, 1 permintaan baru, 1 penawaran, 1 revisi,");
-  console.log("    1 menunggu bayar, hari produksi H+3 (3 pesanan), 1 sedang dimasak, 1 refund menunggu admin");
+  console.log("    1 menunggu bayar, hari produksi H+3 (3 pesanan), 1 sedang diantar hari ini, 1 refund menunggu admin");
   console.log("  • Notifikasi & kotak keluar WhatsApp terisi");
   console.log("  Akun (sandi demo1234): pelanggan@demo.id · vendor1@demo.id · admin@caterhub.id");
 }

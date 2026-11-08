@@ -10,6 +10,7 @@ import { maybeSweep } from "../domain/expiry";
 import { notify } from "../domain/notify";
 import { dispatchWhatsApp } from "../domain/whatsapp";
 import { ensureInvoiceNumber } from "../domain/invoice";
+import { confirmReceipt } from "../domain/progress";
 
 const cancelSchema = z.object({
   reason: z
@@ -366,6 +367,21 @@ export function bookingsRouter() {
         if (message === "Pesanan tidak ditemukan.") throw new ApiError(404, "BOOKING_NOT_FOUND", message);
         throw new ApiError(409, "CANCEL_REJECTED", message);
       }
+    }),
+  );
+
+  /** Pelanggan: "Pesanan sudah diterima" → Selesai. */
+  router.post(
+    "/:id/received",
+    requireRole("CUSTOMER"),
+    asyncHandler(async (req, res) => {
+      try {
+        await confirmReceipt(req.params.id, req.user!.id);
+      } catch (error) {
+        const message = (error as Error).message;
+        throw new ApiError(message === "Akses ditolak." ? 403 : 409, "RECEIPT_FAILED", message);
+      }
+      res.json({ data: { ok: true } });
     }),
   );
 

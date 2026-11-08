@@ -2,6 +2,7 @@ import { db } from "../db";
 import { todayDateOnly } from "../lib/date";
 import { expireUnpaidBookings } from "./booking";
 import { notify } from "./notify";
+import { autoCompleteBookings, autoStartCooking, remindLateDelivery } from "./progress";
 
 const OPEN_QUOTATION_STATUSES = ["REQUESTED", "SENT", "REVISION_REQUESTED"] as const;
 
@@ -98,7 +99,11 @@ export async function runExpirySweep(now = new Date()) {
   const reminders = await remindUpcomingPaymentDue(now);
   const bookings = await expireUnpaidBookings(now);
   const quotations = await expireStaleQuotations(now);
-  return { reminders, bookings, quotations };
+  // Progres pasca-lunas otomatis.
+  const cooking = await autoStartCooking(now);
+  const lateReminders = await remindLateDelivery(now);
+  const completed = await autoCompleteBookings(now);
+  return { reminders, bookings, quotations, cooking, lateReminders, completed };
 }
 
 const SWEEP_THROTTLE_MS = 60_000;

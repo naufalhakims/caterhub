@@ -1,6 +1,6 @@
 # Analisis Codebase CaterHub
 
-> Sumber: kode di `frontend/` dan `backend/` per commit `73b8d42` (baseline). Perubahan sesudahnya dicatat di [CHANGELOG.md](./CHANGELOG.md); tabel endpoint di bawah sudah diperbarui sampai v0.8.0. Hasil verifikasi lokal: `npm test` → **71 tes lulus** (frontend 32, backend 39); `npm run typecheck` → bersih di kedua paket.
+> Sumber: kode di `frontend/` dan `backend/` per commit `73b8d42` (baseline). Perubahan sesudahnya dicatat di [CHANGELOG.md](./CHANGELOG.md); tabel endpoint di bawah sudah diperbarui sampai v0.10.0. Hasil verifikasi lokal: `npm test` → **71 tes lulus** (frontend 32, backend 39); `npm run typecheck` → bersih di kedua paket.
 
 ## 1. Gambaran arsitektur
 
@@ -117,6 +117,7 @@ PAYMENT_PENDING ──(webhook settlement)──▶ PAID ─▶ PREPARING ─▶
 | `/vendor/ingredients`, `/vendor/menu/:id/recipe`, `/vendor/costing`, `/vendor/packages/:id/cost`, `/vendor/production` | ✅ sejak v0.6.0 (Bahan & HPP, Produksi) |
 | `/admin/*`, `/bookings/:id`, `/bookings/:id/review` | ✅ |
 | `/bookings/:id/invoice`, `/vendor/bookings/offline`, `/vendor/bookings/:id/manual-payment` | ✅ sejak v0.8.0 (invoice, pesanan offline) |
+| `/bookings/:id/received`, `/vendor/production/start` | ✅ sejak v0.10.0 (progres otomatis: konfirmasi terima, mulai masak semua) |
 | `/payments`, `/payments/:id`, `/payments/:id/mock-settle`, `/payments/webhook` | ✅ |
 | `/me` (profil) | ✅ |
 | Notifikasi | ✅ sejak v0.2.0 (`/me/notifications`); WhatsApp outbox sejak v0.7.0 (`/me/whatsapp`, `/admin/whatsapp`) |

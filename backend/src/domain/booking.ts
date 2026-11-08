@@ -563,8 +563,8 @@ export async function recordOfflinePayment(bookingId: string, vendorUserId: stri
 export const VALID_BOOKING_TRANSITIONS: Record<string, string[]> = {
   PAYMENT_PENDING: ["PAID", "CANCELLED"],
   CONFIRMED: ["PAYMENT_PENDING", "PAID", "CANCELLED"],
-  PAID: ["PREPARING", "REFUND_PENDING"],
-  PREPARING: ["READY", "REFUND_PENDING"],
+  PAID: ["PREPARING", "DELIVERED", "REFUND_PENDING"],
+  PREPARING: ["READY", "DELIVERED", "REFUND_PENDING"],
   READY: ["DELIVERED"],
   DELIVERED: ["COMPLETED"],
   COMPLETED: [],

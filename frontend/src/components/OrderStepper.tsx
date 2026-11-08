@@ -3,8 +3,7 @@ const STEPS = [
   { key: "PAYMENT_PENDING", label: "Pembayaran", hint: "Lunasi sebelum batas waktu" },
   { key: "PAID", label: "Lunas", hint: "Vendor menjadwalkan produksi" },
   { key: "PREPARING", label: "Dimasak", hint: "Makanan sedang disiapkan" },
-  { key: "READY", label: "Siap", hint: "Siap dikirim" },
-  { key: "DELIVERED", label: "Terkirim", hint: "Sampai di lokasi acara" },
+  { key: "DELIVERED", label: "Diantar", hint: "Dalam perjalanan ke lokasi acara" },
   { key: "COMPLETED", label: "Selesai", hint: "Terima kasih!" },
 ] as const;
 
@@ -13,7 +12,8 @@ const STEPS = [
  * label lengkap juga di layar kecil, dan `aria-current="step"` untuk pembaca layar.
  */
 export function OrderStepper({ status }: { status: string }) {
-  const normalized = status === "CONFIRMED" ? "PAYMENT_PENDING" : status;
+  // CONFIRMED (lama) = menunggu bayar; READY (lama) digabung ke tahap "Diantar".
+  const normalized = status === "CONFIRMED" ? "PAYMENT_PENDING" : status === "READY" ? "DELIVERED" : status;
   const current = STEPS.findIndex((s) => s.key === normalized);
   if (current < 0) return null;
   const active = STEPS[current];

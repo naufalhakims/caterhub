@@ -5,6 +5,9 @@ import { buttonLink } from "@/components/ui/Button";
 import { formatDateOnlyID, formatIDR, jakartaDateString } from "@/lib/format";
 import { apiGet } from "@/lib/api";
 import { requireVendor } from "@/server/vendor-helpers";
+import { advanceBookingAction, startCookingAllAction } from "@/server/vendor-actions";
+import { FormButton } from "@/components/ui/FormButton";
+import { Flash } from "@/components/ui/Flash";
 
 type Summary = {
   menus: { id: string; name: string; category: string; portions: number }[];
@@ -92,13 +95,14 @@ function ShoppingList({ summary }: { summary: Summary }) {
   );
 }
 
-export default async function ProductionPage({ searchParams }: { searchParams?: { date?: string } }) {
+export default async function ProductionPage({ searchParams }: { searchParams?: { date?: string; ok?: string; error?: string } }) {
   await requireVendor();
   const date = searchParams?.date ?? "";
   const data = await apiGet<Production>(`/api/v1/vendor/production${date ? `?date=${encodeURIComponent(date)}` : ""}`);
   const today = jakartaDateString();
   const { confirmed, tentative } = data;
   const missing = [...new Set([...confirmed.summary.missingRecipes, ...tentative.summary.missingRecipes])];
+  const notStarted = confirmed.orders.filter((o) => o.status === "PAID").length;
 
   return (
     <div>
@@ -123,6 +127,23 @@ export default async function ProductionPage({ searchParams }: { searchParams?: 
           <PrintButton label="Cetak lembar" />
         </div>
       </div>
+      <Flash ok={searchParams?.ok} error={searchParams?.error} />
+
+      {notStarted > 0 && (
+        <form
+          action={startCookingAllAction}
+          className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-sun-100 px-4 py-3 ring-1 ring-inset ring-sun-300 print:hidden"
+        >
+          <input type="hidden" name="date" value={data.date} />
+          <p className="text-sm text-stone-800">
+            {notStarted} pesanan lunas belum masuk tahap masak. Otomatis dimulai pukul 00:00 pada hari acara — atau mulai
+            sekarang bila dapur memasak lebih awal.
+          </p>
+          <FormButton variant="dark" pendingLabel="Memulai…">
+            Mulai masak semua
+          </FormButton>
+        </form>
+      )}
 
       {data.upcomingDates.length > 0 && (
         <div className="mt-4 flex flex-wrap items-center gap-2 print:hidden">
@@ -203,6 +224,14 @@ export default async function ProductionPage({ searchParams }: { searchParams?: 
                   </div>
                   <span className="flex items-center gap-2">
                     <StatusBadge status={o.status} />
+                    {["PAID", "PREPARING", "READY"].includes(o.status) && (
+                      <form action={advanceBookingAction} className="print:hidden">
+                        <input type="hidden" name="id" value={o.id} />
+                        <input type="hidden" name="to" value="DELIVERED" />
+                        <input type="hidden" name="productionDate" value={data.date} />
+                        <FormButton pendingLabel="…" className="!px-4 !py-1.5">Berangkat antar →</FormButton>
+                      </form>
+                    )}
                     <Link href={`/bookings/${o.id}`} className="text-sm font-semibold text-brand-700 hover:underline print:hidden">
                       Detail →
                     </Link>
@@ -221,7 +250,7 @@ export default async function ProductionPage({ searchParams }: { searchParams?: 
           </h2>
           <p className="mt-1 text-sm text-stone-500">
             {tentative.orders.length} pesanan · {qty(tentative.guests)} porsi · estimasi bahan {formatIDR(tentative.summary.totalCost)}. Jangan
-            belanja dulu; pesanan batal otomatis bila tidak dilunasi sebelum batas waktu.
+            belanja dulu — pesanan online batal otomatis bila tidak dilunasi; pesanan offline tandai lunas dari daftar pesanan.
           </p>
           <ul className="mt-3 space-y-1.5 text-sm">
             {tentative.orders.map((o) => (
