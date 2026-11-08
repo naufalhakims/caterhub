@@ -7,6 +7,10 @@ import { ApiError } from "../errors";
 import { buildRequestItems, calcTotals } from "../domain/quotation";
 import { notify } from "../domain/notify";
 import { quoteDeliveryBetween } from "../domain/delivery";
+import { createRateLimiter } from "../lib/rate-limit";
+
+/** Anti-spam chat penawaran: 30 pesan per menit per pengguna. */
+const chatLimiter = createRateLimiter({ windowMs: 60_000, max: 30 });
 import {
   canPerformQuotationDecision,
   nextQuotationStatus,
@@ -673,6 +677,9 @@ export function quotationsRouter() {
     asyncHandler(async (req, res) => {
       const user = req.user!;
       const input = messageSchema.parse(req.body ?? {});
+      if (!chatLimiter.hit(user.id).allowed) {
+        return sendError(res, 429, "RATE_LIMITED", "Terlalu banyak pesan. Tunggu sebentar.");
+      }
       const q = await db.quotation.findUnique({
         where: { id: req.params.id },
         select: {

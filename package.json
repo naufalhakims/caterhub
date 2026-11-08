@@ -15,6 +15,7 @@
     "lint": "npm -w frontend run lint",
     "typecheck": "npm -w frontend run typecheck && npm -w backend run typecheck",
     "test": "npm -w frontend run test && npm -w backend run test",
+    "test:smoke": "npm -w backend run smoke && npm run db:seed",
     "api:dev": "npm -w backend run dev",
     "api:start": "npm -w backend run start",
     "api:test": "npm -w backend run test",

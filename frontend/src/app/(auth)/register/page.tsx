@@ -31,7 +31,7 @@ export default function RegisterPage({
           <Input name="email" type="email" required placeholder="nama@email.com" autoComplete="email" />
         </Field>
         <Field label="Kata Sandi">
-          <Input name="password" type="password" required minLength={6} placeholder="Minimal 6 karakter" autoComplete="new-password" />
+          <Input name="password" type="password" required minLength={8} placeholder="Minimal 8 karakter" autoComplete="new-password" />
         </Field>
         <Field label="Daftar sebagai">
           <Select name="role" defaultValue="CUSTOMER">

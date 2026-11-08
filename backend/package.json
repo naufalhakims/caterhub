@@ -15,7 +15,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "test": "vitest run",
-    "bench": "tsx scripts/bench.ts"
+    "bench": "tsx scripts/bench.ts",
+    "smoke": "tsx scripts/smoke.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.21.1",

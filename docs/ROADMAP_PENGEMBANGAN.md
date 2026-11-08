@@ -72,7 +72,20 @@ Pilih 3–4 yang paling sesuai waktu. Diurutkan dari dampak narasi UMKM tertingg
 ### 7. Badge kepercayaan
 - Jenis dokumen baru: `HALAL_CERT`, `NIB`, `PIRT`, `SLHS` dengan tanggal kedaluwarsa. Admin memverifikasi per dokumen; badge tampil di kartu vendor dan bisa difilter ("Halal saja").
 
-## Fase 2 — Pasca-hackathon / pilot dengan UMKM nyata (1–3 bulan)
+## Fase 2 (hackathon) — integrasi esensial
+
+> **Keputusan (9 Nov 2026).** Untuk hackathon, "minimum agar app berjalan" adalah **bisa diakses publik & stabil**, bukan uang/WA sungguhan. Ruang lingkup yang disetujui, berurutan:
+>
+> | Tahap | Isi | Status |
+> |---|---|---|
+> | A | Perbaikan Fase 1: smoke test E2E di repo (`npm run test:smoke`), cek tampilan mobile halaman vendor, keamanan login (batas percobaan, sesi lebih pendek + pencabutan, sandi min. 8) | ✅ v0.12.0 |
+> | B | Siap deploy **Railway/Render**: API selalu hidup (penjadwal di dalam proses), PostgreSQL terkelola, volume persisten untuk unggahan, konfigurasi produksi | ⏳ |
+> | C | **Midtrans sandbox** end-to-end (perbaiki parameter Snap QRIS & cek nominal webhook); mock tetap sebagai cadangan | ⏳ |
+> | D | **WhatsApp via Fonnte** ke nomor demo (adapter + saklar env); kotak keluar mock tetap sebagai cadangan | ⏳ |
+>
+> **Tidak dikerjakan untuk hackathon** (disebut sebagai rencana lanjutan): WhatsApp Cloud API resmi, pencairan dana/split payment, refund via API, geocoding sendiri, PWA, akun staf dapur.
+
+## Fase 2+ — Pasca-hackathon / pilot dengan UMKM nyata (1–3 bulan)
 
 | Area | Pekerjaan |
 |---|---|
@@ -82,7 +95,7 @@ Pilih 3–4 yang paling sesuai waktu. Diurutkan dari dampak narasi UMKM tertingg
 | **Operasional vendor** | Kalender libur/blackout, kapasitas per paket (bukan hanya per hari), pengiriman: penugasan kurir & bukti foto serah terima. |
 | **Pelanggan** | Edit/hapus acara, pesan ulang (re-order) dari pesanan lama, favorit vendor, langganan katering harian/mingguan (kantor, kos). |
 | **Admin** | Penangguhan akun, sengketa/komplain, moderasi ulasan, dashboard GMV, retensi, tingkat konfirmasi vendor. |
-| **Keamanan** | Rate limit, TTL JWT lebih pendek + `tokenVersion`, cek `Origin` pada route handler, deteksi nomor HP di chat (C1–C5). |
+| **Keamanan** | ~~Rate limit, TTL JWT lebih pendek + `tokenVersion`~~ (✅ v0.12.0); rate limit terdistribusi (Redis) bila API lebih dari 1 instance, cek `Origin` pada route handler, deteksi nomor HP di chat (C4–C5). |
 | **Infrastruktur** | Object storage (D1), Docker Compose (D7), CI GitHub Actions (D2), integration test PostgreSQL (D3), logging terstruktur + Sentry (D6), bersihkan skema sisa (D5). |
 
 ## Fase 3 — Skala

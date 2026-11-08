@@ -2,6 +2,28 @@
 
 Catatan perubahan per tahap pengembangan. Versi mengikuti milestone roadmap ([ROADMAP_PENGEMBANGAN.md](./ROADMAP_PENGEMBANGAN.md)), bukan rilis npm.
 
+## v0.12.0 — Fase 2 Tahap A: smoke test, keamanan login, tampilan mobile (9 Nov 2026)
+
+Tahap pertama Fase 2 (hackathon): merapikan Fase 1 sebelum integrasi nyata.
+
+**A1 — Smoke test E2E di repo**
+- `backend/scripts/smoke.ts`, dijalankan dengan `npm run test:smoke` dari root (API harus hidup di `http://localhost:4000`, bisa diganti `SMOKE_API_URL`). Skrip memakai akun demo, **mengubah data**, lalu otomatis menjalankan `db:seed` untuk mengembalikan data demo.
+- 6 bagian, 24 cek: bayar → invoice; batal/refund/kedaluwarsa; negosiasi + menu tambahan + di luar jangkauan ongkir; dapur (resep/HPP), pesanan offline & progres otomatis (waktu disimulasikan lewat fungsi domain); notifikasi & kotak keluar WhatsApp; keamanan sesi. Hasil terakhir: **24 lulus, 0 gagal**.
+
+**A2 — Keamanan login (GAP C1–C3)**
+- **Batas percobaan** (`backend/src/lib/rate-limit.ts`, sliding window di memori): login gagal 10×/15 menit per email → `429 RATE_LIMITED` ("Coba lagi dalam N menit"), berhasil login mereset hitungan; pendaftaran 20/jam; chat penawaran 30 pesan/menit per pengguna. Akun placeholder (pelanggan offline) tidak bisa login.
+- **Sesi**: umur JWT 30 → **7 hari**; kolom baru `User.tokenVersion` (migrasi `20261108184355_session_token_version`) ikut di token (`tv`) dan dicocokkan dengan database di setiap request — **ganti sandi mencabut semua sesi lain**, perangkat yang mengganti sandi mendapat cookie baru (diteruskan BFF Next ke browser). Perubahan peran juga membatalkan sesi lama.
+- Frontend: halaman yang memuat data dengan sesi dicabut/kedaluwarsa diarahkan ke `/login` dengan pesan "Sesi Anda berakhir", bukan halaman error.
+- **Sandi minimal 8** di daftar, ganti sandi, dan validasi frontend (sebelumnya 6 vs 8).
+
+**A3 — Tampilan mobile halaman vendor** (diperiksa via emulasi 390 px: Pesanan, Lembar Produksi, Catat pesanan offline, Bahan & HPP; tidak ada scroll horizontal)
+- Navbar: label "Dasbor Vendor/Admin" disingkat "Dasbor" di layar sempit agar tidak terlipat dua baris.
+- Navigasi pil vendor/admin: pil pertama kini sejajar margin (sebelumnya snap menempel ke tepi layar) — `scroll-padding`.
+- Bahan & HPP: tab tidak lagi terlipat (satu baris, bisa digeser); angka margin rata kiri saat kartu sempit.
+- Peta titik antar: kolom "Cari alamat" mendapat satu baris penuh di ponsel (sebelumnya terpotong).
+
+**Verifikasi**: 119 unit test (backend 84 termasuk `rate-limit.test.ts`, frontend 35), typecheck & lint bersih, smoke test 24/24, uji keamanan sesi 7/7, screenshot mobile sebelum/sesudah.
+
 ## v0.11.0 — Lokasi & ongkir otomatis (9 Nov 2026)
 
 **Masalah**: ongkir diketik manual oleh vendor di setiap pesanan — lambat, tidak konsisten, dan pelanggan baru tahu ongkir setelah konfirmasi.

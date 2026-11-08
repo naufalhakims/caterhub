@@ -17,7 +17,7 @@ export const dateOnlySchema = z
 export const registerSchema = z.object({
   name: z.string().min(2, "Nama minimal 2 karakter."),
   email: z.string().email("Email tidak valid."),
-  password: z.string().min(6, "Kata sandi minimal 6 karakter."),
+  password: z.string().min(8, "Kata sandi minimal 8 karakter."),
   role: z.enum(["CUSTOMER", "VENDOR"]).default("CUSTOMER"),
 });
 

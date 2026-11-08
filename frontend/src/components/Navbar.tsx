@@ -45,8 +45,8 @@ export async function Navbar() {
   const role = user?.role;
   // Marketplace hanya untuk tamu & pelanggan; vendor/admin punya antarmuka sendiri.
   const canBrowse = !user || role === "CUSTOMER";
-  const homeLabel =
-    role === "VENDOR" ? "Dasbor Vendor" : role === "ADMIN" ? "Dasbor Admin" : "Dasbor";
+  // Di layar sempit cukup "Dasbor" agar baris navigasi tidak terlipat.
+  const homeSuffix = role === "VENDOR" ? " Vendor" : role === "ADMIN" ? " Admin" : "";
   const unread = user ? await unreadCount() : 0;
 
   return (
@@ -75,8 +75,8 @@ export async function Navbar() {
           )}
           {user ? (
             <>
-              <Link href={roleHome(role)} className={`${navLink} font-semibold`}>
-                {homeLabel}
+              <Link href={roleHome(role)} className={`${navLink} whitespace-nowrap font-semibold`}>
+                Dasbor{homeSuffix && <span className="hidden sm:inline">{homeSuffix}</span>}
               </Link>
               {role === "CUSTOMER" && (
                 <Link href="/profile" className={`${navLink} hidden sm:block`}>

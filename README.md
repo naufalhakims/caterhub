@@ -168,7 +168,8 @@ Detail kontrak, auth, dan batasan ada di [`backend/README.md`](backend/README.md
 ## Test & pemeriksaan
 
 ```bash
-npm test              # frontend 31 + backend 29 unit test
+npm test              # frontend 35 + backend 84 unit test
+npm run test:smoke    # smoke test E2E ke API lokal (:4000), lalu seed ulang data demo
 npm run typecheck     # frontend + backend
 npm run lint
 npm run build         # backend typecheck + frontend production build

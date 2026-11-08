@@ -11,7 +11,7 @@ export function SideNav({ items }: { items: readonly (readonly [string, string, 
   return (
     <>
       {/* Mobile: horizontal scroll nav */}
-      <nav aria-label="Navigasi" className="-mx-4 mb-4 flex snap-x gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] md:hidden">
+      <nav aria-label="Navigasi" className="-mx-4 mb-4 flex snap-x scroll-px-4 gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] md:hidden">
         {items.map(([href, label, mark]) => {
           const active = isActive(href);
           return (

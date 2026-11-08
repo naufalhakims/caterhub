@@ -42,9 +42,9 @@ Prioritas:
 
 | # | Prio | Temuan | Saran |
 |---|---|---|---|
-| C1 | P1 | Tidak ada rate limiting pada `/auth/login`, `/auth/register`, `/quotations/:id/messages`. | `express-rate-limit` per IP + per email. |
-| C2 | P1 | JWT berumur 30 hari tanpa mekanisme revoke; logout hanya menghapus cookie. Peran tertanam di token. | Kurangi TTL (mis. 7 hari) + `tokenVersion` di `User` yang dicek saat ganti sandi/penangguhan. |
-| C3 | P2 | Password minimal 6 karakter saat daftar, tetapi 8 saat ganti sandi — tidak konsisten. | Samakan ke 8. |
+| C1 ✅ v0.12.0 | P1 | Tidak ada rate limiting pada `/auth/login`, `/auth/register`, `/quotations/:id/messages`. | `express-rate-limit` per IP + per email. |
+| C2 ✅ v0.12.0 | P1 | JWT berumur 30 hari tanpa mekanisme revoke; logout hanya menghapus cookie. Peran tertanam di token. | Kurangi TTL (mis. 7 hari) + `tokenVersion` di `User` yang dicek saat ganti sandi/penangguhan. |
+| C3 ✅ v0.12.0 | P2 | Password minimal 6 karakter saat daftar, tetapi 8 saat ganti sandi — tidak konsisten. | Samakan ke 8. |
 | C4 | P2 | Tidak ada CSRF token eksplisit. Saat ini aman karena mutasi lewat Server Actions (cek Origin bawaan Next) dan cookie `sameSite=lax`, tetapi route handler `/api/quotations/request` & `/api/payments/mock-settle` menerima form POST biasa. | Cek header `Origin` di route handler tersebut. |
 | C5 | P2 | Chat tanpa moderasi/filter nomor HP; vendor & pelanggan bisa memindahkan transaksi ke luar platform. | Deteksi pola nomor telepon/rekening dan beri peringatan (juga melindungi pelanggan dari penipuan). |
 
@@ -109,3 +109,11 @@ Penerapan apple-design (komponen dasar): umpan balik tekan instan & status "Memp
 Verifikasi: 81 unit test lulus (backend 48 termasuk `booking-policy.test.ts`, frontend 33), typecheck & lint bersih, `next build` sukses, dan smoke test E2E terhadap API lokal untuk A1/A2/A3/A4/B1 lulus.
 
 Skrip demo + seed yang bercerita: ✅ selesai di v0.9.0 ([DEMO_SCRIPT.md](./DEMO_SCRIPT.md)). Booking lama (dibuat sebelum migrasi) tidak memiliki `paymentDueAt` sehingga tidak kedaluwarsa otomatis.
+
+## Status keamanan C1–C3 (9 November 2026, v0.12.0)
+
+| Gap | Status | Implementasi |
+|---|---|---|
+| C1 Rate limit | ✅ | `backend/src/lib/rate-limit.ts` (sliding window di memori): login gagal 10×/15 menit **per email** (login lewat BFF Next sehingga IP selalu sama), daftar 20/jam, chat 30/menit per pengguna → `429 RATE_LIMITED`. Catatan: hitungan di memori → cukup untuk 1 instance API; butuh Redis bila diskalakan. |
+| C2 Sesi | ✅ | TTL 7 hari; `User.tokenVersion` di klaim `tv` dicek ke DB setiap request (beserta peran) → ganti sandi mencabut sesi perangkat lain, perangkat sendiri diberi cookie baru. |
+| C3 Sandi | ✅ | Minimal 8 karakter di semua tempat (daftar, ganti sandi, validasi frontend). |

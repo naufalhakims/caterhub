@@ -166,7 +166,7 @@ export function LocationPicker({
       <input ref={lngRef} type="hidden" name={lngName} defaultValue={initial?.longitude ?? ""} />
 
       <div className="flex flex-wrap gap-2">
-        <div className="relative min-w-0 flex-1">
+        <div className="relative min-w-[12rem] flex-1 basis-full sm:basis-0">
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}

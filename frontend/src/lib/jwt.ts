@@ -1,7 +1,8 @@
 import { jwtVerify } from "jose";
 
 export const SESSION_COOKIE = "caterhub_session";
-export const SESSION_MAX_AGE = 30 * 24 * 60 * 60;
+/** Sama dengan backend (7 hari). */
+export const SESSION_MAX_AGE = 7 * 24 * 60 * 60;
 
 export type Role = "CUSTOMER" | "VENDOR" | "ADMIN";
 export type SessionUser = {

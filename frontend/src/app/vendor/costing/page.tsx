@@ -79,14 +79,14 @@ export default async function CostingPage({
       </p>
       <Flash ok={searchParams?.ok} error={searchParams?.error} />
 
-      <div className="mt-5 inline-flex flex-wrap gap-1 rounded-full bg-stone-100 p-1" role="tablist">
+      <div className="mt-5 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-stone-100 p-1 [scrollbar-width:none]" role="tablist">
         {TABS.map(([key, label]) => (
           <Link
             key={key}
             href={`/vendor/costing?tab=${key}`}
             role="tab"
             aria-selected={tab === key}
-            className={`pressable rounded-full px-4 py-2 text-sm font-semibold transition-colors duration-200 ease-fluid ${
+            className={`pressable shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-colors duration-200 ease-fluid ${
               tab === key ? "bg-white text-ink shadow-soft" : "text-stone-500 hover:text-ink"
             }`}
           >
@@ -120,7 +120,7 @@ export default async function CostingPage({
                     </p>
                     <p className="text-sm text-stone-500">Harga jual {formatIDR(p.pricePerPax)}/pax</p>
                   </div>
-                  <div className="text-right">
+                  <div className="sm:text-right">
                     <p className={`font-display text-3xl ${tone.text}`}>
                       {p.costing.marginPct == null ? "—" : `${incomplete ? "≤ " : ""}${p.costing.marginPct}%`}
                     </p>

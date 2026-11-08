@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import { db } from "../db";
 import { sendError } from "../http";
 import { SESSION_COOKIE, verifySessionToken, type Role, type SessionUser } from "./jwt";
 
@@ -11,13 +12,30 @@ declare global {
   }
 }
 
-/** Membaca cookie sesi (tanpa menolak request); dipakai semua route. */
+/**
+ * Membaca cookie sesi (tanpa menolak request); dipakai semua route.
+ * Selain tanda tangan JWT, versi token & peran dicocokkan dengan database
+ * sehingga ganti sandi (atau perubahan peran) langsung mencabut sesi lama.
+ */
 export async function attachUser(req: Request, _res: Response, next: NextFunction) {
-  const token = req.cookies?.[SESSION_COOKIE];
-  if (typeof token === "string" && token) {
-    req.user = (await verifySessionToken(token)) ?? undefined;
+  try {
+    const token = req.cookies?.[SESSION_COOKIE];
+    if (typeof token === "string" && token) {
+      const session = await verifySessionToken(token);
+      if (session) {
+        const current = await db.user.findUnique({
+          where: { id: session.id },
+          select: { tokenVersion: true, role: true, isPlaceholder: true },
+        });
+        if (current && !current.isPlaceholder && current.tokenVersion === session.tokenVersion && current.role === session.role) {
+          req.user = session;
+        }
+      }
+    }
+    next();
+  } catch (error) {
+    next(error);
   }
-  next();
 }
 
 export function requireAuth(req: Request, res: Response, next: NextFunction) {

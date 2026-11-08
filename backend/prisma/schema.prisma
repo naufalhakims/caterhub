@@ -94,6 +94,8 @@ model User {
   city          String?
   /// Izin menerima notifikasi WhatsApp (dipakai bila nomor telepon terisi).
   whatsappOptIn Boolean   @default(true)
+  /// Naik setiap ganti kata sandi → semua sesi lama (JWT dengan versi lama) ditolak.
+  tokenVersion  Int       @default(0)
   /// Akun tersembunyi pemilik pesanan offline (satu per vendor); tidak bisa login.
   isPlaceholder Boolean   @default(false)
   createdAt     DateTime  @default(now())
