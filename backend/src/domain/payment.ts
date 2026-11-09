@@ -12,6 +12,8 @@ export type PaymentResult = { providerReference: string; qrPayload: string };
 export type WebhookResult = {
   providerReference: string;
   status: "settlement" | "pending" | "failed" | "expired";
+  /** Nominal yang dilaporkan provider (Rupiah). Bila ada, wajib sama dengan Payment.amount. */
+  amount?: number;
 };
 
 export interface PaymentProvider {
@@ -56,6 +58,28 @@ export class MockPaymentProvider implements PaymentProvider {
   }
 }
 
+/**
+ * Nominal settlement wajib sama dengan tagihan. Signature membuktikan pesan dari
+ * Midtrans, tetapi bukan bahwa nominalnya sesuai yang kita minta.
+ */
+export function settlementAmountMismatch(r: WebhookResult, expected: number): boolean {
+  return r.status === "settlement" && r.amount !== undefined && r.amount !== expected;
+}
+
+/** Kanal Snap yang ditampilkan. Default hanya QRIS (`other_qris`); bisa diganti lewat env. */
+export function midtransEnabledPayments(): string[] {
+  const list = (process.env.MIDTRANS_ENABLED_PAYMENTS ?? "other_qris")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return list.length ? list : ["other_qris"];
+}
+
+/** URL publik aplikasi (tanpa garis miring akhir), dipakai untuk webhook & redirect Snap. */
+function appUrl(): string {
+  return (process.env.APP_URL ?? "http://localhost:3000").replace(/\/+$/, "");
+}
+
 export class MidtransPaymentProvider implements PaymentProvider {
   readonly name = "midtrans";
 
@@ -67,22 +91,35 @@ export class MidtransPaymentProvider implements PaymentProvider {
         ? "https://app.midtrans.com/snap/v1/transactions"
         : "https://app.sandbox.midtrans.com/snap/v1/transactions";
     const orderId = ref("CH");
+    const app = appUrl();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Basic ${Buffer.from(`${serverKey}:`).toString("base64")}`,
+    };
+    // Midtrans hanya bisa memanggil URL publik HTTPS. Override per transaksi agar
+    // tidak perlu mengatur "Payment Notification URL" di dashboard Midtrans.
+    if (app.startsWith("https://")) headers["X-Override-Notification"] = `${app}/api/payments/webhook`;
+
     const res = await fetch(base, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        Authorization: `Basic ${Buffer.from(`${serverKey}:`).toString("base64")}`,
-      },
+      headers,
       body: JSON.stringify({
-        transaction_details: { order_id: orderId, gross_amount: input.amount },
-        payment_type: "qris",
+        // Snap hanya menerima nominal bulat Rupiah.
+        transaction_details: { order_id: orderId, gross_amount: Math.round(input.amount) },
+        enabled_payments: midtransEnabledPayments(),
         customer_details: { email: input.customerEmail ?? undefined },
+        // Setelah bayar/menutup Snap, pelanggan kembali ke halaman pesanan.
+        callbacks: { finish: `${app}/bookings/${input.bookingId}` },
         // QR lama tidak boleh tetap bisa dibayar setelah tagihan baru dibuat.
         expiry: { unit: "minutes", duration: Math.max(1, Math.floor(input.expiresInMinutes)) },
       }),
     });
-    if (!res.ok) throw new Error("Gagal membuat pembayaran Midtrans.");
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      console.error(`[api] Midtrans Snap ${res.status}: ${detail.slice(0, 500)}`);
+      throw new Error("Gagal membuat pembayaran Midtrans.");
+    }
     const data = (await res.json()) as { redirect_url?: string };
     if (!data.redirect_url) throw new Error("Respons Midtrans tidak valid.");
     return { providerReference: orderId, qrPayload: data.redirect_url };
@@ -108,9 +145,12 @@ export class MidtransPaymentProvider implements PaymentProvider {
     if (a.length !== b.length || !timingSafeEqual(a, b)) {
       throw new Error("Signature webhook tidak valid.");
     }
+    const amount = Number(body.gross_amount);
+    if (!Number.isFinite(amount)) throw new Error("gross_amount webhook tidak valid.");
     const st = body.transaction_status;
     return {
       providerReference: body.order_id,
+      amount: Math.round(amount),
       status:
         st === "settlement" || st === "capture"
           ? "settlement"

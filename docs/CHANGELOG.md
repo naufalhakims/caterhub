@@ -2,6 +2,24 @@
 
 Catatan perubahan per tahap pengembangan. Versi mengikuti milestone roadmap ([ROADMAP_PENGEMBANGAN.md](./ROADMAP_PENGEMBANGAN.md)), bukan rilis npm.
 
+## v0.14.0 — Fase 2 Tahap C: Midtrans sandbox (dalam pengerjaan, 9 Nov 2026)
+
+**Perbaikan integrasi Snap** (`backend/src/domain/payment.ts`)
+- Parameter QRIS: `payment_type: "qris"` (parameter Core API, diabaikan Snap) diganti `enabled_payments: ["other_qris"]`; bisa diubah lewat `MIDTRANS_ENABLED_PAYMENTS`.
+- `gross_amount` dibulatkan ke Rupiah; `callbacks.finish` mengarahkan pelanggan kembali ke `/bookings/:id`.
+- URL webhook dikirim per transaksi lewat header `X-Override-Notification` = `APP_URL/api/payments/webhook` (hanya bila `APP_URL` https) → tidak perlu mengatur Notification URL di dashboard Midtrans. Webhook masuk lewat `web` lalu diteruskan ke API lewat jaringan privat, jadi `api` tetap tanpa domain publik.
+- Error Snap kini dicatat di log API (status + pesan Midtrans) untuk diagnosis.
+
+**Keamanan webhook** (`backend/src/domain/payment-apply.ts`)
+- **Cek nominal**: settlement dengan `gross_amount` ≠ tagihan **tidak dilunaskan**; admin mendapat notifikasi "Nominal pembayaran tidak cocok". `gross_amount` non-angka ditolak.
+- Order tidak dikenal (mis. tombol "test notification" Midtrans) → `200 { ignored: true }`, bukan 500 yang memicu pengiriman ulang.
+
+**Halaman bayar**: mode Midtrans menampilkan tombol "Bayar QRIS via Midtrans" dan langkah yang sesuai (QR di halaman membuka halaman Snap); mode mock tidak berubah.
+
+**Konfigurasi**: `.env.example` — tambah `MIDTRANS_ENABLED_PAYMENTS`; hapus `MIDTRANS_CLIENT_KEY` & `MIDTRANS_WEBHOOK_SECRET` yang tidak dipakai kode (signature webhook memakai server key).
+
+**Verifikasi**: 8 test baru di `payment.test.ts` (parameter Snap, override webhook, kanal env, error Snap, nominal webhook) — total 127 unit test lulus (backend 92, frontend 35), typecheck & lint bersih. Uji end-to-end sandbox menyusul setelah server key tersedia.
+
 ## v0.13.0 — Fase 2 Tahap B: siap deploy Railway (9 Nov 2026)
 
 **Keputusan**: platform **Railway** (trial 30 hari + kredit US$5 cukup untuk demo ±16 Nov). Render gratis ditolak karena service tidur setelah 15 menit (penjadwal ikut berhenti), disk tidak persisten (unggahan hilang), dan Postgres gratis kedaluwarsa 30 hari.

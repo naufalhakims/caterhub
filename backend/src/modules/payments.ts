@@ -33,8 +33,9 @@ export function paymentsRouter() {
         // Signature/payload invalid atau provider dimatikan: bukan error server.
         throw new ApiError(400, "WEBHOOK_REJECTED", (error as Error).message || "Webhook ditolak.");
       }
-      await applyWebhookResult(result);
-      res.json({ data: { ok: true } });
+      // Order tidak dikenal tetap 200 agar Midtrans tidak mengulang kirim tanpa henti.
+      const applied = await applyWebhookResult(result);
+      res.json({ data: { ok: true, ignored: applied === null } });
     }),
   );
 

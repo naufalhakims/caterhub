@@ -1,12 +1,15 @@
 import { db } from "../db";
 import { canTransitionBooking } from "./booking";
 import { notify, notifyAdmins } from "./notify";
-import type { WebhookResult } from "./payment";
+import { settlementAmountMismatch, type WebhookResult } from "./payment";
 
 /** Booking yang sudah dibatalkan: uang yang masuk belakangan harus dikembalikan. */
 const CLOSED_BOOKING_STATUSES = ["CANCELLED", "REFUND_PENDING", "REFUNDED"];
 
-/** Terapkan hasil webhook ke payment+booking. Idempoten; tidak pernah downgrade settlement. */
+/**
+ * Terapkan hasil webhook ke payment+booking. Idempoten; tidak pernah downgrade settlement.
+ * Mengembalikan `null` bila order tidak dikenal (mis. tombol "test notification" Midtrans).
+ */
 export async function applyWebhookResult(r: WebhookResult) {
   return db.$transaction(async (tx) => {
     const payment = await tx.payment.findUnique({
@@ -20,7 +23,10 @@ export async function applyWebhookResult(r: WebhookResult) {
         },
       },
     });
-    if (!payment) throw new Error("Payment tidak ditemukan.");
+    if (!payment) {
+      console.warn(`[api] webhook untuk order tidak dikenal diabaikan: ${r.providerReference}`);
+      return null;
+    }
     const toPayment =
       r.status === "settlement"
         ? "SETTLEMENT"
@@ -31,6 +37,20 @@ export async function applyWebhookResult(r: WebhookResult) {
             : "PENDING";
     if (payment.status === toPayment) return payment;
     if (payment.status === "SETTLEMENT") return payment;
+
+    if (settlementAmountMismatch(r, payment.amount)) {
+      // Jangan lunaskan; tagihan tetap seperti semula dan admin memeriksa manual.
+      console.error(
+        `[api] nominal webhook ${r.amount} ≠ tagihan ${payment.amount} (${payment.providerReference}); tidak dilunaskan.`,
+      );
+      await notifyAdmins(tx, {
+        type: "PAYMENT",
+        title: "Nominal pembayaran tidak cocok",
+        message: `Midtrans melaporkan ${(r.amount ?? 0).toLocaleString("id-ID")} untuk tagihan ${payment.amount.toLocaleString("id-ID")} (${payment.booking.vendor.businessName} · "${payment.booking.event.name}", ref ${payment.providerReference}). Pembayaran tidak dilunaskan otomatis.`,
+        link: "/admin/orders",
+      });
+      return payment;
+    }
 
     await tx.payment.update({
       where: { id: payment.id },

@@ -126,16 +126,24 @@ export default async function PaymentPage({
             )}
             {payable && !isMock && (
               <a href={payment.qrPayload ?? "#"} target="_blank" rel="noreferrer" className="pressable mt-3 inline-block rounded-xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white">
-                Buka halaman bayar
+                Bayar QRIS via Midtrans
               </a>
             )}
           </div>
 
-          <ol className="mx-auto mt-4 max-w-[280px] space-y-1 text-left text-xs text-stone-500">
-            <li>1. Buka e-wallet / m-banking apa pun.</li>
-            <li>2. Pindai QR di atas.</li>
-            <li>3. Pastikan nominal {formatIDR(payment.amount)}.</li>
-          </ol>
+          {isMock ? (
+            <ol className="mx-auto mt-4 max-w-[280px] space-y-1 text-left text-xs text-stone-500">
+              <li>1. Buka e-wallet / m-banking apa pun.</li>
+              <li>2. Pindai QR di atas.</li>
+              <li>3. Pastikan nominal {formatIDR(payment.amount)}.</li>
+            </ol>
+          ) : (
+            <ol className="mx-auto mt-4 max-w-[280px] space-y-1 text-left text-xs text-stone-500">
+              <li>1. Klik &ldquo;Bayar QRIS via Midtrans&rdquo;, atau pindai QR di atas dengan kamera HP untuk membuka halaman bayar.</li>
+              <li>2. Pindai kode QRIS yang tampil di halaman Midtrans dengan e-wallet / m-banking.</li>
+              <li>3. Pastikan nominal {formatIDR(payment.amount)}. Halaman ini diperbarui otomatis setelah pembayaran diterima.</li>
+            </ol>
+          )}
 
           <p className="mt-3 text-xs text-stone-400">Ref: {payment.providerReference}</p>
           {expired && (
