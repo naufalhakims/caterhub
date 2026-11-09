@@ -142,24 +142,69 @@ export class MidtransPaymentProvider implements PaymentProvider {
     const given = body.signature_key ?? "";
     const a = Buffer.from(given, "utf8");
     const b = Buffer.from(expected, "utf8");
-    if (a.length !== b.length || !timingSafeEqual(a, b)) {
-      throw new Error("Signature webhook tidak valid.");
+    if (a.length === b.length && timingSafeEqual(a, b)) {
+      return toWebhookResult(body.order_id, body.transaction_status, body.gross_amount);
     }
-    const amount = Number(body.gross_amount);
-    if (!Number.isFinite(amount)) throw new Error("gross_amount webhook tidak valid.");
-    const st = body.transaction_status;
-    return {
-      providerReference: body.order_id,
-      amount: Math.round(amount),
-      status:
-        st === "settlement" || st === "capture"
-          ? "settlement"
-          : st === "deny" || st === "cancel"
-            ? "failed"
-            : st === "expire"
-              ? "expired"
-              : "pending",
+
+    // Signature tidak cocok. Akun Midtrans dengan beberapa server key dapat
+    // menandatangani notifikasi memakai key lain; jangan percaya isi payload,
+    // tanyakan status langsung ke Midtrans (dianjurkan Midtrans). Payload palsu
+    // hanya memicu pengecekan yang mengembalikan status asli.
+    const verified = await fetchMidtransStatus(body.order_id, secret);
+    if (!verified) throw new Error("Signature webhook tidak valid.");
+    return toWebhookResult(body.order_id, verified.transaction_status, verified.gross_amount);
+  }
+}
+
+function toWebhookResult(orderId: string, st: string, grossAmount: string | undefined): WebhookResult {
+  const amount = Number(grossAmount);
+  if (!Number.isFinite(amount)) throw new Error("gross_amount webhook tidak valid.");
+  return {
+    providerReference: orderId,
+    amount: Math.round(amount),
+    status:
+      st === "settlement" || st === "capture"
+        ? "settlement"
+        : st === "deny" || st === "cancel"
+          ? "failed"
+          : st === "expire"
+            ? "expired"
+            : "pending",
+  };
+}
+
+/**
+ * Status transaksi dari Midtrans (GET /v2/{order_id}/status). Butuh izin
+ * "Core API: Read" pada server key. `null` bila gagal/ditolak/tidak ditemukan.
+ */
+async function fetchMidtransStatus(
+  orderId: string,
+  serverKey: string,
+): Promise<{ transaction_status: string; gross_amount?: string } | null> {
+  const base =
+    process.env.MIDTRANS_IS_PRODUCTION === "true" ? "https://api.midtrans.com" : "https://api.sandbox.midtrans.com";
+  try {
+    const res = await fetch(`${base}/v2/${encodeURIComponent(orderId)}/status`, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Basic ${Buffer.from(`${serverKey}:`).toString("base64")}`,
+      },
+    });
+    if (!res.ok) {
+      console.warn(`[api] cek status Midtrans ${orderId} gagal: HTTP ${res.status}`);
+      return null;
+    }
+    const data = (await res.json()) as {
+      order_id?: string;
+      status_code?: string;
+      transaction_status?: string;
+      gross_amount?: string;
     };
+    if (data.order_id !== orderId || !data.transaction_status || data.status_code === "404") return null;
+    return { transaction_status: data.transaction_status, gross_amount: data.gross_amount };
+  } catch (error) {
+    console.warn(`[api] cek status Midtrans ${orderId} error: ${(error as Error).message}`);
+    return null;
   }
 }
 

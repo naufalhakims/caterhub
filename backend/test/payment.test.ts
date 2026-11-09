@@ -41,16 +41,65 @@ describe("verifikasi signature webhook Midtrans", () => {
       .update(`${payload.order_id}${payload.status_code}${payload.gross_amount}${secret}`)
       .digest("hex");
 
-  it("menolak payload tanpa signature", async () => {
+  /** Stub GET /v2/{order}/status Midtrans. */
+  const stubStatus = (status: number, json: unknown = {}) => {
+    const fetchMock = vi.fn(async () => ({ ok: status >= 200 && status < 300, status, json: async () => json }));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    return fetchMock;
+  };
+
+  it("menolak payload tanpa signature bila status Midtrans tidak bisa dicek", async () => {
     vi.stubEnv("MIDTRANS_SERVER_KEY", secret);
+    stubStatus(403);
     await expect(new MidtransPaymentProvider().handleWebhook(body)).rejects.toThrow(/Signature/);
   });
 
-  it("menolak signature yang salah", async () => {
+  it("menolak signature yang salah bila order tidak ada di Midtrans", async () => {
     vi.stubEnv("MIDTRANS_SERVER_KEY", secret);
+    stubStatus(404, { status_code: "404" });
     await expect(
       new MidtransPaymentProvider().handleWebhook({ ...body, signature_key: "deadbeef" }),
     ).rejects.toThrow(/Signature/);
+  });
+
+  it("signature beda key → memakai status asli dari Midtrans, bukan isi payload", async () => {
+    vi.stubEnv("MIDTRANS_SERVER_KEY", secret);
+    // Payload mengaku settlement, Midtrans bilang masih pending.
+    const fetchMock = stubStatus(200, {
+      order_id: "CH-123", status_code: "201", transaction_status: "pending", gross_amount: "8900000.00",
+    });
+    await expect(
+      new MidtransPaymentProvider().handleWebhook({ ...body, signature_key: "signed-with-other-key" }),
+    ).resolves.toEqual({ providerReference: "CH-123", status: "pending", amount: 8_900_000 });
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("https://api.sandbox.midtrans.com/v2/CH-123/status");
+    expect((init.headers as Record<string, string>).Authorization).toBe(
+      `Basic ${Buffer.from(`${secret}:`).toString("base64")}`,
+    );
+  });
+
+  it("status Midtrans settlement → lunas dengan nominal dari Midtrans", async () => {
+    vi.stubEnv("MIDTRANS_SERVER_KEY", secret);
+    stubStatus(200, { order_id: "CH-123", status_code: "200", transaction_status: "settlement", gross_amount: "100.00" });
+    await expect(
+      new MidtransPaymentProvider().handleWebhook({ ...body, signature_key: "x" }),
+    ).resolves.toEqual({ providerReference: "CH-123", status: "settlement", amount: 100 });
+  });
+
+  it("menolak bila jawaban status untuk order lain", async () => {
+    vi.stubEnv("MIDTRANS_SERVER_KEY", secret);
+    stubStatus(200, { order_id: "CH-999", status_code: "200", transaction_status: "settlement", gross_amount: "1.00" });
+    await expect(
+      new MidtransPaymentProvider().handleWebhook({ ...body, signature_key: "x" }),
+    ).rejects.toThrow(/Signature/);
+  });
+
+  it("signature valid tidak memanggil Midtrans sama sekali", async () => {
+    vi.stubEnv("MIDTRANS_SERVER_KEY", secret);
+    const fetchMock = stubStatus(500);
+    await new MidtransPaymentProvider().handleWebhook({ ...body, signature_key: sign(body) });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("menerima signature valid dan memetakan status", async () => {

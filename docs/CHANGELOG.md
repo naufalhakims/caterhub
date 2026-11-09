@@ -10,6 +10,8 @@ Catatan perubahan per tahap pengembangan. Versi mengikuti milestone roadmap ([RO
 - URL webhook dikirim per transaksi lewat header `X-Override-Notification` = `APP_URL/api/payments/webhook` (hanya bila `APP_URL` https) → tidak perlu mengatur Notification URL di dashboard Midtrans. Webhook masuk lewat `web` lalu diteruskan ke API lewat jaringan privat, jadi `api` tetap tanpa domain publik.
 - Error Snap kini dicatat di log API (status + pesan Midtrans) untuk diagnosis; pelanggan melihat `502 PAYMENT_PROVIDER_ERROR` "Layanan pembayaran sedang bermasalah. Coba lagi beberapa saat lagi." (sebelumnya 500 generik). Tagihan tidak tersimpan bila Snap gagal.
 
+**Verifikasi webhook lewat status Midtrans** (temuan uji sandbox): notifikasi asli Midtrans untuk akun dengan server key yang di-*generate* (berizin) **ditandatangani memakai key lain**, sehingga cek signature selalu gagal (`400 Signature webhook tidak valid`, payload & nominal sebenarnya benar). Kini bila signature tidak cocok, API memanggil `GET /v2/{order_id}/status` dan memakai **status & nominal dari Midtrans**, bukan isi payload — webhook palsu hanya memicu pengecekan yang mengembalikan status asli. Butuh izin **Core API: Read** pada server key. Alasan penolakan webhook kini dicatat di log (order, status, nominal, field).
+
 **Keamanan webhook** (`backend/src/domain/payment-apply.ts`)
 - **Cek nominal**: settlement dengan `gross_amount` ≠ tagihan **tidak dilunaskan**; admin mendapat notifikasi "Nominal pembayaran tidak cocok". `gross_amount` non-angka ditolak.
 - Order tidak dikenal (mis. tombol "test notification" Midtrans) → `200 { ignored: true }`, bukan 500 yang memicu pengiriman ulang.
@@ -18,7 +20,7 @@ Catatan perubahan per tahap pengembangan. Versi mengikuti milestone roadmap ([RO
 
 **Konfigurasi**: `.env.example` — tambah `MIDTRANS_ENABLED_PAYMENTS`; hapus `MIDTRANS_CLIENT_KEY` & `MIDTRANS_WEBHOOK_SECRET` yang tidak dipakai kode (signature webhook memakai server key).
 
-**Verifikasi**: 8 test baru di `payment.test.ts` (parameter Snap, override webhook, kanal env, error Snap, nominal webhook) — total 127 unit test lulus (backend 92, frontend 35), typecheck & lint bersih. Uji end-to-end sandbox menyusul setelah server key tersedia.
+**Verifikasi**: 12 test baru di `payment.test.ts` (parameter Snap, override webhook, kanal env, error Snap, nominal webhook, verifikasi via status Midtrans) — total 131 unit test lulus (backend 96, frontend 35), typecheck & lint bersih. Uji end-to-end sandbox menyusul setelah server key tersedia.
 
 ## v0.13.0 — Fase 2 Tahap B: siap deploy Railway (9 Nov 2026)
 
