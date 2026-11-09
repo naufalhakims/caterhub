@@ -32,7 +32,8 @@ function resolveDir(value: string | undefined, fallback: string): string {
 
 export const env = {
   isProduction,
-  port: Number(process.env.API_PORT ?? 4000),
+  // Railway/Render menyuntikkan PORT; lokal tetap API_PORT (default 4000).
+  port: Number(process.env.PORT ?? process.env.API_PORT ?? 4000),
   corsOrigins: (process.env.CORS_ORIGIN ?? "http://localhost:3000")
     .split(",")
     .map((s) => s.trim())

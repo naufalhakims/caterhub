@@ -182,9 +182,12 @@ Yang diuji antara lain: matriks rute/RBAC, akses resource (IDOR), kapasitas/tang
 
 ## Deployment
 
+Panduan langkah demi langkah ke Railway (service, variabel, volume, seed, verifikasi): **[`docs/DEPLOY.md`](docs/DEPLOY.md)**. Ringkasnya:
+
 - Jalankan **dua service**: API (`npm run api:start`) dan Next (`npm run build` lalu `npm run start`).
 - Set `API_BASE_URL` frontend ke URL API internal/publik, `CORS_ORIGIN` ke origin frontend, dan `AUTH_SECRET` acak yang **sama** di kedua service.
-- Jalankan migrasi dari paket backend: `npm -w backend exec prisma migrate deploy`.
+- Jalankan migrasi sebelum start: `npm run db:deploy` (`prisma migrate deploy`; di Railway otomatis sebagai pre-deploy).
+- API membaca `PORT` dari platform (fallback `API_PORT`, default 4000). Jalankan **satu instance** API yang selalu hidup.
 - Filesystem lokal hanya untuk demo. Di platform read-only (mis. Vercel) gunakan object storage untuk `PUBLIC_UPLOAD_DIR`/`UPLOAD_DIR`.
 - Jangan set `ALLOW_MOCK_WEBHOOK=true` di produksi.
 

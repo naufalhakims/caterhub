@@ -25,9 +25,13 @@
     "db:migrate": "npm -w backend run db:migrate",
     "db:seed": "npm -w backend run db:seed",
     "db:studio": "npm -w backend run db:studio",
-    "bench:api": "npm -w backend run bench"
+    "bench:api": "npm -w backend run bench",
+    "db:deploy": "npm -w backend run db:deploy"
   },
   "devDependencies": {
     "concurrently": "^9.0.1"
+  },
+  "engines": {
+    "node": "22.x"
   }
 }

@@ -2,6 +2,20 @@
 
 Catatan perubahan per tahap pengembangan. Versi mengikuti milestone roadmap ([ROADMAP_PENGEMBANGAN.md](./ROADMAP_PENGEMBANGAN.md)), bukan rilis npm.
 
+## v0.13.0 — Fase 2 Tahap B: siap deploy Railway (9 Nov 2026)
+
+**Keputusan**: platform **Railway** (trial 30 hari + kredit US$5 cukup untuk demo ±16 Nov). Render gratis ditolak karena service tidur setelah 15 menit (penjadwal ikut berhenti), disk tidak persisten (unggahan hilang), dan Postgres gratis kedaluwarsa 30 hari.
+
+**Perubahan kode**
+- API membaca `PORT` dari platform, fallback `API_PORT` lalu 4000 (`backend/src/env.ts`).
+- `tsx` dan `prisma` dipindah ke `dependencies` backend agar start & migrasi tetap jalan bila builder memangkas dev deps.
+- Script baru `npm run db:deploy` (`prisma migrate deploy`); `engines.node = 22.x` di `package.json` root.
+- Config-as-code Railway: `backend/railway.json` (build + typecheck, pre-deploy migrasi, start `api:start`, healthcheck `/health`, restart on failure) dan `frontend/railway.json` (build Next, start `npm start`, healthcheck `/login`). Watch pattern per folder agar perubahan frontend tidak me-redeploy API dan sebaliknya.
+
+**Dokumentasi**: `docs/DEPLOY.md`: arsitektur 3 service (Postgres, api + volume `/data`, web), tabel variabel produksi, seed via `railway ssh`, checklist verifikasi, troubleshooting. README bagian Deployment diperbarui.
+
+**Verifikasi lokal**: typecheck backend bersih, 84 unit test backend lulus, API start dengan `NODE_ENV=production PORT=4321` dan `/health` merespons, `db:deploy` sukses ("No pending migrations"). Deploy ke Railway menyusul.
+
 ## v0.12.0 — Fase 2 Tahap A: smoke test, keamanan login, tampilan mobile (9 Nov 2026)
 
 Tahap pertama Fase 2 (hackathon): merapikan Fase 1 sebelum integrasi nyata.
