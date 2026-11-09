@@ -8,45 +8,52 @@ Panduan deploy CaterHub untuk demo hackathon (Fase 2 Tahap B). Platform dipilih 
 
 Satu project Railway, region **Southeast Asia (Singapore)**:
 
-| Service | Isi | Config file | Domain |
-|---|---|---|---|
-| `Postgres` | PostgreSQL terkelola Railway | — | privat |
-| `api` | Express (`npm run api:start`), **1 replika**, volume `/data` | `/backend/railway.json` | privat (publik nanti untuk webhook Midtrans, Tahap C) |
-| `web` | Next.js (`npm start`) | `/frontend/railway.json` | publik `*.up.railway.app` |
+| Service | Isi | Domain |
+|---|---|---|
+| `Postgres` | PostgreSQL terkelola Railway (volume bawaan) | privat `postgres.railway.internal` |
+| `api` | Express (`npm run api:start`), **1 replika**, volume `/data` | privat `api.railway.internal:4000` (publik nanti untuk webhook Midtrans, Tahap C) |
+| `web` | Next.js (`npm start`) | publik `https://web-production-240c4.up.railway.app` |
 
 Browser hanya berbicara dengan `web`. Next meneruskan permintaan dan cookie ke API lewat jaringan privat Railway (`API_BASE_URL`), termasuk gambar `/uploads/*` (rewrite di `frontend/next.config.mjs`).
 
-Kedua service memakai **root repo** sebagai root directory (npm workspaces + satu `package-lock.json`); perbedaannya hanya di config file.
+Kedua service memakai **root repo** sebagai root directory (npm workspaces + satu `package-lock.json`).
 
-### Yang diatur oleh config file
+### Pengaturan build & deploy per service
+
+Disimpan **langsung di service Railway** (bukan di repo): `railway.json` (Config as Code) sudah *deprecated* di Railway dan ditolak API-nya; penggantinya, IaC `.railway/railway.ts`, sengaja tidak dipakai untuk hackathon agar sederhana. Bila service dibuat ulang, isi kembali nilai di bawah (dashboard *Settings*, atau `railway api` mutation `serviceInstanceUpdate`).
 
 | | `api` | `web` |
 |---|---|---|
-| Build | `npm ci` (otomatis, `postinstall` → `prisma generate`) + `npm run api:typecheck` | `npm ci` + `npm -w frontend run build` |
+| Builder | Railpack (`npm ci` otomatis; `postinstall` → `prisma generate`) | Railpack (`npm ci` otomatis) |
+| Build command | `npm run api:typecheck` | `npm -w frontend run build` |
 | Pre-deploy | `npm run db:deploy` (`prisma migrate deploy`) | — |
 | Start | `npm run api:start` | `npm start` (`next start`, membaca `PORT`) |
-| Healthcheck | `/health` | `/login` |
-| Redeploy bila berubah | `backend/**`, `package*.json` | `frontend/**`, `package*.json` |
+| Healthcheck (timeout 120 dtk) | `/health` | `/login` |
+| Restart | on failure, maks. 10× | on failure, maks. 10× |
+| Watch paths | `/backend/**`, `/package.json`, `/package-lock.json` | `/frontend/**`, `/package.json`, `/package-lock.json` |
+| Region / replika | Singapore (`asia-southeast1-eqsg3a`) × 1 | Singapore × 1 |
 
 API membaca `PORT` (disuntik Railway) lalu `API_PORT`, default 4000. Node dikunci `22.x` lewat `engines` di `package.json` root.
 
 ## Langkah setup (sekali)
 
-1. **New Project → Deploy from GitHub repo → `caterhub`.** Ganti nama service menjadi `api`.
-   *Settings → Config-as-code → Railway Config File:* `/backend/railway.json`. Region: Singapore.
-2. **+ New → Database → Add PostgreSQL** (nama `Postgres`).
-3. **+ New → GitHub Repo → `caterhub` lagi**, beri nama `web`. Config file: `/frontend/railway.json`.
-4. **Volume:** klik service `api` → *Attach Volume* (atau klik kanan → Volume) → mount path **`/data`**.
-5. **Variables `api`:**
+Setup awal dilakukan lewat Railway CLI dari root repo (9 Nov 2026). Di Git Bash, set `MSYS_NO_PATHCONV=1` dulu agar nilai seperti `/data/private` tidak diubah menjadi path Windows.
+
+1. `railway init --name caterhub` (membuat project + menautkan folder).
+2. `railway add -d postgres`, lalu `railway add -s api` dan `railway add -s web` (service kosong).
+3. Region semua service → Singapore, lalu isi pengaturan build & deploy (tabel di atas) lewat mutation `serviceInstanceUpdate`.
+4. `railway service link api` → `railway volume add --mount-path /data`.
+5. `railway domain --service web` → domain publik.
+6. **Variables `api`** (`railway variable set --service api --skip-deploys KEY=VALUE ...`):
 
    | Variabel | Nilai |
    |---|---|
    | `NODE_ENV` | `production` |
    | `PORT` | `4000` |
    | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
-   | `AUTH_SECRET` | hasil `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"` |
-   | `APP_URL` | `https://<domain-web>` |
-   | `CORS_ORIGIN` | `https://<domain-web>` |
+   | `AUTH_SECRET` | hasil `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`, **diisi sendiri oleh pemilik** (dashboard atau `railway variable set --service api --stdin AUTH_SECRET`) |
+   | `APP_URL` | `https://web-production-240c4.up.railway.app` |
+   | `CORS_ORIGIN` | `https://web-production-240c4.up.railway.app` |
    | `UPLOAD_DIR` | `/data/private` |
    | `PUBLIC_UPLOAD_DIR` | `/data/public` |
    | `PAYMENT_PROVIDER` | `mock` |
@@ -55,25 +62,32 @@ API membaca `PORT` (disuntik Railway) lalu `API_PORT`, default 4000. Node dikunc
    | `ALLOW_MOCK_WEBHOOK` | `false` |
    | `ALLOW_DEMO_SEED` | `true` |
 
-6. **Variables `web`:**
+7. **Variables `web`:**
 
    | Variabel | Nilai |
    |---|---|
    | `NODE_ENV` | `production` |
-   | `AUTH_SECRET` | `${{api.AUTH_SECRET}}` (harus sama dengan API) |
-   | `API_BASE_URL` | `http://${{api.RAILWAY_PRIVATE_DOMAIN}}:${{api.PORT}}` |
+   | `AUTH_SECRET` | `${{api.AUTH_SECRET}}` (referensi, otomatis sama dengan API) |
+   | `API_BASE_URL` | `http://api.railway.internal:4000` (ditulis literal: domain privat `api` baru aktif setelah deploy pertama, sedangkan nilai ini ikut dibakukan saat build `web`) |
 
-7. **`web` → Settings → Networking → Generate Domain.** Salin domainnya ke `APP_URL` dan `CORS_ORIGIN` di `api` (format `https://...`, tanpa garis miring di akhir).
-8. Klik **Deploy** (Railway menampilkan perubahan yang belum diterapkan). Pastikan `api` tetap **1 replika**: rate limit dan penjadwal disimpan di memori proses.
+8. Hubungkan kedua service ke GitHub `naufalhakims/caterhub` branch `main` (`railway service source connect --repo naufalhakims/caterhub --branch main --service <api|web>`). Setiap push ke `main` me-redeploy service yang watch path-nya berubah.
+9. Pastikan `api` tetap **1 replika**: rate limit dan penjadwal disimpan di memori proses.
 
 ## Seed data demo
 
 Seed menolak berjalan di production kecuali `ALLOW_DEMO_SEED=true`. Jalankan dari dalam container API:
 
 ```bash
-railway link              # pilih project caterhub
-railway ssh --service api
+railway link                    # sekali: pilih project caterhub
+railway ssh keys add            # sekali: daftarkan kunci publik ~/.ssh/*.pub
+railway ssh --service api       # shell interaktif di container (folder /app)
 npm run db:seed
+```
+
+Non-interaktif (mis. dari skrip/agent): `railway ssh` gagal dengan `Host key verification failed` bila host belum dikenal. Pakai `ssh` biasa dengan alamat dari `railway ssh config --service api --dry-run`:
+
+```bash
+ssh -o StrictHostKeyChecking=accept-new <User>@ssh.railway.com "npm run db:seed"
 ```
 
 **Jalankan seed ulang pada hari demo**: tanggal pesanan demo dihitung relatif terhadap hari seed dijalankan. Seed mengosongkan data, jadi akun/pesanan yang dibuat saat uji coba akan hilang.
@@ -82,11 +96,15 @@ npm run db:seed
 
 ## Verifikasi (definisi selesai Tahap B)
 
-- [ ] Deploy log `api`: `prisma migrate deploy` sukses, `[api] CaterHub API siap`.
-- [ ] `https://<domain-web>/` terbuka; login akun demo (lihat `docs/DEMO_SCRIPT.md`) berhasil.
-- [ ] Unggah foto menu → **Redeploy** `api` → foto masih tampil (volume bekerja).
-- [ ] 10× salah sandi untuk satu email → pesan "Coba lagi dalam N menit".
-- [ ] Alur `docs/DEMO_SCRIPT.md` berjalan di URL produksi.
+Hasil 9 Nov 2026:
+
+- [x] Deploy log `api`: 14 migrasi diterapkan, `[api] CaterHub API siap`, `GET /health 200`, upload publik `/data/public`.
+- [x] `web` online: `/` dan `/login` → 200; `/vendor` tanpa login → 307 ke `/login?next=/vendor`.
+- [x] Seed demo sukses (5 vendor, data Dapur Nusantara, akun `pelanggan@demo.id` · `vendor1@demo.id` · `admin@caterhub.id`, sandi `demo1234`).
+- [x] Login ketiga akun demo → 200, cookie `Secure`; dengan cookie itu `/vendor/dashboard` & `/vendor/costing` di URL publik menampilkan data seed (AUTH_SECRET sama, web → api lewat jaringan privat bekerja).
+- [x] 10× salah sandi untuk satu email → percobaan ke-11 `429`.
+- [x] File uji di `/data/public` tersaji lewat `https://<web>/uploads/...` dan **tetap ada setelah redeploy** `api` (volume persisten), lalu dihapus.
+- [ ] Login manual lewat browser + alur `docs/DEMO_SCRIPT.md` di URL produksi (dicek pemilik).
 
 ## Biaya & kredit
 

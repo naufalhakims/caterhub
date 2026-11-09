@@ -10,11 +10,15 @@ Catatan perubahan per tahap pengembangan. Versi mengikuti milestone roadmap ([RO
 - API membaca `PORT` dari platform, fallback `API_PORT` lalu 4000 (`backend/src/env.ts`).
 - `tsx` dan `prisma` dipindah ke `dependencies` backend agar start & migrasi tetap jalan bila builder memangkas dev deps.
 - Script baru `npm run db:deploy` (`prisma migrate deploy`); `engines.node = 22.x` di `package.json` root.
-- Config-as-code Railway: `backend/railway.json` (build + typecheck, pre-deploy migrasi, start `api:start`, healthcheck `/health`, restart on failure) dan `frontend/railway.json` (build Next, start `npm start`, healthcheck `/login`). Watch pattern per folder agar perubahan frontend tidak me-redeploy API dan sebaliknya.
+- Sempat ditambahkan `backend/railway.json` & `frontend/railway.json`, lalu **dihapus**: Railway kini menolak Config as Code (deprecated, diganti IaC `.railway/railway.ts`). Pengaturan build/deploy dipasang langsung di service (disetujui): build + typecheck, pre-deploy migrasi, start, healthcheck `/health` & `/login`, restart on failure, watch path per folder agar perubahan frontend tidak me-redeploy API dan sebaliknya.
 
-**Dokumentasi**: `docs/DEPLOY.md`: arsitektur 3 service (Postgres, api + volume `/data`, web), tabel variabel produksi, seed via `railway ssh`, checklist verifikasi, troubleshooting. README bagian Deployment diperbarui.
+**Infrastruktur Railway** (dibuat via CLI): project `caterhub`, region Singapore — `Postgres`, `api` (volume `/data` 500 MB, domain privat `api.railway.internal`), `web` (domain publik `https://web-production-240c4.up.railway.app`); variabel produksi terisi kecuali `AUTH_SECRET` (diisi pemilik).
 
-**Verifikasi lokal**: typecheck backend bersih, 84 unit test backend lulus, API start dengan `NODE_ENV=production PORT=4321` dan `/health` merespons, `db:deploy` sukses ("No pending migrations"). Deploy ke Railway menyusul.
+**Dokumentasi**: `docs/DEPLOY.md`: arsitektur 3 service, tabel pengaturan build/deploy, langkah setup via CLI, tabel variabel produksi, seed via `railway ssh`, checklist verifikasi, troubleshooting. README bagian Deployment diperbarui.
+
+**Verifikasi lokal**: typecheck backend bersih, 84 unit test backend lulus, API start dengan `NODE_ENV=production PORT=4321` dan `/health` merespons, `db:deploy` sukses ("No pending migrations").
+
+**Verifikasi produksi** (live di **https://web-production-240c4.up.railway.app**): build & deploy `api` dan `web` sukses; 14 migrasi diterapkan lewat pre-deploy; seed demo via SSH; login 3 akun demo 200 dengan cookie `Secure`; halaman vendor di URL publik menampilkan data seed; rate limit login → 429 pada percobaan ke-11; file di volume `/data` bertahan setelah redeploy `api`. Detail di [DEPLOY.md](./DEPLOY.md#verifikasi-definisi-selesai-tahap-b).
 
 ## v0.12.0 — Fase 2 Tahap A: smoke test, keamanan login, tampilan mobile (9 Nov 2026)
 
