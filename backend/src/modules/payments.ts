@@ -31,6 +31,13 @@ export function paymentsRouter() {
         result = await provider.handleWebhook(req.body);
       } catch (error) {
         // Signature/payload invalid atau provider dimatikan: bukan error server.
+        const b = (req.body ?? {}) as Record<string, unknown>;
+        console.warn(
+          `[api] webhook ditolak: ${(error as Error).message} ` +
+            `(order_id=${String(b.order_id ?? "-")}, status=${String(b.transaction_status ?? "-")}, ` +
+            `status_code=${String(b.status_code ?? "-")}, gross_amount=${String(b.gross_amount ?? "-")}, ` +
+            `content-type=${req.headers["content-type"] ?? "-"}, keys=${Object.keys(b).join("|")})`,
+        );
         throw new ApiError(400, "WEBHOOK_REJECTED", (error as Error).message || "Webhook ditolak.");
       }
       // Order tidak dikenal tetap 200 agar Midtrans tidak mengulang kirim tanpa henti.
@@ -102,12 +109,23 @@ export function paymentsRouter() {
             ),
           );
           const provider = getPaymentProvider();
-          const result = await provider.createPayment({
-            bookingId: booking.id,
-            amount,
-            customerEmail: user.email,
-            expiresInMinutes: (expiresAt.getTime() - now.getTime()) / 60_000,
-          });
+          let result;
+          try {
+            result = await provider.createPayment({
+              bookingId: booking.id,
+              amount,
+              customerEmail: user.email,
+              expiresInMinutes: (expiresAt.getTime() - now.getTime()) / 60_000,
+            });
+          } catch (error) {
+            // Detail teknis sudah dicatat provider; pelanggan cukup tahu untuk mencoba lagi.
+            console.error("[api] gagal membuat tagihan:", (error as Error).message);
+            throw new ApiError(
+              502,
+              "PAYMENT_PROVIDER_ERROR",
+              "Layanan pembayaran sedang bermasalah. Coba lagi beberapa saat lagi.",
+            );
+          }
           const created = await tx.payment.create({
             data: {
               bookingId: booking.id,

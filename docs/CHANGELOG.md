@@ -8,7 +8,7 @@ Catatan perubahan per tahap pengembangan. Versi mengikuti milestone roadmap ([RO
 - Parameter QRIS: `payment_type: "qris"` (parameter Core API, diabaikan Snap) diganti `enabled_payments: ["other_qris"]`; bisa diubah lewat `MIDTRANS_ENABLED_PAYMENTS`.
 - `gross_amount` dibulatkan ke Rupiah; `callbacks.finish` mengarahkan pelanggan kembali ke `/bookings/:id`.
 - URL webhook dikirim per transaksi lewat header `X-Override-Notification` = `APP_URL/api/payments/webhook` (hanya bila `APP_URL` https) → tidak perlu mengatur Notification URL di dashboard Midtrans. Webhook masuk lewat `web` lalu diteruskan ke API lewat jaringan privat, jadi `api` tetap tanpa domain publik.
-- Error Snap kini dicatat di log API (status + pesan Midtrans) untuk diagnosis.
+- Error Snap kini dicatat di log API (status + pesan Midtrans) untuk diagnosis; pelanggan melihat `502 PAYMENT_PROVIDER_ERROR` "Layanan pembayaran sedang bermasalah. Coba lagi beberapa saat lagi." (sebelumnya 500 generik). Tagihan tidak tersimpan bila Snap gagal.
 
 **Keamanan webhook** (`backend/src/domain/payment-apply.ts`)
 - **Cek nominal**: settlement dengan `gross_amount` ≠ tagihan **tidak dilunaskan**; admin mendapat notifikasi "Nominal pembayaran tidak cocok". `gross_amount` non-angka ditolak.
