@@ -2,6 +2,18 @@
 
 Catatan perubahan per tahap pengembangan. Versi mengikuti milestone roadmap ([ROADMAP_PENGEMBANGAN.md](./ROADMAP_PENGEMBANGAN.md)), bukan rilis npm.
 
+## v0.16.2 — Lokasi pemesanan seragam (10 Nov 2026)
+
+**Bug**: di halaman vendor, "Lokasi saya", ketuk peta, atau geser pin hanya mengubah koordinat; kolom wajib "Lokasi acara" tetap kosong sehingga permintaan tidak bisa dikirim. Kolom hanya terisi saat memilih hasil pencarian alamat. Selain itu, "Buat acara" masih teks biasa tanpa peta, dan acara tersimpan tidak pernah tersambung ke permintaan: halaman vendor meminta lokasi ulang lalu backend membuat acara baru "Pesanan {paket}" bertipe Lainnya, sehingga vendor tidak melihat nama, tipe, dan catatan acara yang diisi pelanggan.
+
+**Perbaikan**
+- `LocationPicker`: setiap kali pin ditaruh (GPS, ketuk, geser, hasil pencarian) alamat dicari dari koordinat (Nominatim *reverse*) dan mengisi kolom lokasi; opsi `cityInputName` memilih kota (Surabaya/Sidoarjo/Gresik) yang disebut alamat. Teks yang diketik sendiri tidak ditimpa; hanya hasil reverse terbaru yang dipakai. Dipakai di halaman vendor, "Buat acara", dan "Catat pesanan offline".
+- **Buat acara** kini memakai peta yang sama; koordinat disimpan ke acara (`eventSchema` menerima `latitude`/`longitude`, wajib berpasangan).
+- **Acara tersimpan → katalog → vendor**: `eventId` dan titik acara ikut dibawa. Halaman vendor menampilkan ringkasan "Untuk acara tersimpan" (nama, tanggal, jam, pax), alamat & pin terisi dari acara dan tetap bisa disesuaikan. Permintaan memakai acara tersebut; alamat, kota, dan titik yang dikonfirmasi ikut memperbarui acara.
+- Hasil: kedua jalur menghasilkan data yang sama untuk vendor (nama & tipe acara, tanggal, jam, pax, alamat, kota, titik, jarak, ongkir).
+
+**Verifikasi** (lokal): reverse geocoding mengembalikan alamat & kota; acara dibuat dengan koordinat; halaman vendor mode acara terisi; permintaan lewat formulir web memakai acara yang sama (nama, tipe BIRTHDAY, alamat & titik terbaru, jarak 4,4 km, ongkir Rp23.000); pesanan langsung menyimpan alamat & titik (5,1 km, Rp27.000); typecheck, lint, 142 unit test lulus.
+
 ## v0.16.1 — Rapikan tampilan & ikon (10 Nov 2026)
 
 - **Ikon CaterHub**: tudung saji (cloche) hitam di kotak kuning dengan kenop jeruk (mengulang titik pada wordmark). Favicon `frontend/src/app/icon.svg`, ikon iOS `apple-icon.png` (180 px); komponen `LogoMark` tampil di samping wordmark di navbar, halaman login, footer, dan invoice (`<Logo mark={false} />` untuk wordmark saja).

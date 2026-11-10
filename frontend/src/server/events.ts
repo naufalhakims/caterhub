@@ -4,6 +4,15 @@ import { redirect } from "next/navigation";
 import { ApiError, apiPost } from "@/lib/api";
 import { requireCustomer } from "@/lib/auth-helpers";
 
+/** Titik peta dari LocationPicker; kosong bila pin belum ditaruh. */
+function pinFrom(formData: FormData): { latitude?: number; longitude?: number } {
+  const lat = Number(formData.get("latitude"));
+  const lng = Number(formData.get("longitude"));
+  return formData.get("latitude") && formData.get("longitude") && Number.isFinite(lat) && Number.isFinite(lng)
+    ? { latitude: lat, longitude: lng }
+    : {};
+}
+
 export async function createEventAction(formData: FormData): Promise<never> {
   // Peran tetap dicek di frontend untuk UX; API juga menegakkan RBAC.
   await requireCustomer();
@@ -19,6 +28,7 @@ export async function createEventAction(formData: FormData): Promise<never> {
     budgetMin: formData.get("budgetMin") || undefined,
     budgetMax: formData.get("budgetMax") || undefined,
     notes: String(formData.get("notes") ?? "").trim() || undefined,
+    ...pinFrom(formData),
   };
 
   let created: { id: string };

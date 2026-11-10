@@ -16,6 +16,8 @@ type EventDetail = {
   guestCount: number;
   location: string;
   city: string;
+  latitude: number | null;
+  longitude: number | null;
   budgetMin: number | null;
   budgetMax: number | null;
   notes: string | null;
@@ -35,7 +37,12 @@ export default async function EventDetailPage({ params }: { params: { id: string
 
   const eventTime =
     event.eventTime && /^\d{2}:\d{2}$/.test(event.eventTime) ? event.eventTime : undefined;
+  // eventId ikut dibawa sampai halaman vendor agar permintaan memakai acara ini (bukan acara baru).
   const qs = new URLSearchParams({
+    eventId: event.id,
+    ...(event.latitude != null && event.longitude != null
+      ? { lat: String(event.latitude), lng: String(event.longitude) }
+      : {}),
     date: event.eventDate.slice(0, 10),
     guests: String(event.guestCount),
     city: event.city,

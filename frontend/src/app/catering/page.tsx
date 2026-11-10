@@ -15,7 +15,11 @@ export default async function CateringPage({
   const results = await searchVendors(searchParams);
   const located = !!(searchParams.lat && searchParams.lng);
   const showReco = !!(searchParams.date || searchParams.time || searchParams.guests || searchParams.budgetMax || located);
-  const pinParams: Record<string, string> = located ? { lat: searchParams.lat!, lng: searchParams.lng! } : {};
+  const pinParams: Record<string, string> = {
+    ...(located ? { lat: searchParams.lat!, lng: searchParams.lng! } : {}),
+    // Datang dari halaman acara: halaman vendor memakai acara tersimpan tersebut.
+    ...(searchParams.eventId ? { eventId: searchParams.eventId } : {}),
+  };
 
   return (
     <>
@@ -94,7 +98,7 @@ export default async function CateringPage({
             <div key={v.id} className="animate-rise" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
               <VendorCard
                 href={`/catering/${v.id}${
-                  searchParams.date || located
+                  searchParams.date || located || searchParams.eventId
                     ? `?${new URLSearchParams({
                         ...(searchParams.date
                           ? ({ date: searchParams.date, time: searchParams.time ?? "", guests: searchParams.guests ?? "" } as Record<string, string>)

@@ -210,9 +210,19 @@ export function quotationsRouter() {
       }
       const deliveryFee = delivery?.inRange ? delivery.fee : 0;
       const quotation = await db.$transaction(async (tx) => {
-        const event =
-          savedEvent ??
-          (await tx.event.create({
+        // Acara tersimpan: alamat & titik yang dikonfirmasi di halaman vendor ikut disimpan,
+        // agar data acara dan nota yang dilihat vendor selalu sama.
+        const event = savedEvent
+          ? await tx.event.update({
+              where: { id: savedEvent.id },
+              data: {
+                ...(input.location ? { location: input.location, city: input.city || "Surabaya" } : {}),
+                ...(pin.latitude != null && pin.longitude != null
+                  ? { latitude: pin.latitude, longitude: pin.longitude }
+                  : {}),
+              },
+            })
+          : (await tx.event.create({
             data: {
               customerId: user.id,
               name: `Pesanan ${pkg.name}`,

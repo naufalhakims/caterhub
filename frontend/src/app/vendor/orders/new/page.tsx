@@ -112,6 +112,7 @@ export default async function NewOfflineOrderPage({ searchParams }: { searchPara
                   <LocationPicker
                     reference={kitchen ? { latitude: kitchen.latitude, longitude: kitchen.longitude, label: "Dapur Anda" } : null}
                     addressInputName="location"
+                    cityInputName="city"
                     height={220}
                     label="Titik antar"
                   />

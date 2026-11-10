@@ -12,8 +12,13 @@ type Props = {
   initial?: { latitude: number; longitude: number } | null;
   /** Titik referensi (mis. dapur vendor) — ditampilkan sebagai penanda kedua. */
   reference?: { latitude: number; longitude: number; label: string } | null;
-  /** Isi input alamat ini dengan hasil pencarian bila masih kosong. */
+  /**
+   * Isi input alamat ini otomatis dari titik pin (pencarian, GPS, ketuk/geser peta).
+   * Teks yang diketik sendiri oleh pengguna tidak pernah ditimpa.
+   */
   addressInputName?: string;
+  /** Pilih opsi kota di <select> ini bila alamat pin menyebut kota tersebut. */
+  cityInputName?: string;
   height?: number;
   label?: string;
 };
@@ -35,9 +40,13 @@ export function LocationPicker({
   initial,
   reference,
   addressInputName,
+  cityInputName,
   height = 260,
   label = "Titik lokasi",
 }: Props) {
+  /** Nilai terakhir yang diisi otomatis; bila input masih sama, boleh diganti lagi. */
+  const autoAddressRef = useRef<string | null>(null);
+  const reverseSeqRef = useRef(0);
   const mapEl = useRef<HTMLDivElement>(null);
   const latRef = useRef<HTMLInputElement>(null);
   const lngRef = useRef<HTMLInputElement>(null);
@@ -60,7 +69,48 @@ export function LocationPicker({
     }
   };
 
-  const placeMarker = (lat: number, lng: number, pan = true) => {
+  const formField = <T extends Element>(name: string) =>
+    mapEl.current?.closest("form")?.querySelector<T>(`[name="${name}"]`) ?? null;
+
+  /** Tulis alamat ke input lokasi (bila kosong / masih hasil otomatis) dan pilih kota yang cocok. */
+  const fillAddress = (displayName: string) => {
+    if (addressInputName) {
+      const input = formField<HTMLInputElement | HTMLTextAreaElement>(addressInputName);
+      const current = input?.value.trim() ?? "";
+      if (input && (!current || current === autoAddressRef.current)) {
+        const short = displayName.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 3).join(", ");
+        input.value = short;
+        autoAddressRef.current = short;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    }
+    if (cityInputName) {
+      const select = formField<HTMLSelectElement>(cityInputName);
+      const match = select && Array.from(select.options).find((o) => o.value && displayName.includes(o.value));
+      if (select && match && select.value !== match.value) {
+        select.value = match.value;
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }
+  };
+
+  /** Alamat dari koordinat (Nominatim reverse); hanya hasil permintaan terbaru yang dipakai. */
+  const reverseGeocode = async (lat: number, lng: number) => {
+    if (!addressInputName && !cityInputName) return;
+    const seq = ++reverseSeqRef.current;
+    try {
+      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&accept-language=id&lat=${lat}&lon=${lng}`;
+      const res = await fetch(url, { headers: { Accept: "application/json" } });
+      const data = (await res.json()) as { display_name?: string };
+      if (seq !== reverseSeqRef.current) return;
+      if (data.display_name) fillAddress(data.display_name);
+      else setStatus("Alamat untuk titik ini tidak ditemukan. Ketik nama lokasi secara manual.");
+    } catch {
+      if (seq === reverseSeqRef.current) setStatus("Alamat tidak dapat dicari otomatis. Ketik nama lokasi secara manual.");
+    }
+  };
+
+  const placeMarker = (lat: number, lng: number, pan = true, lookupAddress = true) => {
     const L = (window as unknown as { L?: typeof import("leaflet") }).L;
     const map = mapRef.current;
     if (!map || !L) return;
@@ -74,12 +124,14 @@ export function LocationPicker({
       markerRef.current.on("dragend", () => {
         const p = markerRef.current!.getLatLng();
         commit(p.lat, p.lng);
+        void reverseGeocode(p.lat, p.lng);
       });
     } else {
       markerRef.current.setLatLng([lat, lng]);
     }
     if (pan) map.setView([lat, lng], Math.max(map.getZoom(), 15));
     commit(lat, lng);
+    if (lookupAddress) void reverseGeocode(lat, lng);
   };
 
   useEffect(() => {
@@ -103,7 +155,8 @@ export function LocationPicker({
       }
       map.on("click", (e) => placeMarker(e.latlng.lat, e.latlng.lng, false));
       mapRef.current = map;
-      if (initial) placeMarker(initial.latitude, initial.longitude, false);
+      // Titik awal (mis. dari acara tersimpan) tidak menimpa alamat yang sudah ada.
+      if (initial) placeMarker(initial.latitude, initial.longitude, false, false);
     })();
     return () => {
       cancelled = true;
@@ -149,15 +202,9 @@ export function LocationPicker({
   const choose = (r: SearchResult) => {
     setResults([]);
     setQuery("");
-    placeMarker(Number(r.lat), Number(r.lon));
-    if (addressInputName) {
-      const form = mapEl.current?.closest("form");
-      const input = form?.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[name="${addressInputName}"]`);
-      if (input && !input.value.trim()) {
-        input.value = r.display_name.split(",").slice(0, 3).join(",").trim();
-        input.dispatchEvent(new Event("input", { bubbles: true }));
-      }
-    }
+    reverseSeqRef.current++; // abaikan reverse geocode yang masih berjalan
+    placeMarker(Number(r.lat), Number(r.lon), true, false);
+    fillAddress(r.display_name);
   };
 
   return (

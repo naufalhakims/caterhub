@@ -25,6 +25,13 @@ export const eventSchema = z
     budgetMin: zIdrOptional,
     budgetMax: zIdrOptional,
     notes: z.string().max(2000).optional(),
+    /** Titik lokasi acara (peta) — dipakai menghitung jarak & ongkir vendor. */
+    latitude: z.coerce.number().min(-90).max(90).optional(),
+    longitude: z.coerce.number().min(-180).max(180).optional(),
+  })
+  .refine((v) => (v.latitude == null) === (v.longitude == null), {
+    message: "Titik lokasi tidak lengkap.",
+    path: ["latitude"],
   })
   .refine((v) => v.budgetMin == null || v.budgetMax == null || v.budgetMin <= v.budgetMax, {
     message: "Budget minimum tidak boleh lebih besar dari budget maksimum.",

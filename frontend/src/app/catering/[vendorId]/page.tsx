@@ -8,12 +8,23 @@ import { SubmitButton } from "@/components/ui/SubmitButton";
 import { LiveEstimate } from "@/components/LiveEstimate";
 import { LocationPicker } from "@/components/LocationPicker";
 import { describeRate } from "@/lib/delivery";
-import { formatIDR } from "@/lib/format";
+import { formatDateOnlyID, formatIDR } from "@/lib/format";
 import { apiGet, ApiError } from "@/lib/api";
 import type { VendorDetailDto } from "@/lib/vendor-types";
 import { auth } from "@/auth";
 
 type CapacityPreview = { ok: boolean; remaining: number; maxPax: number; reservedPax: number };
+type SavedEvent = {
+  id: string;
+  name: string;
+  eventDate: string;
+  eventTime: string | null;
+  guestCount: number;
+  location: string;
+  city: string;
+  latitude: number | null;
+  longitude: number | null;
+};
 
 export default async function VendorDetailPage({
   params,
@@ -28,6 +39,7 @@ export default async function VendorDetailPage({
     error?: string;
     lat?: string;
     lng?: string;
+    eventId?: string;
   };
 }) {
   let vendor: VendorDetailDto;
@@ -39,6 +51,17 @@ export default async function VendorDetailPage({
   }
   const session = await auth();
   const canOrder = session?.user?.role === "CUSTOMER";
+
+  // Datang dari "Buat acara": permintaan memakai acara tersimpan itu, sehingga vendor
+  // melihat nama, tipe, catatan, alamat, dan titik yang sama dengan pesanan langsung.
+  let savedEvent: SavedEvent | null = null;
+  if (canOrder && searchParams.eventId) {
+    try {
+      savedEvent = await apiGet<SavedEvent>(`/api/v1/events/${encodeURIComponent(searchParams.eventId)}`);
+    } catch {
+      savedEvent = null;
+    }
+  }
 
   const guests = searchParams.guests ? parseInt(searchParams.guests) : NaN;
   let cap: CapacityPreview | null = null;
@@ -71,9 +94,13 @@ export default async function VendorDetailPage({
         }
       : null;
   const pinFromSearch =
-    searchParams.lat && searchParams.lng && Number.isFinite(Number(searchParams.lat)) && Number.isFinite(Number(searchParams.lng))
-      ? { latitude: Number(searchParams.lat), longitude: Number(searchParams.lng) }
-      : null;
+    savedEvent?.latitude != null && savedEvent.longitude != null
+      ? { latitude: savedEvent.latitude, longitude: savedEvent.longitude }
+      : searchParams.lat && searchParams.lng && Number.isFinite(Number(searchParams.lat)) && Number.isFinite(Number(searchParams.lng))
+        ? { latitude: Number(searchParams.lat), longitude: Number(searchParams.lng) }
+        : null;
+  const savedEventTime =
+    savedEvent?.eventTime && /^\d{2}:\d{2}$/.test(savedEvent.eventTime) ? savedEvent.eventTime : undefined;
 
   // Menu dengan harga add-on > 0 bisa ditambahkan pelanggan per pax.
   const addOnMenus = vendor.menuItems.filter((m) => m.price > 0);
@@ -285,6 +312,24 @@ export default async function VendorDetailPage({
                 ) : (
                   <form action="/api/quotations/request" method="post" className="mt-3 space-y-3">
                     <input type="hidden" name="vendorId" value={vendor.id} />
+                    {savedEvent ? (
+                      <div className="rounded-2xl bg-paper px-3.5 py-3 text-sm ring-1 ring-inset ring-stone-200">
+                        <input type="hidden" name="eventId" value={savedEvent.id} />
+                        <input type="hidden" name="eventDate" value={savedEvent.eventDate.slice(0, 10)} />
+                        <input type="hidden" name="eventTime" value={savedEventTime ?? savedEvent.eventTime ?? ""} />
+                        <input type="hidden" name="guestCount" value={savedEvent.guestCount} />
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-stone-400">Untuk acara tersimpan</p>
+                        <p className="mt-0.5 font-semibold text-ink">{savedEvent.name}</p>
+                        <p className="text-stone-600">
+                          {formatDateOnlyID(savedEvent.eventDate)}
+                          {savedEvent.eventTime ? ` · ${savedEvent.eventTime}` : ""} · {savedEvent.guestCount} pax
+                        </p>
+                        <Link href={`/events/${savedEvent.id}`} className="mt-1 inline-block text-xs font-semibold text-brand-700 hover:underline">
+                          Lihat acara
+                        </Link>
+                      </div>
+                    ) : (
+                    <>
                     <div className="grid grid-cols-2 gap-2">
                       <label className="block text-sm">
                         <span className="mb-1 block text-[13px] font-medium text-stone-600">Tanggal <span className="text-red-500">*</span></span>
@@ -299,9 +344,11 @@ export default async function VendorDetailPage({
                       <span className="mb-1 block text-[13px] font-medium text-stone-600">Jumlah tamu (pax) <span className="text-red-500">*</span></span>
                       <input name="guestCount" type="number" min={10} max={vendor.maxPax} required defaultValue={searchParams.guests ?? ""} placeholder="cth. 250" className="w-full rounded-2xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-ink focus:ring-4 focus:ring-sun-200 placeholder:text-stone-400" />
                     </label>
+                    </>
+                    )}
                     <label className="block text-sm">
                       <span className="mb-1 block text-[13px] font-medium text-stone-600">Lokasi acara <span className="text-red-500">*</span></span>
-                      <input name="location" required minLength={3} maxLength={300} placeholder="cth. Gedung Sasono Utomo" className="w-full rounded-2xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-ink focus:ring-4 focus:ring-sun-200 placeholder:text-stone-400" />
+                      <input name="location" required minLength={3} maxLength={300} defaultValue={savedEvent?.location ?? ""} placeholder="cth. Gedung Sasono Utomo" className="w-full rounded-2xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-ink focus:ring-4 focus:ring-sun-200 placeholder:text-stone-400" />
                     </label>
                     {kitchen && (
                       <div className="text-sm">
@@ -313,6 +360,7 @@ export default async function VendorDetailPage({
                           initial={pinFromSearch}
                           reference={{ latitude: kitchen.latitude, longitude: kitchen.longitude, label: `Dapur ${vendor.businessName}` }}
                           addressInputName="location"
+                          cityInputName="city"
                           height={220}
                           label="Titik antar"
                         />
@@ -320,7 +368,7 @@ export default async function VendorDetailPage({
                     )}
                     <label className="block text-sm">
                       <span className="mb-1 block text-[13px] font-medium text-stone-600">Kota</span>
-                      <select name="city" defaultValue={searchParams.city ?? "Surabaya"} className="w-full rounded-2xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-ink focus:ring-4 focus:ring-sun-200">
+                      <select name="city" defaultValue={savedEvent?.city ?? searchParams.city ?? "Surabaya"} className="w-full rounded-2xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-ink focus:ring-4 focus:ring-sun-200">
                         <option>Surabaya</option>
                         <option>Sidoarjo</option>
                         <option>Gresik</option>

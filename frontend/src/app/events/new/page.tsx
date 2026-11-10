@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/Card";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Field, Input, Select, Textarea } from "@/components/ui/Field";
 import { RupiahInput } from "@/components/ui/RupiahInput";
+import { LocationPicker } from "@/components/LocationPicker";
 import { createEventAction } from "@/server/events";
 import { requireCustomer } from "@/lib/auth-helpers";
 
@@ -54,8 +55,8 @@ export default async function NewEventPage({
               </Field>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Lokasi">
-                <Input name="location" required placeholder="cth. Gedung Sasono Utomo" />
+              <Field label="Lokasi acara">
+                <Input name="location" required minLength={3} maxLength={300} placeholder="cth. Gedung Sasono Utomo" />
               </Field>
               <Field label="Kota">
                 <Select name="city" defaultValue="Surabaya">
@@ -64,6 +65,12 @@ export default async function NewEventPage({
                   <option>Gresik</option>
                 </Select>
               </Field>
+            </div>
+            <div className="text-sm">
+              <span className="mb-1 block text-[13px] font-medium text-stone-600">
+                Titik lokasi di peta <span className="font-normal text-stone-400">(untuk jarak & ongkir otomatis)</span>
+              </span>
+              <LocationPicker addressInputName="location" cityInputName="city" height={240} label="Titik lokasi acara" />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Budget min (Rp, opsional)">
