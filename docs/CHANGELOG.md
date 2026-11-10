@@ -2,6 +2,18 @@
 
 Catatan perubahan per tahap pengembangan. Versi mengikuti milestone roadmap ([ROADMAP_PENGEMBANGAN.md](./ROADMAP_PENGEMBANGAN.md)), bukan rilis npm.
 
+## v0.16.4 — Redirect ke localhost di produksi (10 Nov 2026)
+
+**Bug**: setelah "Kirim permintaan pesanan" di situs live, browser diarahkan ke `localhost`. Route handler Next membangun URL redirect dari `req.url`; di balik proxy Railway nilainya alamat internal container (`http://localhost:8080`). Pola yang sama ada di `api/payments/mock-settle` (tombol "Simulasikan bayar") dan `middleware.ts`.
+
+**Perbaikan**
+- `frontend/src/lib/redirect.ts`: `redirectTo(path)` mengirim header **Location relatif** (selalu tetap di domain yang dibuka pengguna) dan hanya menerima path internal (menolak `https://…`, `//host`, `/\host` → tidak bisa jadi open redirect); `withQuery()` untuk query string; `middlewareRedirect(req, path)` khusus middleware (runtime middleware Next menuntut URL absolut, jadi memakai klon `req.nextUrl` yang direlatifkan Next untuk origin yang sama).
+- Dipakai di `api/quotations/request`, `api/payments/mock-settle`, dan `middleware.ts`. Tidak ada lagi `req.url` di kode.
+- **Pengaman produksi**: API berhenti saat start bila `APP_URL`/`CORS_ORIGIN` kosong, bukan https, atau localhost/127.x/`*.railway.internal` (`publicUrlProblem` di `backend/src/env.ts`); web gagal build/start di Railway bila `API_BASE_URL` kosong (tidak diam-diam memakai `127.0.0.1`). Nilai Railway saat ini lolos pemeriksaan.
+- **Test penjaga**: `frontend/src/lib/redirect.test.ts` memindai seluruh `frontend/src` dan gagal bila ada `req.url`/`request.url` atau `NextResponse.redirect(` di luar `lib/redirect.ts`; ditambah test Location relatif & penolakan open redirect. `backend/test/env-public-url.test.ts` menguji validasi URL produksi.
+
+**Verifikasi (browser, lokal)**: semua header Location relatif (`/dashboard → /login?next=%2Fdashboard`, `/api/quotations/request → /quotations/…`, jalur gagal → `/catering/…?error=…` meski Host publik disimulasikan); tidak ada Location absolut/localhost. Typecheck, lint, 148 unit test (backend 109, frontend 39), `next build` sukses.
+
 ## v0.16.3 — Satu kolom lokasi + perbaikan titik kosong (10 Nov 2026)
 
 **Bug yang masih tersisa di v0.16.2**: alamat terisi otomatis, tetapi **titik (latitude/longitude) tetap kosong** sehingga tombol kirim tetap nonaktif. Penyebab: koordinat disimpan di `<input type="hidden" defaultValue>` yang diisi lewat DOM; pada input hidden nilai = atribut default, sehingga setiap render ulang React (mis. status pin berubah) menimpanya kembali kosong. Bug ini sudah ada sejak fitur peta; ditemukan lewat uji browser otomatis (Playwright + geolokasi tiruan).

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/jwt";
 import { roleHome } from "@/lib/roles";
 import { decideRouteAccess } from "@/lib/route-access";
+import { middlewareRedirect } from "@/lib/redirect";
 
 export async function middleware(req: NextRequest) {
   const token = req.cookies.get(SESSION_COOKIE)?.value;
@@ -10,12 +11,10 @@ export async function middleware(req: NextRequest) {
 
   const decision = decideRouteAccess(req.nextUrl.pathname, role);
   if (decision === "require-login") {
-    const url = new URL("/login", req.url);
-    url.searchParams.set("next", req.nextUrl.pathname);
-    return NextResponse.redirect(url);
+    return middlewareRedirect(req, "/login", { next: req.nextUrl.pathname });
   }
   if (decision === "redirect-home") {
-    return NextResponse.redirect(new URL(roleHome(role), req.url));
+    return middlewareRedirect(req, roleHome(role));
   }
   return NextResponse.next();
 }

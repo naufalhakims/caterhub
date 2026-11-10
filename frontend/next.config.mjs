@@ -9,6 +9,12 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(here, "../.env") });
 dotenv.config({ path: path.resolve(here, ".env.local"), override: true });
 
+// Cadangan 127.0.0.1 hanya untuk development. Di hosting (Railway menyediakan
+// RAILWAY_ENVIRONMENT saat build & runtime) tanpa API_BASE_URL, build gagal di sini,
+// bukan diam-diam mengarahkan rewrite /uploads ke localhost.
+if (process.env.RAILWAY_ENVIRONMENT && !process.env.API_BASE_URL?.trim()) {
+  throw new Error("API_BASE_URL wajib diisi untuk build/start produksi.");
+}
 const API_BASE_URL = (process.env.API_BASE_URL || "http://127.0.0.1:4000").replace(/\/+$/, "");
 
 /** @type {import('next').NextConfig} */

@@ -157,6 +157,8 @@ Trial Railway: 30 hari + kredit sekali US$5, tanpa kartu. Setelah habis, akun tu
 | Login berhasil tapi langsung keluar lagi | `AUTH_SECRET` berbeda antara `api` dan `web`. |
 | Gambar hilang setelah redeploy | Volume belum terpasang di `/data` atau `PUBLIC_UPLOAD_DIR` tidak menunjuk ke `/data/public`. |
 | Healthcheck gagal | Lihat deploy log; API harus listen di `PORT`. |
+| Setelah kirim formulir, browser pindah ke `localhost` | Redirect dibangun dari `req.url` (alamat internal container di balik proxy). Semua redirect wajib lewat `frontend/src/lib/redirect.ts` (Location relatif); test `redirect.test.ts` gagal bila pola lama muncul lagi. |
+| `api` gagal start: `APP_URL … harus https` / `tidak boleh alamat lokal` | Pengaman produksi: isi `APP_URL` & `CORS_ORIGIN` dengan domain publik https web (bukan localhost/`*.railway.internal`). |
 | Email "Deployment crashed" setiap deploy, padahal situs normal | Start command lewat `npm` (`npm run api:start` → `npm -w … run start`): saat container lama dihentikan, `npm` keluar dengan `npm error signal SIGTERM` (status gagal). Start command kini menjalankan Node langsung sehingga SIGTERM sampai ke handler shutdown dan proses keluar 0. Perubahan start command baru berlaku untuk deploy dari source (push, atau `railway service redeploy --from-source`); `redeploy` biasa memakai snapshot lama. |
 
 ## Lokal vs produksi

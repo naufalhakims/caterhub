@@ -21,7 +21,12 @@ export class ApiError extends Error {
 }
 
 export function apiBaseUrl(): string {
-  return (process.env.API_BASE_URL?.trim() || "http://127.0.0.1:4000").replace(/\/+$/, "");
+  const configured = process.env.API_BASE_URL?.trim();
+  // Cadangan 127.0.0.1 hanya untuk development/lokal; di hosting wajib eksplisit.
+  if (!configured && process.env.RAILWAY_ENVIRONMENT) {
+    throw new Error("API_BASE_URL wajib diisi di produksi.");
+  }
+  return (configured || "http://127.0.0.1:4000").replace(/\/+$/, "");
 }
 
 function cookieHeader(): string {

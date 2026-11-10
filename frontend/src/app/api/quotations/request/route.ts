@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ApiError, apiPost } from "@/lib/api";
 import { getSessionUser } from "@/lib/session";
+import { redirectTo, withQuery } from "@/lib/redirect";
 
 /** BFF tipis: form HTML → REST API. Tidak ada akses database di sini. */
 export async function POST(req: Request) {
@@ -44,19 +45,19 @@ export async function POST(req: Request) {
       addOnIds,
       ...pin,
     });
-    return NextResponse.redirect(new URL(`/quotations/${data.id}`, req.url), 303);
+    return redirectTo(`/quotations/${encodeURIComponent(data.id)}`);
   } catch (error) {
     const message = error instanceof ApiError ? error.message : "Permintaan gagal dikirim.";
-    const back = new URL(`/catering/${vendorId}`, req.url);
-    back.searchParams.set("error", message);
-    back.searchParams.set("date", eventDate);
-    back.searchParams.set("time", eventTime);
-    back.searchParams.set("guests", String(guestCount));
-    if (eventId) back.searchParams.set("eventId", eventId);
-    if ("latitude" in pin) {
-      back.searchParams.set("lat", String(pin.latitude));
-      back.searchParams.set("lng", String(pin.longitude));
-    }
-    return NextResponse.redirect(back, 303);
+    return redirectTo(
+      withQuery(`/catering/${encodeURIComponent(vendorId)}`, {
+        error: message,
+        date: eventDate,
+        time: eventTime,
+        guests: guestCount || undefined,
+        eventId: eventId || undefined,
+        lat: "latitude" in pin ? pin.latitude : undefined,
+        lng: "longitude" in pin ? pin.longitude : undefined,
+      }),
+    );
   }
 }
