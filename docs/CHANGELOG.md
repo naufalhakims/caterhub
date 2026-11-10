@@ -2,6 +2,14 @@
 
 Catatan perubahan per tahap pengembangan. Versi mengikuti milestone roadmap ([ROADMAP_PENGEMBANGAN.md](./ROADMAP_PENGEMBANGAN.md)), bukan rilis npm.
 
+## v0.16.5 — Konfirmasi vendor gagal: transaksi kedaluwarsa (10 Nov 2026)
+
+**Bug**: vendor menekan "Konfirmasi pesanan" → `409 Transaction API error: Transaction not found…` (permintaan ±6 dtk). Transaksi interaktif Prisma ditutup pada batas default **5 dtk** sebelum semua langkah (kunci kapasitas, booking, invoice, notifikasi) selesai.
+
+**Akar masalah (infrastruktur)**: volume Postgres masih di region **`sfo` (California)** sejak deploy pertama; saat setup, region service diubah ke Singapura tetapi Postgres tidak pernah di-redeploy sehingga volumenya tidak ikut pindah. API (Singapura) → database (California) ±200 ms **per query** (diukur: `SELECT 1` ±200 ms, transaksi 5 query ±1,9 dtk), sehingga semua halaman lambat dan transaksi panjang melewati 5 dtk.
+
+**Perbaikan kode**: batas transaksi global `maxWait 10 dtk / timeout 20 dtk` (`backend/src/db.ts`, `transactionOptions`); transaksi pembuatan tagihan Midtrans 30 dtk. **Perbaikan infrastruktur** (memindahkan Postgres ke Singapura) dilakukan terpisah, lihat DEPLOY.md.
+
 ## v0.16.4 — Redirect ke localhost di produksi (10 Nov 2026)
 
 **Bug**: setelah "Kirim permintaan pesanan" di situs live, browser diarahkan ke `localhost`. Route handler Next membangun URL redirect dari `req.url`; di balik proxy Railway nilainya alamat internal container (`http://localhost:8080`). Pola yang sama ada di `api/payments/mock-settle` (tombol "Simulasikan bayar") dan `middleware.ts`.

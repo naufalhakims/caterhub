@@ -141,7 +141,7 @@ export function paymentsRouter() {
           return { payment: created, reused: false };
         },
         // Pemanggilan provider eksternal terjadi di dalam transaksi.
-        { timeout: 15_000 },
+        { maxWait: 10_000, timeout: 30_000 },
       );
       res.status(reused ? 200 : 201).json({ data: payment });
     }),
