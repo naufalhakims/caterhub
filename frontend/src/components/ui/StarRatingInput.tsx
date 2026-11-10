@@ -25,7 +25,7 @@ export function StarRatingInput({ name = "rating", defaultValue = 0, required = 
             key={star}
             className="cursor-pointer rounded-md p-0.5 transition hover:scale-105 focus-within:ring-2 focus-within:ring-brand-200"
             onMouseEnter={() => setHovered(star)}
-            title={`${star} bintang — ${LABELS[star - 1]}`}
+            title={`${star} bintang: ${LABELS[star - 1]}`}
           >
             <input
               type="radio"
@@ -46,7 +46,7 @@ export function StarRatingInput({ name = "rating", defaultValue = 0, required = 
           </label>
         ))}
         <span className="ml-2 text-sm text-stone-500">
-          {active ? `${active} dari 5 — ${LABELS[active - 1]}` : "Pilih rating"}
+          {active ? `${active} dari 5 · ${LABELS[active - 1]}` : "Pilih rating"}
         </span>
       </div>
     </fieldset>

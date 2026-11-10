@@ -7,6 +7,13 @@ Repo ini sudah **dipisah menjadi dua paket** di dalam satu monorepo npm workspac
 - `frontend/` — Next.js 14 (App Router), **UI saja**. Tidak lagi memakai Prisma, NextAuth, atau bcrypt.
 - `backend/` — Express + TypeScript + Prisma. Pemilik database, sesi/JWT, otorisasi, aturan bisnis, dan penyimpanan file.
 
+## Demo live
+
+**https://web-production-240c4.up.railway.app** (Railway, region Singapura). Login dengan [akun demo](#akun-demo) di bawah.
+
+- Pembayaran memakai **Midtrans sandbox**: tidak ada uang sungguhan. Bayar QRIS lewat [QRIS Simulator Midtrans](https://simulator.sandbox.midtrans.com/v2/qris/index), jangan dengan e-wallet asli.
+- WhatsApp terkirim sungguhan (Fonnte) hanya ke nomor vendor demo; pesan lain tercatat di Kotak keluar WA admin.
+
 > **Pembayaran:** hanya **lunas** (tanpa DP/termin). Adapter mock + Midtrans (QRIS) tersedia dengan hardening signature webhook. Vendor baru bisa memulai persiapan setelah pembayaran berstatus `PAID`.
 
 ## Arsitektur
@@ -91,14 +98,24 @@ Satu `.env` di root dipakai API dan frontend. `frontend/.env.local` opsional men
 | `PUBLIC_UPLOAD_DIR` | tidak | `backend/public/uploads` | Folder gambar publik. |
 | `NEXT_DIST_DIR` | tidak | `.next` | Khusus build verifikasi agar tidak bentrok dengan `next dev`. |
 
-## Akun demo (password: `demo1234`)
+## Akun demo
 
-| Peran | Email |
-|---|---|
-| Admin | `admin@caterhub.id` |
-| Pelanggan utama | `pelanggan@demo.id` (Budi — permintaan pernikahan menunggu konfirmasi) |
-| Pelanggan lain | `andi@demo.id` (penawaran menunggu keputusan), `sari@demo.id` (pesanan menunggu bayar), `kantor@demo.id` (PT Maju Jaya — revisi penawaran) |
-| Vendor 1–5 | `vendor1@demo.id` (Dapur Nusantara — vendor utama demo) … `vendor5@demo.id` |
+Semua akun memakai kata sandi **`demo1234`**. Kredensial sengaja tidak ditampilkan di halaman login.
+
+| Peran | Email | Keterangan |
+|---|---|---|
+| Admin | `admin@caterhub.id` | Verifikasi vendor, pesanan & refund, kotak keluar WhatsApp |
+| Pelanggan utama | `pelanggan@demo.id` | Budi Santoso: permintaan pernikahan menunggu konfirmasi vendor |
+| Pelanggan | `sari@demo.id` | Sari Wijaya: pesanan menunggu pembayaran |
+| Pelanggan | `andi@demo.id` | Andi Pratama: penawaran menunggu keputusan |
+| Pelanggan | `kantor@demo.id` | PT Maju Jaya: meminta revisi penawaran |
+| Vendor utama | `vendor1@demo.id` | Dapur Nusantara (Surabaya): data paling lengkap, menerima WhatsApp sungguhan di versi live |
+| Vendor | `vendor2@demo.id` | Rasa Prima Catering (Surabaya) |
+| Vendor | `vendor3@demo.id` | Sajian Kita (Sidoarjo) |
+| Vendor | `vendor4@demo.id` | Pawon Ibu (Gresik) |
+| Vendor | `vendor5@demo.id` | Kitchen 88 (Surabaya) |
+
+Data demo dibuat ulang oleh `npm run db:seed`; tanggal pesanan dihitung relatif terhadap hari seed dijalankan.
 
 Alur presentasi lengkap: [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md). Riwayat perubahan: [`docs/CHANGELOG.md`](docs/CHANGELOG.md).
 

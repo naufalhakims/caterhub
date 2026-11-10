@@ -84,7 +84,7 @@ export async function remindUpcomingPaymentDue(now = new Date()): Promise<number
       await notify(tx, b.customerId, {
         type: "PAYMENT_REMINDER",
         title: "Pengingat: segera lunasi pesanan",
-        message: `Pesanan "${b.event.name}" (${b.totalAmount.toLocaleString("id-ID")}) belum dibayar. Batas pelunasan ${time} WIB — setelah itu jadwal vendor dilepas.`,
+        message: `Pesanan "${b.event.name}" (${b.totalAmount.toLocaleString("id-ID")}) belum dibayar. Batas pelunasan ${time} WIB. Setelah itu jadwal vendor dilepas.`,
         link: `/bookings/${b.id}`,
         whatsapp: true,
       });

@@ -37,7 +37,7 @@ export function Footer() {
         <div>
           <Logo tone="sun" className="text-5xl" />
           <p className="mt-5 max-w-xs text-sm leading-relaxed text-stone-400">
-            Marketplace dan alat operasional untuk UMKM catering Surabaya Raya — dari permintaan pesanan sampai
+            Marketplace dan alat operasional untuk UMKM catering Surabaya Raya, dari permintaan pesanan sampai
             makanan tiba di meja.
           </p>
         </div>

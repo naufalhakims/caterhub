@@ -3,18 +3,18 @@ import { SideNav } from "@/components/SideNav";
 import { requireRole } from "@/lib/auth-helpers";
 
 const NAV = [
-  ["/vendor/dashboard", "Dashboard", "◈"],
-  ["/vendor/orders", "Pesanan", "▣"],
-  ["/vendor/quotations", "Permintaan masuk", "✎"],
-  ["/vendor/menu", "Menu", "☰"],
-  ["/vendor/packages", "Paket", "▤"],
-  ["/vendor/production", "Produksi", "▦"],
-  ["/vendor/costing", "Bahan & HPP", "◒"],
-  ["/vendor/calendar", "Jadwal acara", "◫"],
-  ["/vendor/capacity", "Kapasitas harian", "◍"],
-  ["/vendor/analytics", "Analitik", "↗"],
-  ["/vendor/verification", "Verifikasi", "✓"],
-  ["/vendor/profile", "Profil", "⚙"],
+  ["/vendor/dashboard", "Dashboard"],
+  ["/vendor/orders", "Pesanan"],
+  ["/vendor/quotations", "Permintaan masuk"],
+  ["/vendor/menu", "Menu"],
+  ["/vendor/packages", "Paket"],
+  ["/vendor/production", "Produksi"],
+  ["/vendor/costing", "Bahan & HPP"],
+  ["/vendor/calendar", "Jadwal acara"],
+  ["/vendor/capacity", "Kapasitas harian"],
+  ["/vendor/analytics", "Analitik"],
+  ["/vendor/verification", "Verifikasi"],
+  ["/vendor/profile", "Profil"],
 ] as const;
 
 export default async function VendorLayout({ children }: { children: React.ReactNode }) {

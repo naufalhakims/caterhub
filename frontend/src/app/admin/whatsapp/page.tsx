@@ -82,8 +82,8 @@ export default async function WhatsAppOutboxPage({ searchParams }: { searchParam
             Pesan WhatsApp yang dikirim sistem untuk event penting. Saat ini memakai{" "}
             <span className="font-semibold text-ink">provider {data.provider}</span>
             {data.provider === "mock"
-              ? " — pesan tidak benar-benar terkirim ke ponsel, tetapi alur, nomor tujuan, dan isinya sama persis dengan pengiriman asli."
-              : " — pesan terkirim sungguhan hanya ke nomor demo yang diizinkan; nomor lain tercatat sebagai Dilewati."}
+              ? ". Pesan tidak benar-benar terkirim ke ponsel, tetapi alur, nomor tujuan, dan isinya sama persis dengan pengiriman asli."
+              : ". Pesan terkirim sungguhan hanya ke nomor demo yang diizinkan; nomor lain tercatat sebagai Dilewati."}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

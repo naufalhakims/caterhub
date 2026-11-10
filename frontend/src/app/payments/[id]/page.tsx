@@ -137,7 +137,7 @@ export default async function PaymentPage({
 
           {isSandbox && payable && (
             <div className="mx-auto mt-4 max-w-[300px] rounded-xl bg-amber-50 px-4 py-3 text-left text-xs text-amber-900 ring-1 ring-inset ring-amber-200">
-              <p className="font-bold">Mode uji (sandbox Midtrans) — tidak ada uang sungguhan</p>
+              <p className="font-bold">Mode uji (sandbox Midtrans): tidak ada uang sungguhan</p>
               <p className="mt-1">
                 Jangan bayar dengan e-wallet asli. Di halaman Midtrans, klik kanan kode QR → <em>Copy image address</em>,
                 lalu tempel di QRIS Simulator dan tekan <em>Pay</em>.
@@ -182,7 +182,7 @@ export default async function PaymentPage({
             <form action="/api/payments/mock-settle" method="post" className="mt-4">
               <input type="hidden" name="paymentId" value={payment.id} />
               <FormButton className="w-full !py-2.5" pendingLabel="Memproses pembayaran…">Simulasikan bayar (demo)</FormButton>
-              <p className="mt-1.5 text-[11px] text-stone-400">Tombol demo — menggantikan pemindaian QR asli.</p>
+              <p className="mt-1.5 text-[11px] text-stone-400">Tombol demo, pengganti pemindaian QR asli.</p>
             </form>
           )}
           {payment.status === "SETTLEMENT" && (

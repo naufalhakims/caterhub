@@ -69,7 +69,7 @@ Versi lokal tetap bisa dipakai sebagai cadangan: `npm run db:seed` lalu `npm run
 **Pesan:** UMKM tahu untung-ruginya per porsi sebelum menerima pesanan — bukan setelah acara.
 
 ### 5. Pesanan dari WhatsApp tetap tercatat — 45 detik (Jendela B)
-1. **Pesanan → Catat pesanan offline**: isi nama "Bu Lina", tanggal H+3, 50 porsi, paket Hemat, **Sudah lunas — tunai** → simpan.
+1. **Pesanan → Catat pesanan offline**: isi nama "Bu Lina", tanggal H+3, 50 porsi, paket Hemat, **Sudah lunas (tunai)** → simpan.
 2. Kembali ke **Produksi H+3** → porsi & belanja bertambah; kapasitas tanggal itu ikut berkurang.
 
 **Pesan:** CaterHub menjadi satu-satunya sumber kebenaran operasional, bukan sekadar kanal penjualan tambahan.

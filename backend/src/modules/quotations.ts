@@ -205,7 +205,7 @@ export function quotationsRouter() {
           res,
           400,
           "OUT_OF_DELIVERY_RANGE",
-          `Lokasi acara ±${delivery.distanceKm} km dari dapur — di luar jangkauan antar vendor (maks. ${delivery.maxKm} km).`,
+          `Lokasi acara ±${delivery.distanceKm} km dari dapur, di luar jangkauan antar vendor (maks. ${delivery.maxKm} km).`,
         );
       }
       const deliveryFee = delivery?.inRange ? delivery.fee : 0;

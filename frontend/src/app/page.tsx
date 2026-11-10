@@ -25,7 +25,7 @@ const CITIES = ["Surabaya", "Sidoarjo", "Gresik"];
 
 const STEPS = [
   { t: "Cari vendor", d: "Isi tanggal, jam, dan jumlah tamu. Kami tampilkan yang dapurnya masih muat." },
-  { t: "Kirim permintaan", d: "Pilih paket dan kirim — tidak perlu membuat acara lebih dulu." },
+  { t: "Kirim permintaan", d: "Pilih paket lalu kirim. Tidak perlu membuat acara lebih dulu." },
   { t: "Vendor konfirmasi", d: "Ongkir dan biaya lain masuk ke nota, total dikunci sebelum bayar." },
   { t: "Bayar & nikmati", d: "Lunas via QRIS, pantau status sampai makanan tiba, lalu beri ulasan." },
 ];
@@ -59,7 +59,7 @@ export default async function LandingPage() {
                   Sajikan <em>rasa terbaik</em> di <em className="em-ink">setiap</em> acara.
                 </h1>
                 <p className="serif-strong mt-6 max-w-md text-[17px] leading-relaxed text-stone-800">
-                  Pesan catering dari <strong>dapur UMKM</strong> terverifikasi di Surabaya Raya — dengan{" "}
+                  Pesan catering dari <strong>dapur UMKM</strong> terverifikasi di Surabaya Raya, dengan{" "}
                   <strong>nota transparan</strong> dan kapasitas yang <strong>pasti muat</strong>.
                 </p>
                 <Link href="/catering" className={buttonLink("primary", "mt-8 !px-7 !py-3.5 !text-base shadow-[0_8px_20px_-8px_rgba(29,27,22,.35)]")}>
@@ -200,7 +200,7 @@ export default async function LandingPage() {
               </h2>
               <p className="serif-strong mt-5 max-w-md text-[17px] leading-relaxed text-stone-800">
                 Terima permintaan, kunci <strong>nota</strong>, atur <strong>kapasitas harian</strong>, dan pantau{" "}
-                <strong>pendapatan</strong> — semuanya dari satu dashboard.
+                <strong>pendapatan</strong> dari satu dashboard.
               </p>
               <Link href="/register" className={buttonLink("primary", "mt-8 !px-7 !py-3.5 !text-base")}>
                 Daftarkan Usaha
@@ -219,7 +219,7 @@ export default async function LandingPage() {
             <div className="lg:text-center">
               <p className="font-display text-6xl text-ink sm:text-7xl">24 jam</p>
               <p className="mt-1 text-sm font-medium text-stone-800">
-                Batas pelunasan — jadwal
+                Batas pelunasan. Jadwal
                 <br className="hidden lg:block" /> dilepas otomatis bila tak dibayar
               </p>
             </div>

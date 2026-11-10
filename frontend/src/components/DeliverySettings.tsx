@@ -22,12 +22,12 @@ export function DeliverySettings({
         Lokasi dapur & <em>tarif ongkir</em>
       </h2>
       <p className="mt-1 max-w-2xl text-sm text-stone-600">
-        Ongkir dihitung otomatis dari jarak dapur ke lokasi acara (perkiraan jarak jalan) — pelanggan langsung melihatnya
+        Ongkir dihitung otomatis dari jarak dapur ke lokasi acara (perkiraan jarak jalan), sehingga pelanggan langsung melihatnya
         saat memesan, dan Anda tetap bisa menyesuaikannya ketika mengonfirmasi.
       </p>
       {!hasPin && (
         <p className="mt-3 rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm text-amber-900 ring-1 ring-inset ring-amber-200">
-          Lokasi dapur belum diatur — ongkir masih harus diisi manual di setiap pesanan.
+          Lokasi dapur belum diatur, jadi ongkir masih harus diisi manual di setiap pesanan.
         </p>
       )}
       <form action={saveDeliverySettingsAction} className="mt-4 grid gap-5 lg:grid-cols-[1.2fr_1fr]">

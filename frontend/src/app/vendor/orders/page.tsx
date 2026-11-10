@@ -25,9 +25,9 @@ const NEXT: Record<string, [string, string] | undefined> = {
 
 const PROGRESS_HINT: Record<string, string> = {
   PAID: "Otomatis masuk tahap masak pukul 00:00 pada hari acara.",
-  PREPARING: "Sedang dimasak. Tekan “Berangkat antar” saat makanan dikirim — pelanggan mendapat WhatsApp.",
+  PREPARING: "Sedang dimasak. Tekan “Berangkat antar” saat makanan dikirim; pelanggan mendapat WhatsApp.",
   READY: "Siap kirim. Tekan “Berangkat antar” saat makanan dikirim.",
-  DELIVERED: "Menunggu pelanggan mengonfirmasi penerimaan — selesai otomatis 24 jam setelah acara.",
+  DELIVERED: "Menunggu pelanggan mengonfirmasi penerimaan. Selesai otomatis 24 jam setelah acara.",
 };
 
 // Status yang masih boleh dibatalkan vendor (lihat decideCancellation di backend).
@@ -63,7 +63,7 @@ export default async function VendorOrdersPage({
         <div>
           <h1 className="font-display text-4xl text-ink sm:text-5xl">Pesanan</h1>
           <p className="text-sm text-stone-500">
-            {active.length} aktif dari {orders.length} pesanan — majukan status seiring produksi.
+            {active.length} aktif dari {orders.length} pesanan. Majukan status seiring produksi.
           </p>
         </div>
         <Link href="/vendor/orders/new" className={buttonLink("primary", "!pr-4")}>
@@ -115,7 +115,7 @@ export default async function VendorOrdersPage({
                 {o.status === "PAYMENT_PENDING" && o.source === "OFFLINE" && (
                   <form action={recordManualPaymentAction} className="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-inset ring-amber-200">
                     <input type="hidden" name="bookingId" value={o.id} />
-                    <span className="font-medium">Belum dibayar — catat pelunasan:</span>
+                    <span className="font-medium">Belum dibayar. Catat pelunasan:</span>
                     <select name="method" defaultValue="CASH" aria-label="Metode pembayaran" className="rounded-full border border-amber-300 bg-white px-3 py-1 text-xs">
                       <option value="CASH">Tunai</option>
                       <option value="TRANSFER">Transfer</option>
@@ -163,8 +163,8 @@ export default async function VendorOrdersPage({
                         consequence={
                           PAID_STATUSES.has(o.status)
                             ? o.source === "OFFLINE"
-                              ? "Pesanan offline sudah lunas — kembalikan dana ke pelanggan secara langsung bila perlu."
-                              : "Pelanggan sudah membayar lunas — dana akan dikembalikan penuh melalui admin. Pembatalan sepihak menurunkan kepercayaan pelanggan."
+                              ? "Pesanan offline sudah lunas. Kembalikan dana ke pelanggan secara langsung bila perlu."
+                              : "Pelanggan sudah membayar lunas. Dana akan dikembalikan penuh melalui admin. Pembatalan sepihak menurunkan kepercayaan pelanggan."
                             : "Kapasitas pada tanggal ini dikembalikan dan pelanggan diberi tahu."
                         }
                       />

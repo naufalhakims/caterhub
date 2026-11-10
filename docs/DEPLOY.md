@@ -27,7 +27,7 @@ Disimpan **langsung di service Railway** (bukan di repo): `railway.json` (Config
 | Builder | Railpack (`npm ci` otomatis; `postinstall` → `prisma generate`) | Railpack (`npm ci` otomatis) |
 | Build command | `npm run api:typecheck` | `npm -w frontend run build` |
 | Pre-deploy | `npm run db:deploy` (`prisma migrate deploy`) | — |
-| Start | `npm run api:start` | `npm start` (`next start`, membaca `PORT`) |
+| Start | `node --import tsx backend/src/index.ts` | `node node_modules/next/dist/bin/next start frontend` (membaca `PORT`) |
 | Healthcheck (timeout 120 dtk) | `/health` | `/login` |
 | Restart | on failure, maks. 10× | on failure, maks. 10× |
 | Watch paths | `/backend/**`, `/package.json`, `/package-lock.json` | `/frontend/**`, `/package.json`, `/package-lock.json` |
@@ -157,6 +157,7 @@ Trial Railway: 30 hari + kredit sekali US$5, tanpa kartu. Setelah habis, akun tu
 | Login berhasil tapi langsung keluar lagi | `AUTH_SECRET` berbeda antara `api` dan `web`. |
 | Gambar hilang setelah redeploy | Volume belum terpasang di `/data` atau `PUBLIC_UPLOAD_DIR` tidak menunjuk ke `/data/public`. |
 | Healthcheck gagal | Lihat deploy log; API harus listen di `PORT`. |
+| Email "Deployment crashed" setiap deploy, padahal situs normal | Start command lewat `npm` (`npm run api:start` → `npm -w … run start`): saat container lama dihentikan, `npm` keluar dengan `npm error signal SIGTERM` (status gagal). Start command kini menjalankan Node langsung sehingga SIGTERM sampai ke handler shutdown dan proses keluar 0. Perubahan start command baru berlaku untuk deploy dari source (push, atau `railway service redeploy --from-source`); `redeploy` biasa memakai snapshot lama. |
 
 ## Lokal vs produksi
 

@@ -43,7 +43,7 @@ export default async function VendorProfilePage({
   return (
     <div>
       <h1 className="font-display text-4xl text-ink sm:text-5xl">Profil usaha</h1>
-      <p className="text-sm text-stone-500">Tampil di marketplace — tulis semenarik etalase aslimu.</p>
+      <p className="text-sm text-stone-500">Tampil di marketplace. Tulis semenarik etalase aslimu.</p>
       <Flash ok={searchParams?.ok} error={searchParams?.error} />
       <DeliverySettings vendor={fresh} />
       <WhatsAppSettings

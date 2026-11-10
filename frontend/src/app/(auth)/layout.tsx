@@ -28,7 +28,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
                     ✓
                   </span>
                   <p>
-                    <span className="font-semibold text-ink">{t}</span> — {d}
+                    <span className="font-semibold text-ink">{t}</span>: {d}
                   </p>
                 </li>
               ))}

@@ -48,7 +48,7 @@ export function WhatsAppSettings({
             {phone ? (
               <span className={valid ? "text-stone-700" : "text-red-700"}>
                 {phone}
-                {!valid && " — nomor tidak valid, gunakan nomor seluler (08…)."}
+                {!valid && ": nomor tidak valid. Gunakan nomor seluler (08…)."}
               </span>
             ) : (
               <span className="text-stone-500">Isi nomor telepon di formulir profil agar pesan bisa terkirim.</span>

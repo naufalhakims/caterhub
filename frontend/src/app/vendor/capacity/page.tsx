@@ -25,7 +25,7 @@ export default async function VendorCapacityPage({
     <div>
       <h1 className="font-display text-4xl text-ink sm:text-5xl">Kapasitas</h1>
       <p className="text-sm text-stone-500">
-        Default <span className="font-bold text-stone-700">{vendor.maxPax} pax/hari</span> — turunkan di tanggal padat, naikkan saat dapur longgar.
+        Default <span className="font-bold text-stone-700">{vendor.maxPax} pax/hari</span>. Turunkan di tanggal padat, naikkan saat dapur longgar.
       </p>
       <Flash ok={searchParams?.ok} error={searchParams?.error} />
 

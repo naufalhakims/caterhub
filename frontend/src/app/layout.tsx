@@ -18,7 +18,7 @@ const sans = Figtree({
 });
 
 export const metadata: Metadata = {
-  title: "CaterHub — Temukan Catering yang Tepat untuk Acara Anda",
+  title: "CaterHub · Temukan Catering yang Tepat untuk Acara Anda",
   description: "Cari, bandingkan, sesuaikan, dan pesan catering dalam satu platform.",
 };
 

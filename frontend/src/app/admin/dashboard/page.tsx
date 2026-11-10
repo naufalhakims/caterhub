@@ -20,11 +20,11 @@ export default async function AdminDashboard() {
   const bookings = stats.bookings;
   const revenue = { _sum: { amount: stats.revenue } };
   const kpis = [
-    { label: "Pengguna", value: String(users), icon: "○", bg: "bg-stone-100 text-stone-700 ring-stone-200" },
-    { label: "Vendor terverifikasi", value: String(vendors), icon: "✓", bg: "bg-emerald-50 text-emerald-700 ring-emerald-100" },
-    { label: "Menunggu verifikasi", value: String(pendingVendors), icon: "◷", bg: "bg-amber-50 text-amber-700 ring-amber-100" },
-    { label: "Total pesanan", value: String(bookings), icon: "▣", bg: "bg-blue-50 text-blue-700 ring-blue-100" },
-    { label: "Transaksi lunas", value: formatIDR(revenue._sum.amount ?? 0), icon: "◈", bg: "bg-brand-50 text-brand-700 ring-brand-100" },
+    { label: "Pengguna", value: String(users) },
+    { label: "Vendor terverifikasi", value: String(vendors) },
+    { label: "Menunggu verifikasi", value: String(pendingVendors) },
+    { label: "Total pesanan", value: String(bookings) },
+    { label: "Transaksi lunas", value: formatIDR(revenue._sum.amount ?? 0) },
   ];
   return (
     <div>
@@ -34,7 +34,6 @@ export default async function AdminDashboard() {
         {kpis.map((k) => (
           <Card key={k.label} className="!p-4">
             <div className="flex items-center gap-3">
-              <span className={`grid h-10 w-10 place-items-center rounded-xl ring-1 ${k.bg}`}>{k.icon}</span>
               <div>
                 <p className="text-xl font-extrabold">{k.value}</p>
                 <p className="text-xs text-stone-500">{k.label}</p>

@@ -35,7 +35,7 @@ export async function upsertIngredientAction(formData: FormData): Promise<never>
     back("bahan", "error", errorMessage(error, "Bahan gagal disimpan."));
   }
   refresh();
-  back("bahan", "ok", id ? "Harga bahan diperbarui — HPP ikut dihitung ulang." : "Bahan ditambahkan.");
+  back("bahan", "ok", id ? "Harga bahan diperbarui, HPP ikut dihitung ulang." : "Bahan ditambahkan.");
 }
 
 export async function deleteIngredientAction(formData: FormData): Promise<never> {

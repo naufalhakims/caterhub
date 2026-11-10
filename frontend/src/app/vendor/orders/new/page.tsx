@@ -51,7 +51,7 @@ export default async function NewOfflineOrderPage({ searchParams }: { searchPara
       </h1>
       <p className="mt-1 max-w-2xl text-sm text-stone-500">
         Untuk pesanan yang masuk lewat WhatsApp, telepon, atau datang langsung. Dengan dicatat di sini, kapasitas harian,
-        kalender, dan lembar produksi tetap akurat — dan pelanggan bisa diberi invoice resmi.
+        kalender, dan lembar produksi tetap akurat, dan pelanggan bisa diberi invoice resmi.
       </p>
       <Flash error={searchParams?.error} />
 
@@ -107,7 +107,7 @@ export default async function NewOfflineOrderPage({ searchParams }: { searchPara
                 </div>
                 <div className="sm:col-span-2">
                   <span className="mb-1.5 block text-sm font-semibold text-ink">
-                    Titik antar <span className="font-normal text-stone-500">(opsional — untuk ongkir otomatis)</span>
+                    Titik antar <span className="font-normal text-stone-500">(opsional, untuk ongkir otomatis)</span>
                   </span>
                   <LocationPicker
                     reference={kitchen ? { latitude: kitchen.latitude, longitude: kitchen.longitude, label: "Dapur Anda" } : null}
@@ -126,7 +126,7 @@ export default async function NewOfflineOrderPage({ searchParams }: { searchPara
                   <Select name="packageId" required defaultValue={activePackages[0]?.id}>
                     {activePackages.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.name} — {formatIDR(p.pricePerPax)}/pax
+                        {p.name} · {formatIDR(p.pricePerPax)}/pax
                       </option>
                     ))}
                   </Select>
@@ -165,8 +165,8 @@ export default async function NewOfflineOrderPage({ searchParams }: { searchPara
               <div className="mt-3 space-y-2 text-sm">
                 {[
                   ["NONE", "Belum dibayar", "Tandai lunas nanti dari daftar pesanan."],
-                  ["CASH", "Sudah lunas — tunai", "Tercatat sebagai pembayaran manual."],
-                  ["TRANSFER", "Sudah lunas — transfer", "Tercatat sebagai pembayaran manual."],
+                  ["CASH", "Sudah lunas (tunai)", "Tercatat sebagai pembayaran manual."],
+                  ["TRANSFER", "Sudah lunas (transfer)", "Tercatat sebagai pembayaran manual."],
                 ].map(([value, label, hint]) => (
                   <label key={value} className="flex cursor-pointer gap-3 rounded-2xl p-3 ring-1 ring-inset ring-stone-200 transition-colors has-[:checked]:bg-sun-100 has-[:checked]:ring-sun-400">
                     <input type="radio" name="payment" value={value} defaultChecked={value === "NONE"} className="mt-0.5 accent-ink" />
@@ -187,7 +187,7 @@ export default async function NewOfflineOrderPage({ searchParams }: { searchPara
               <SubmitButton requireDirty={false} arrow className="mt-4 w-full !py-3">
                 Simpan pesanan
               </SubmitButton>
-              <p className="mt-3 text-xs text-stone-500">Kapasitas dicek otomatis — pesanan ditolak bila dapur sudah penuh di tanggal itu.</p>
+              <p className="mt-3 text-xs text-stone-500">Kapasitas dicek otomatis; pesanan ditolak bila dapur sudah penuh di tanggal itu.</p>
             </Card>
           </aside>
         </form>

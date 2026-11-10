@@ -179,7 +179,7 @@ const VENDORS: VendorSeed[] = [
   },
   {
     businessName: "Rasa Prima Catering", city: "Surabaya", phone: "0812-2222-222", address: "Jl. Manyar Kertoarjo V No. 8, Surabaya",
-    desc: "Catering modern dengan sentuhan internasional — teriyaki, pasta corner, dan dessert premium. Favorit gathering kantor.",
+    desc: "Catering modern dengan sentuhan internasional: teriyaki, pasta corner, dan dessert premium. Favorit gathering kantor.",
     rating: 4.6, reviews: 167, basePrice: 32000, minPax: 50, maxPax: 500, lat: -7.2793, lng: 112.7621, rate: [20000, 5, 3500, 20],
   },
   {
@@ -189,7 +189,7 @@ const VENDORS: VendorSeed[] = [
   },
   {
     businessName: "Pawon Ibu", city: "Gresik", phone: "0814-4444-444", address: "Jl. Veteran No. 21, Gresik",
-    desc: "Masakan rumahan resep keluarga — liwet, botok, dan sayur lodeh yang bikin tamu nambah. Spesialis tasyakuran & aqiqah.",
+    desc: "Masakan rumahan resep keluarga: liwet, botok, dan sayur lodeh yang bikin tamu nambah. Spesialis tasyakuran & aqiqah.",
     rating: 4.4, reviews: 132, basePrice: 25000, minPax: 30, maxPax: 350, lat: -7.1660, lng: 112.6530, rate: [12000, 4, 3000, 30],
   },
   {

@@ -19,7 +19,7 @@ export default async function NewEventPage({
       <main className="mx-auto max-w-2xl px-4 py-8">
         <p className="text-sm text-stone-500"><Link href="/dashboard" className="hover:text-brand-700 hover:underline">← Dashboard</Link></p>
         <h1 className="mt-1 font-display text-4xl text-ink sm:text-5xl">Ceritakan acaramu</h1>
-        <p className="mt-1 text-sm text-stone-500">Satu formulir — kami carikan vendor yang muat tanggal, pax, dan budget.</p>
+        <p className="mt-1 text-sm text-stone-500">Satu formulir, lalu kami carikan vendor yang muat tanggal, pax, dan budget.</p>
         {searchParams?.error && (
           <p className="mt-3 rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700 ring-1 ring-inset ring-red-200">{searchParams.error}</p>
         )}

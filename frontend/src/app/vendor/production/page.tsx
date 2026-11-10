@@ -59,7 +59,7 @@ function MenuTable({ summary }: { summary: Summary }) {
 
 function ShoppingList({ summary }: { summary: Summary }) {
   if (summary.ingredients.length === 0) {
-    return <p className="text-sm text-stone-500">Belum ada bahan — isi resep menu agar daftar belanja terbentuk.</p>;
+    return <p className="text-sm text-stone-500">Belum ada bahan. Isi resep menu agar daftar belanja terbentuk.</p>;
   }
   return (
     <table className="w-full text-sm">
@@ -112,7 +112,7 @@ export default async function ProductionPage({ searchParams }: { searchParams?: 
           <h1 className="font-display text-4xl text-ink sm:text-5xl">
             Lembar <em>produksi</em>
           </h1>
-          <p className="mt-1 text-sm text-stone-500">{formatDateOnlyID(data.date)} — rekap porsi, daftar belanja, dan jadwal kirim.</p>
+          <p className="mt-1 text-sm text-stone-500">{formatDateOnlyID(data.date)}: rekap porsi, daftar belanja, dan jadwal kirim.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 print:hidden">
           <form action="/vendor/production" method="get" className="flex items-center gap-2">
@@ -137,7 +137,7 @@ export default async function ProductionPage({ searchParams }: { searchParams?: 
         >
           <input type="hidden" name="date" value={data.date} />
           <p className="text-sm text-stone-800">
-            {notStarted} pesanan lunas belum masuk tahap masak. Otomatis dimulai pukul 00:00 pada hari acara — atau mulai
+            {notStarted} pesanan lunas belum masuk tahap masak. Otomatis dimulai pukul 00:00 pada hari acara, atau mulai
             sekarang bila dapur memasak lebih awal.
           </p>
           <FormButton variant="dark" pendingLabel="Memulai…">
@@ -187,7 +187,7 @@ export default async function ProductionPage({ searchParams }: { searchParams?: 
         <div className="mt-6">
           <Empty
             title="Tidak ada pesanan lunas di tanggal ini."
-            hint={tentative.orders.length ? "Ada pesanan yang belum dibayar — lihat bagian tentatif di bawah." : "Pilih tanggal lain dari jadwal mendatang."}
+            hint={tentative.orders.length ? "Ada pesanan yang belum dibayar. Lihat bagian tentatif di bawah." : "Pilih tanggal lain dari jadwal mendatang."}
           />
         </div>
       ) : (
@@ -247,11 +247,11 @@ export default async function ProductionPage({ searchParams }: { searchParams?: 
       {tentative.orders.length > 0 && (
         <section className="mt-8 rounded-4xl bg-paper p-5 ring-1 ring-inset ring-stone-200 print:hidden">
           <h2 className="font-display text-2xl text-ink">
-            Tentatif <span className="text-stone-400">— belum dibayar</span>
+            Tentatif <span className="text-stone-400">(belum dibayar)</span>
           </h2>
           <p className="mt-1 text-sm text-stone-500">
             {tentative.orders.length} pesanan · {qty(tentative.guests)} porsi · estimasi bahan {formatIDR(tentative.summary.totalCost)}. Jangan
-            belanja dulu — pesanan online batal otomatis bila tidak dilunasi; pesanan offline tandai lunas dari daftar pesanan.
+            belanja dulu: pesanan online batal otomatis bila tidak dilunasi; pesanan offline tandai lunas dari daftar pesanan.
           </p>
           <ul className="mt-3 space-y-1.5 text-sm">
             {tentative.orders.map((o) => (

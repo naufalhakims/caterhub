@@ -34,10 +34,6 @@ export default function LoginPage({
           Masuk
         </SubmitButton>
       </form>
-      <div className="mt-5 rounded-xl bg-paper p-3.5 text-xs leading-relaxed text-stone-500 ring-1 ring-stone-200/70">
-        <p className="font-bold text-stone-600">Akun demo — kata sandi: demo1234</p>
-        <p className="mt-1">pelanggan@demo.id · vendor1@demo.id · admin@caterhub.id</p>
-      </div>
     </Card>
   );
 }

@@ -79,7 +79,7 @@ export default async function AdminVendorDetailPage({
         <div>
           <Card>
             <h2 className="font-display text-2xl text-ink">Dokumen verifikasi</h2>
-            <p className="text-[13px] text-stone-500">Dokumen privat — tautan hanya bisa dibuka oleh admin dan vendor pemilik.</p>
+            <p className="text-[13px] text-stone-500">Dokumen privat: tautan hanya bisa dibuka oleh admin dan vendor pemilik.</p>
             {vendor.documents.length === 0 ? (
               <div className="mt-3"><Empty title="Belum ada dokumen." hint="Vendor belum mengunggah bukti apa pun." /></div>
             ) : (

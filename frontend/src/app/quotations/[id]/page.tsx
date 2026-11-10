@@ -126,7 +126,7 @@ export default async function QuotationDetailPage({
           <Link href={backHref} className="hover:text-brand-700 hover:underline">← Kembali</Link>
         </p>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-          <h1 className="font-display text-4xl text-ink sm:text-5xl">Pesanan — {q.event.name}</h1>
+          <h1 className="font-display text-4xl text-ink sm:text-5xl">Pesanan: {q.event.name}</h1>
           <StatusBadge status={q.status} />
         </div>
         <p className="mt-1 text-sm text-stone-500">
@@ -169,7 +169,7 @@ export default async function QuotationDetailPage({
         )}
         {offered && (
           <div className="mt-3 rounded-2xl bg-sky-50 px-4 py-3 text-sm text-sky-900 ring-1 ring-inset ring-sky-200">
-            <p className="font-semibold">{isCustomer ? "Vendor mengirim penawaran khusus." : "Penawaran terkirim — menunggu keputusan pelanggan."}</p>
+            <p className="font-semibold">{isCustomer ? "Vendor mengirim penawaran khusus." : "Penawaran terkirim, menunggu keputusan pelanggan."}</p>
             <p className="mt-0.5">
               {isCustomer
                 ? "Tinjau item dan total di bawah, lalu terima, minta revisi, atau tolak."
@@ -180,7 +180,7 @@ export default async function QuotationDetailPage({
         )}
         {revising && (
           <div className="mt-3 rounded-2xl bg-purple-50 px-4 py-3 text-sm text-purple-900 ring-1 ring-inset ring-purple-200">
-            <p className="font-semibold">{isVendor ? "Pelanggan meminta revisi." : "Revisi diminta — menunggu vendor memperbarui penawaran."}</p>
+            <p className="font-semibold">{isVendor ? "Pelanggan meminta revisi." : "Revisi diminta, menunggu vendor memperbarui penawaran."}</p>
             {q.revisionNote && <p className="mt-0.5">“{q.revisionNote}”</p>}
           </div>
         )}
@@ -246,7 +246,7 @@ export default async function QuotationDetailPage({
             <h2 className="font-display text-2xl text-ink">Konfirmasi pesanan</h2>
             <p className="text-[13px] text-stone-500">
               {q.suggestedDeliveryFee != null
-                ? `Ongkir sudah terisi sesuai tarif Anda (±${q.distanceKm?.toLocaleString("id-ID")} km → ${formatIDR(q.suggestedDeliveryFee)}). Sesuaikan bila perlu — perubahan tercatat di riwayat.`
+                ? `Ongkir sudah terisi sesuai tarif Anda (±${q.distanceKm?.toLocaleString("id-ID")} km → ${formatIDR(q.suggestedDeliveryFee)}). Sesuaikan bila perlu; perubahan tercatat di riwayat.`
                 : "Tambahkan ongkir/biaya lain bila ada. Atur lokasi dapur & tarif di Profil agar ongkir terhitung otomatis."}{" "}
               Total nota langsung masuk ke halaman pembayaran pelanggan.
             </p>

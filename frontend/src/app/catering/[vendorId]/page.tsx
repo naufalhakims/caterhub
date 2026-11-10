@@ -146,7 +146,7 @@ export default async function VendorDetailPage({
             {cap && (
               <div className={`${searchParams.error ? "mt-3" : ""} rounded-2xl border p-4 text-sm font-semibold ${cap.ok ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-700"}`}>
                 {cap.ok
-                  ? `✓ Tersedia — sisa ${cap.remaining} pax pada ${searchParams.date}${searchParams.time ? ` pukul ${searchParams.time}` : ""}.`
+                  ? `✓ Tersedia: sisa ${cap.remaining} pax pada ${searchParams.date}${searchParams.time ? ` pukul ${searchParams.time}` : ""}.`
                   : "✕ Kapasitas vendor tidak mencukupi untuk jumlah pax yang dipilih."}
               </div>
             )}
@@ -307,7 +307,7 @@ export default async function VendorDetailPage({
                       <div className="text-sm">
                         <span className="mb-1 block text-[13px] font-medium text-stone-600">
                           Titik antar <span className="text-red-500">*</span>
-                          <span className="ml-1 font-normal text-stone-400">— untuk menghitung ongkir</span>
+                          <span className="ml-1 font-normal text-stone-400">(untuk menghitung ongkir)</span>
                         </span>
                         <LocationPicker
                           initial={pinFromSearch}
@@ -331,7 +331,7 @@ export default async function VendorDetailPage({
                       <select name="packageId" required defaultValue={vendor.packages[0]?.id} className="w-full rounded-2xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-ink focus:ring-4 focus:ring-sun-200">
                         {vendor.packages.map((p) => (
                           <option key={p.id} value={p.id}>
-                            {p.name} — {formatIDR(p.pricePerPax)}/pax
+                            {p.name} · {formatIDR(p.pricePerPax)}/pax
                           </option>
                         ))}
                       </select>

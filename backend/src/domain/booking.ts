@@ -206,7 +206,7 @@ export async function confirmQuotationAndBook(
     await notify(tx, q.customerId, {
       type: "BOOKING",
       title: "Pesanan dikonfirmasi vendor",
-      message: `Pesanan "${q.event.name}" (${guests} pax) disetujui. Total nota ${total.toLocaleString("id-ID")} — lunasi sebelum batas waktu agar jadwal tidak dilepas.`,
+      message: `Pesanan "${q.event.name}" (${guests} pax) disetujui. Total nota ${total.toLocaleString("id-ID")}. Lunasi sebelum batas waktu agar jadwal tidak dilepas.`,
       link: `/bookings/${booking.id}`,
       whatsapp: true,
     });
@@ -311,7 +311,7 @@ async function applyCancellation(
     await notifyAdmins(tx, {
       type: "REFUND",
       title: "Refund perlu diproses",
-      message: `${booking.vendor.businessName} · "${booking.event.name}" — ${opts.refundAmount.toLocaleString("id-ID")}.`,
+      message: `${booking.vendor.businessName} · "${booking.event.name}": ${opts.refundAmount.toLocaleString("id-ID")}.`,
       link: "/admin/orders?filter=refund",
     });
   }

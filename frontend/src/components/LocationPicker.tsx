@@ -117,7 +117,7 @@ export function LocationPicker({
 
   const useMyLocation = () => {
     if (!navigator.geolocation) {
-      setStatus("Browser tidak mendukung GPS — geser pin di peta.");
+      setStatus("Browser tidak mendukung GPS. Geser pin di peta.");
       return;
     }
     setStatus("Mencari lokasi Anda…");
@@ -126,7 +126,7 @@ export function LocationPicker({
         setStatus(null);
         placeMarker(p.coords.latitude, p.coords.longitude);
       },
-      () => setStatus("Izin lokasi ditolak — cari alamat atau ketuk peta."),
+      () => setStatus("Izin lokasi ditolak. Cari alamat atau ketuk peta."),
       { enableHighAccuracy: true, timeout: 10_000 },
     );
   };
@@ -140,9 +140,9 @@ export function LocationPicker({
       const res = await fetch(url, { headers: { Accept: "application/json" } });
       const data = (await res.json()) as SearchResult[];
       setResults(data);
-      setStatus(data.length ? null : "Alamat tidak ditemukan — coba nama jalan/gedung lain, atau ketuk peta.");
+      setStatus(data.length ? null : "Alamat tidak ditemukan. Coba nama jalan/gedung lain, atau ketuk peta.");
     } catch {
-      setStatus("Pencarian alamat sedang tidak tersedia — ketuk peta untuk menaruh pin.");
+      setStatus("Pencarian alamat sedang tidak tersedia. Ketuk peta untuk menaruh pin.");
     }
   };
 
@@ -221,7 +221,7 @@ export function LocationPicker({
       <p className="text-xs text-stone-500" aria-live="polite">
         {status ??
           (point
-            ? `Pin: ${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)} — geser pin untuk menyesuaikan.`
+            ? `Pin: ${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)}. Geser pin untuk menyesuaikan.`
             : "Ketuk peta, cari alamat, atau pakai lokasi Anda untuk menaruh pin.")}
       </p>
     </div>

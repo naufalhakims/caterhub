@@ -84,28 +84,25 @@ export default async function CustomerDashboard() {
         </div>
         {profileIncomplete && (
           <p className="mt-2 text-sm text-stone-500">
-            Data kontak belum lengkap — vendor butuh nomor telepon & alamat Anda.{" "}
+            Data kontak belum lengkap. Vendor butuh nomor telepon & alamat Anda.{" "}
             <Link href="/profile" className="font-semibold text-brand-700 hover:underline">Lengkapi profil →</Link>
           </p>
         )}
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           <Card className="flex items-center gap-3 !p-4">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700 ring-1 ring-brand-100">◫</span>
             <div>
               <p className="text-xl font-extrabold">{events.length}</p>
               <p className="text-xs text-stone-500">Acara tersimpan (opsional)</p>
             </div>
           </Card>
           <Card className="flex items-center gap-3 !p-4">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-700 ring-1 ring-amber-100">✎</span>
             <div>
               <p className="text-xl font-extrabold">{pendingQuotes}</p>
               <p className="text-xs text-stone-500">Menunggu konfirmasi vendor</p>
             </div>
           </Card>
           <Card className="flex items-center gap-3 !p-4">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">▣</span>
             <div>
               <p className="text-xl font-extrabold">{bookings.length}</p>
               <p className="text-xs text-stone-500">Pesanan dibuat</p>
@@ -124,7 +121,7 @@ export default async function CustomerDashboard() {
                   <Card interactive className="flex flex-wrap items-center justify-between gap-2 !p-4">
                     <div className="min-w-0">
                       <p className="font-semibold">
-                        {o.event.name} — {o.vendor.businessName}
+                        {o.event.name} · {o.vendor.businessName}
                       </p>
                       <p className="text-sm text-stone-500">
                         {formatDateID(o.event.eventDate)} · {o.event.guestCount} pax ·{" "}
@@ -208,7 +205,7 @@ export default async function CustomerDashboard() {
               <Link key={q.id} href={`/quotations/${q.id}`}>
                 <Card interactive className="flex flex-wrap items-center justify-between gap-2 !p-4">
                   <div className="min-w-0">
-                    <p className="truncate font-semibold">{q.event.name} — {q.vendor.businessName}</p>
+                    <p className="truncate font-semibold">{q.event.name} · {q.vendor.businessName}</p>
                     <p className="text-sm text-stone-500">
                       {formatDateID(q.event.eventDate)} · {q.event.guestCount} pax · {formatIDR(q.total)}
                     </p>
@@ -230,7 +227,7 @@ export default async function CustomerDashboard() {
         <h2 className="mt-8 font-display text-xl font-bold">Pesanan terbaru</h2>
         {bookings.length === 0 ? (
           <p className="mt-2 text-sm text-stone-500">
-            Belum ada pesanan — pilih catering, isi tanggal & jam, lalu kirim permintaan.
+            Belum ada pesanan. Pilih catering, isi tanggal & jam, lalu kirim permintaan.
           </p>
         ) : (
           <div className="mt-3 overflow-hidden rounded-2xl border border-stone-200/80 bg-white shadow-soft">
@@ -241,7 +238,7 @@ export default async function CustomerDashboard() {
                 className={`flex items-center justify-between gap-3 px-5 py-3.5 transition hover:bg-brand-50/50 ${i > 0 ? "border-t border-stone-100" : ""}`}
               >
                 <div className="min-w-0">
-                  <p className="truncate font-semibold">{b.event.name} — {b.vendor.businessName}</p>
+                  <p className="truncate font-semibold">{b.event.name} · {b.vendor.businessName}</p>
                   <p className="text-sm text-stone-500">{formatIDR(b.totalAmount)}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">

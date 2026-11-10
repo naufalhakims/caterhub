@@ -3,11 +3,11 @@ import { SideNav } from "@/components/SideNav";
 import { requireRole } from "@/lib/auth-helpers";
 
 const NAV = [
-  ["/admin/dashboard", "Dashboard", "◈"],
-  ["/admin/vendors", "Vendor", "✓"],
-  ["/admin/users", "Pengguna", "○"],
-  ["/admin/orders", "Pesanan", "▣"],
-  ["/admin/whatsapp", "Kotak keluar WA", "✆"],
+  ["/admin/dashboard", "Dashboard"],
+  ["/admin/vendors", "Vendor"],
+  ["/admin/users", "Pengguna"],
+  ["/admin/orders", "Pesanan"],
+  ["/admin/whatsapp", "Kotak keluar WA"],
 ] as const;
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

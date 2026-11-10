@@ -36,7 +36,7 @@ export default async function VendorMenuPage({
   return (
     <div>
       <h1 className="font-display text-4xl text-ink sm:text-5xl">Menu</h1>
-      <p className="text-sm text-stone-500">{items.length} item — tampil di profil publik & bisa dirangkai jadi paket.</p>
+      <p className="text-sm text-stone-500">{items.length} item, tampil di profil publik & bisa dirangkai jadi paket.</p>
       <Flash ok={searchParams?.ok} error={searchParams?.error} />
 
       <Card className="mt-4">

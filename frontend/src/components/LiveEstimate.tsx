@@ -79,7 +79,7 @@ export function LiveEstimate({ packages, addOns, note = "biaya lain ditetapkan v
       </div>
       {state.quote && !state.quote.inRange && (
         <p className="rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-200">
-          Lokasi ±{state.quote.distanceKm.toLocaleString("id-ID")} km — melebihi jangkauan antar vendor ({state.quote.maxKm} km).
+          Lokasi ±{state.quote.distanceKm.toLocaleString("id-ID")} km, melebihi jangkauan antar vendor ({state.quote.maxKm} km).
         </p>
       )}
       <p className="text-xs text-stone-600">

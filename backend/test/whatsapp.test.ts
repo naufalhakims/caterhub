@@ -43,7 +43,7 @@ describe("resolveWhatsAppTarget", () => {
 describe("formatWhatsAppMessage", () => {
   it("judul tebal, pesan, tautan absolut, tanda tangan", () => {
     expect(formatWhatsAppMessage({ title: "Pesanan dikonfirmasi", message: "Silakan bayar.", link: "/bookings/b1", appUrl: "https://caterhub.id/" })).toBe(
-      "*Pesanan dikonfirmasi*\nSilakan bayar.\n\nBuka: https://caterhub.id/bookings/b1\n\n— CaterHub",
+      "*Pesanan dikonfirmasi*\nSilakan bayar.\n\nBuka: https://caterhub.id/bookings/b1\n\nSalam, CaterHub",
     );
   });
 });

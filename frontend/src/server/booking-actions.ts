@@ -83,5 +83,5 @@ export async function confirmReceiptAction(formData: FormData): Promise<never> {
   revalidatePath(`/bookings/${bookingId}`);
   revalidatePath("/dashboard");
   revalidatePath("/vendor/orders");
-  redirect(`/bookings/${bookingId}?ok=${encodeURIComponent("Terima kasih! Pesanan selesai — silakan beri ulasan untuk vendor.")}`);
+  redirect(`/bookings/${bookingId}?ok=${encodeURIComponent("Terima kasih! Pesanan selesai. Silakan beri ulasan untuk vendor.")}`);
 }

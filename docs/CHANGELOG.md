@@ -2,6 +2,15 @@
 
 Catatan perubahan per tahap pengembangan. Versi mengikuti milestone roadmap ([ROADMAP_PENGEMBANGAN.md](./ROADMAP_PENGEMBANGAN.md)), bukan rilis npm.
 
+## v0.16.1 — Rapikan tampilan & ikon (10 Nov 2026)
+
+- **Ikon CaterHub**: tudung saji (cloche) hitam di kotak kuning dengan kenop jeruk (mengulang titik pada wordmark). Favicon `frontend/src/app/icon.svg`, ikon iOS `apple-icon.png` (180 px); komponen `LogoMark` tampil di samping wordmark di navbar, halaman login, footer, dan invoice (`<Logo mark={false} />` untuk wordmark saja).
+- **Tanpa simbol abstrak di menu**: ikon glyph (◈ ▣ ✎ ◫ …) dihapus dari menu samping vendor/admin dan kartu KPI dashboard pelanggan, vendor, admin. Bintang rating (★) dan ikon tipe notifikasi tetap karena bermakna.
+- **Kredensial demo tidak lagi tampil di halaman login**; seluruh akun demo (admin, 4 pelanggan, 5 vendor) dan bagian **Demo live** kini ada di README.
+- **Em-dash dikurangi**: ±90 em-dash di teks yang tampil (landing page, dashboard, formulir, pesan status, notifikasi & WhatsApp dari backend, deskripsi vendor seed) diparafrase menjadi titik, koma, titik dua, atau tanda kurung; pemisah "Acara — Vendor" menjadi "Acara · Vendor". Tanda tangan WhatsApp kini "Salam, CaterHub". Yang tersisa hanya "—" sebagai penanda nilai kosong di tabel dan komentar kode.
+
+**Verifikasi**: typecheck & lint bersih, 142 unit test lulus, `next build` sukses (ikon terdaftar sebagai `/icon.svg` & `/apple-icon.png`).
+
 ## v0.16.0 — Persiapan pengumpulan & video demo (10 Nov 2026)
 
 Batas pengumpulan 10 Nov; uji juri penyisihan 10–14 Nov; final 14 Nov.
@@ -10,6 +19,8 @@ Batas pengumpulan 10 Nov; uji juri penyisihan 10–14 Nov; final 14 Nov.
 - **Label sandbox di halaman bayar**: bila tagihan berasal dari Midtrans sandbox (URL Snap `sandbox.midtrans.com`), tampil kotak "Mode uji (sandbox Midtrans) — tidak ada uang sungguhan", cara bayar lewat simulator, dan tautan **QRIS Simulator Midtrans**. Otomatis hilang di production.
 - **Foto vendor demo**: 32 foto Wikimedia Commons berlisensi bebas di `backend/prisma/seed-assets/` (logo & cover 5 vendor, 20 menu, 2 paket; di-crop & dikecilkan, total ±3 MB). Seed menyalinnya ke `PUBLIC_UPLOAD_DIR/seed/` (volume di produksi) dan mengisi `logoUrl`, `coverUrl`, `imageUrl` menu & paket — juga untuk data yang sudah ada. Foto dipilih manual: yang memuat wajah atau logo merek diganti/di-crop. Kredit lengkap di [ASSET_CREDITS.md](./ASSET_CREDITS.md).
 - **DEMO_SCRIPT** diperbarui untuk versi live: URL produksi, seed via `railway ssh`, bayar lewat Midtrans + simulator, WA sungguhan ke HP vendor, aturan H-1, langkah cadangan (mock) bila provider bermasalah.
+
+- **Email "Deployment crashed" di setiap deploy**: penyebabnya start command lewat dua lapis `npm`, yang keluar dengan status gagal (`npm error signal SIGTERM`) saat Railway menghentikan container lama. Start command service diganti menjalankan Node langsung — `api`: `node --import tsx backend/src/index.ts`, `web`: `node node_modules/next/dist/bin/next start frontend` — sehingga SIGTERM ditangani handler shutdown dan proses keluar 0. Berlaku mulai deploy dari source berikutnya.
 
 **Verifikasi**: seed lokal sukses (32 foto tersalin); katalog lokal memuat 5 cover + 5 logo, halaman vendor memuat 24 foto, `/uploads/seed/*` tersaji lewat web (200 image/jpeg).
 

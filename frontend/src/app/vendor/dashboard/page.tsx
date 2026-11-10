@@ -24,11 +24,10 @@ type VendorDashboard = {
   todayAvail: { maxPax: number; reservedPax: number } | null;
 };
 
-function Kpi({ icon, bg, label, value, hint }: { icon: string; bg: string; label: string; value: string; hint?: string }) {
+function Kpi({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <Card className="!p-4">
       <div className="flex items-center gap-3">
-        <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ring-1 ${bg}`}>{icon}</span>
         <div className="min-w-0">
           <p className="truncate text-xl font-extrabold">{value}</p>
           <p className="text-xs text-stone-500">{label}</p>
@@ -61,12 +60,12 @@ export default async function VendorDashboard() {
       </div>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <Kpi icon="◈" bg="bg-emerald-50 text-emerald-700 ring-emerald-100" label="Pendapatan cair" value={formatIDR(revenue)} />
-        <Kpi icon="◫" bg="bg-blue-50 text-blue-700 ring-blue-100" label="Acara mendatang" value={String(upcoming.length)} hint={upcomingPax > 0 ? `${upcomingPax} pax terjadwal` : undefined} />
-        <Kpi icon="✎" bg="bg-amber-50 text-amber-700 ring-amber-100" label="Permintaan menunggu" value={String(pendingCount)} hint={pendingCount > 0 ? "Konfirmasi agar pelanggan bisa bayar" : undefined} />
-        <Kpi icon="▣" bg="bg-purple-50 text-purple-700 ring-purple-100" label="Pax terpesan" value={String(upcomingPax)} />
-        <Kpi icon="◍" bg="bg-brand-50 text-brand-700 ring-brand-100" label="Utilisasi hari ini" value={util == null ? "—" : `${util}%`} hint={todayAvail ? `${todayAvail.reservedPax}/${todayAvail.maxPax} pax` : "Belum ada jadwal hari ini"} />
-        <Kpi icon="↗" bg="bg-stone-100 text-stone-700 ring-stone-200" label="Total nilai pesanan" value={formatIDR(orderTotal)} />
+        <Kpi label="Pendapatan cair" value={formatIDR(revenue)} />
+        <Kpi label="Acara mendatang" value={String(upcoming.length)} hint={upcomingPax > 0 ? `${upcomingPax} pax terjadwal` : undefined} />
+        <Kpi label="Permintaan menunggu" value={String(pendingCount)} hint={pendingCount > 0 ? "Konfirmasi agar pelanggan bisa bayar" : undefined} />
+        <Kpi label="Pax terpesan" value={String(upcomingPax)} />
+        <Kpi label="Utilisasi hari ini" value={util == null ? "—" : `${util}%`} hint={todayAvail ? `${todayAvail.reservedPax}/${todayAvail.maxPax} pax` : "Belum ada jadwal hari ini"} />
+        <Kpi label="Total nilai pesanan" value={formatIDR(orderTotal)} />
       </div>
 
       <h2 className="mt-7 font-display text-lg font-bold">
@@ -86,7 +85,7 @@ export default async function VendorDashboard() {
             </Card>
           </Link>
         ))}
-        {pendingQuotes.length === 0 && <p className="text-sm text-stone-500">Tidak ada permintaan menunggu. Bagus — semua sudah direspons.</p>}
+        {pendingQuotes.length === 0 && <p className="text-sm text-stone-500">Tidak ada permintaan menunggu. Bagus, semua sudah direspons.</p>}
       </div>
 
       <h2 className="mt-7 font-display text-lg font-bold">Acara mendatang</h2>

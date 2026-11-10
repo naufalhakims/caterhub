@@ -51,7 +51,7 @@ export default async function VendorVerificationPage({
     <div>
       <h1 className="font-display text-4xl text-ink sm:text-5xl">Verifikasi vendor</h1>
       <p className="text-sm text-stone-500">
-        Dokumen disimpan privat — hanya Anda dan admin yang dapat melihatnya.
+        Dokumen disimpan privat; hanya Anda dan admin yang dapat melihatnya.
       </p>
 
       <Flash ok={searchParams?.ok} error={searchParams?.error} />

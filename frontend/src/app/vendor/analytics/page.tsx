@@ -18,13 +18,13 @@ export default async function VendorAnalyticsPage() {
 
   const insight =
     popular.length > 0 && total > 0
-      ? `“${popular[0][0]}” menyumbang ${Math.round((popular[0][1] / total) * 100)}% pendapatanmu — pertimbangkan paket turunan di harga berdekatan.`
+      ? `“${popular[0][0]}” menyumbang ${Math.round((popular[0][1] / total) * 100)}% pendapatanmu. Pertimbangkan paket turunan di harga berdekatan.`
       : null;
 
   return (
     <div>
       <h1 className="font-display text-4xl text-ink sm:text-5xl">Analitik usaha</h1>
-      <p className="text-sm text-stone-500">Angka dari transaksi nyata — bukan data hiasan.</p>
+      <p className="text-sm text-stone-500">Angka dari transaksi nyata, bukan data hiasan.</p>
 
       {insight && (
         <p className="mt-3 rounded-xl bg-brand-50 px-4 py-3 text-sm text-brand-900 ring-1 ring-inset ring-brand-100">
@@ -100,7 +100,7 @@ export default async function VendorAnalyticsPage() {
       </div>
 
       {paymentCount === 0 && popular.length === 0 && (
-        <div className="mt-4"><Empty title="Analitik kosong." hint="Selesaikan satu pesanan sampai lunas — grafik terisi otomatis." /></div>
+        <div className="mt-4"><Empty title="Analitik kosong." hint="Selesaikan satu pesanan sampai lunas, grafik terisi otomatis." /></div>
       )}
     </div>
   );

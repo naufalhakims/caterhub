@@ -63,7 +63,7 @@ export function OrderStepper({ status }: { status: string }) {
       </ol>
       <p className="mt-3 text-sm">
         <span className="font-semibold text-stone-900">{active.label}</span>
-        <span className="text-stone-500"> — {active.hint}</span>
+        <span className="text-stone-500">: {active.hint}</span>
       </p>
     </nav>
   );

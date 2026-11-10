@@ -37,7 +37,7 @@ export default async function VendorPackagesPage({
   return (
     <div>
       <h1 className="font-display text-4xl text-ink sm:text-5xl">Paket</h1>
-      <p className="text-sm text-stone-500">Rangkai menu jadi paket harga per pax — ini yang muncul di marketplace.</p>
+      <p className="text-sm text-stone-500">Rangkai menu jadi paket harga per pax. Paket inilah yang muncul di marketplace.</p>
       <Flash ok={searchParams?.ok} error={searchParams?.error} />
 
       <Card className="mt-4">

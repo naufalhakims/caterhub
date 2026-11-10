@@ -30,7 +30,7 @@ const METHOD: Record<string, string> = { QRIS: "QRIS", CASH: "Tunai", TRANSFER: 
 const CLOSED = new Set(["CANCELLED", "REFUND_PENDING", "REFUNDED"]);
 
 export async function generateMetadata({ params }: { params: { id: string } }) {
-  return { title: `Invoice — ${params.id.slice(-6).toUpperCase()} · CaterHub` };
+  return { title: `Invoice ${params.id.slice(-6).toUpperCase()} · CaterHub` };
 }
 
 /**

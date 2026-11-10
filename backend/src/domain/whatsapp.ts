@@ -50,7 +50,7 @@ export function resolveWhatsAppTarget(input: {
 export function formatWhatsAppMessage(input: { title: string; message: string; link?: string | null; appUrl: string }): string {
   const lines = [`*${input.title}*`, input.message];
   if (input.link) lines.push("", `Buka: ${input.appUrl.replace(/\/+$/, "")}${input.link}`);
-  lines.push("", "— CaterHub");
+  lines.push("", "Salam, CaterHub");
   return lines.join("\n");
 }
 

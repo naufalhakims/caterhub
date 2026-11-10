@@ -35,8 +35,8 @@ export default function RegisterPage({
         </Field>
         <Field label="Daftar sebagai">
           <Select name="role" defaultValue="CUSTOMER">
-            <option value="CUSTOMER">Pelanggan — cari & pesan catering</option>
-            <option value="VENDOR">Vendor — kelola usaha catering</option>
+            <option value="CUSTOMER">Pelanggan (cari & pesan catering)</option>
+            <option value="VENDOR">Vendor (kelola usaha catering)</option>
           </Select>
         </Field>
         <SubmitButton arrow className="w-full !py-3 !text-base">

@@ -98,7 +98,7 @@ export default async function BookingDetailPage({
   const offline = booking.source === "OFFLINE";
   const cancelConsequence = paid > 0
     ? offline
-      ? `Pembayaran ${formatIDR(paid)} diterima langsung oleh Anda — kembalikan ke pelanggan secara langsung bila perlu. Jadwal pada tanggal ini akan dilepas.`
+      ? `Pembayaran ${formatIDR(paid)} diterima langsung oleh Anda. Kembalikan ke pelanggan secara langsung bila perlu. Jadwal pada tanggal ini akan dilepas.`
       : `Dana ${formatIDR(paid)} akan dikembalikan melalui admin. Jadwal vendor pada tanggal ini akan dilepas.`
     : "Jadwal vendor pada tanggal ini akan dilepas dan tagihan yang belum dibayar dibatalkan.";
   const cancelledByLabel =
@@ -160,7 +160,7 @@ export default async function BookingDetailPage({
               <form action={recordManualPaymentAction} className="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm text-amber-900 ring-1 ring-inset ring-amber-200">
                 <input type="hidden" name="bookingId" value={booking.id} />
                 <input type="hidden" name="returnTo" value="booking" />
-                <span className="font-medium">Pesanan offline belum dibayar — catat pelunasan:</span>
+                <span className="font-medium">Pesanan offline belum dibayar. Catat pelunasan:</span>
                 <select name="method" defaultValue="CASH" aria-label="Metode pembayaran" className="rounded-full border border-amber-300 bg-white px-3 py-1 text-sm">
                   <option value="CASH">Tunai</option>
                   <option value="TRANSFER">Transfer</option>
@@ -176,7 +176,7 @@ export default async function BookingDetailPage({
             )}
             {booking.status === "DELIVERED" && booking.departedAt && !isCustomer && (
               <p className="mt-3 text-sm text-stone-600">
-                Berangkat {formatDateTimeID(booking.departedAt)} WIB — menunggu konfirmasi pelanggan; selesai otomatis 24 jam
+                Berangkat {formatDateTimeID(booking.departedAt)} WIB, menunggu konfirmasi pelanggan; selesai otomatis 24 jam
                 setelah acara.
               </p>
             )}
@@ -330,7 +330,7 @@ export default async function BookingDetailPage({
             </h2>
             {!booking.review && (
               <p className="text-[13px] text-stone-500">
-                Pesanan sudah lunas — Anda sudah bisa memberi rating untuk vendor ini.
+                Pesanan sudah lunas. Anda sudah bisa memberi rating untuk vendor ini.
               </p>
             )}
             {booking.review ? (

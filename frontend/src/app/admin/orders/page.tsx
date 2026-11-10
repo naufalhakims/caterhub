@@ -74,7 +74,7 @@ export default async function AdminOrdersPage({
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
                     <Link href={`/bookings/${o.id}`} className="font-semibold hover:text-brand-700 hover:underline">
-                      {o.event.name} — {o.vendor.businessName}
+                      {o.event.name} · {o.vendor.businessName}
                     </Link>
                     <p className="text-sm text-stone-500">
                       Kembalikan <span className="font-bold text-orange-800">{formatIDR(o.refundAmount ?? 0)}</span> ke{" "}
@@ -83,7 +83,7 @@ export default async function AdminOrdersPage({
                     <p className="mt-0.5 text-xs text-stone-500">
                       Dibatalkan {o.cancelledBy ? `oleh ${BY_LABEL[o.cancelledBy] ?? o.cancelledBy}` : ""}
                       {o.cancelledAt ? ` · ${formatDateTimeID(o.cancelledAt)}` : ""}
-                      {o.cancelReason ? ` — ${o.cancelReason}` : ""}
+                      {o.cancelReason ? `: ${o.cancelReason}` : ""}
                     </p>
                   </div>
                   <StatusBadge status={o.status} />
@@ -104,7 +104,7 @@ export default async function AdminOrdersPage({
                 <Card interactive className="flex items-center justify-between !p-4">
                   <div className="min-w-0">
                     <p className="truncate font-semibold">
-                      {o.event.name} — {o.vendor.businessName}
+                      {o.event.name} · {o.vendor.businessName}
                     </p>
                     <p className="text-sm text-stone-500">
                       {formatDateID(o.event.eventDate)} · {formatIDR(o.totalAmount)}

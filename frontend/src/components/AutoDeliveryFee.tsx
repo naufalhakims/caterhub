@@ -53,7 +53,7 @@ export function AutoDeliveryFee({
           : quote
             ? quote.inRange
               ? `Sesuai tarif: ±${quote.distanceKm.toLocaleString("id-ID")} km → ${formatIDR(quote.fee)} (boleh diubah).`
-              : `±${quote.distanceKm.toLocaleString("id-ID")} km — di luar radius ${quote.maxKm} km; isi ongkir manual.`
+              : `±${quote.distanceKm.toLocaleString("id-ID")} km, di luar radius ${quote.maxKm} km; isi ongkir manual.`
             : "Taruh pin lokasi acara untuk menghitung ongkir otomatis."}
       </p>
     </div>

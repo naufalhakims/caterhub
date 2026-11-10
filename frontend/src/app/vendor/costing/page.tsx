@@ -74,7 +74,7 @@ export default async function CostingPage({
         Bahan & <em>HPP</em>
       </h1>
       <p className="mt-1 max-w-2xl text-sm text-stone-500">
-        Catat harga bahan baku dan resep per porsi. Harga pokok (HPP) dan margin setiap paket dihitung otomatis — dasar
+        Catat harga bahan baku dan resep per porsi. Harga pokok (HPP) dan margin setiap paket dihitung otomatis sebagai dasar
         untuk menetapkan harga yang sehat dan menyusun daftar belanja produksi.
       </p>
       <Flash ok={searchParams?.ok} error={searchParams?.error} />
@@ -103,7 +103,7 @@ export default async function CostingPage({
           {data.ingredients.length === 0 && (
             <p className="rounded-2xl bg-sun-100 px-4 py-3 text-sm text-stone-800 ring-1 ring-inset ring-sun-300">
               Mulai dari tab <Link href="/vendor/costing?tab=bahan" className="font-semibold underline">Bahan baku</Link>, lalu
-              isi <Link href="/vendor/costing?tab=resep" className="font-semibold underline">resep menu</Link> — HPP paket akan
+              isi <Link href="/vendor/costing?tab=resep" className="font-semibold underline">resep menu</Link> agar HPP paket
               terisi otomatis.
             </p>
           )}
@@ -150,7 +150,7 @@ export default async function CostingPage({
 
                 {p.missingRecipes.length > 0 && (
                   <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-inset ring-amber-200">
-                    Belum ada resep: {p.missingRecipes.join(", ")} — HPP masih di bawah angka sebenarnya.{" "}
+                    Belum ada resep: {p.missingRecipes.join(", ")}. HPP masih di bawah angka sebenarnya.{" "}
                     <Link href="/vendor/costing?tab=resep" className="font-semibold underline">Isi resep →</Link>
                   </p>
                 )}
