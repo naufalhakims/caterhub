@@ -80,8 +80,8 @@ Pilih 3–4 yang paling sesuai waktu. Diurutkan dari dampak narasi UMKM tertingg
 > |---|---|---|
 > | A | Perbaikan Fase 1: smoke test E2E di repo (`npm run test:smoke`), cek tampilan mobile halaman vendor, keamanan login (batas percobaan, sesi lebih pendek + pencabutan, sandi min. 8) | ✅ v0.12.0 |
 > | B | Siap deploy **Railway** (dipilih 9 Nov; Render gratis ditolak: service tidur, disk tidak persisten, Postgres kedaluwarsa): API selalu hidup (penjadwal di dalam proses), PostgreSQL terkelola, volume persisten untuk unggahan, konfigurasi produksi — panduan [DEPLOY.md](./DEPLOY.md) | ✅ v0.13.0 — live di https://web-production-240c4.up.railway.app |
-> | C | **Midtrans sandbox** end-to-end (perbaiki parameter Snap QRIS & cek nominal webhook); mock tetap sebagai cadangan | 🚧 v0.14.0 kode siap, menunggu server key sandbox |
-> | D | **WhatsApp via Fonnte** ke nomor demo (adapter + saklar env); kotak keluar mock tetap sebagai cadangan | ⏳ |
+> | C | **Midtrans sandbox** end-to-end (perbaiki parameter Snap QRIS & cek nominal webhook); mock tetap sebagai cadangan | ✅ v0.14.0 — QRIS sandbox end-to-end di produksi |
+> | D | **WhatsApp via Fonnte** ke nomor demo (adapter + saklar env); kotak keluar mock tetap sebagai cadangan | 🚧 v0.15.0 kode siap, menunggu uji kirim (WA sungguhan hanya vendor demo) |
 >
 > **Tidak dikerjakan untuk hackathon** (disebut sebagai rencana lanjutan): WhatsApp Cloud API resmi, pencairan dana/split payment, refund via API, geocoding sendiri, PWA, akun staf dapur.
 

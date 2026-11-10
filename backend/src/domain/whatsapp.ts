@@ -73,9 +73,60 @@ export class MockWhatsAppProvider implements WhatsAppProvider {
   }
 }
 
+/**
+ * Fonnte (https://fonnte.com): WhatsApp lewat device yang disambungkan ke akun Fonnte.
+ * Token device di `FONNTE_TOKEN`. Respons sukses `{ status: true, id: [...] }`,
+ * gagal `{ status: false, reason }`.
+ */
+export class FonnteWhatsAppProvider implements WhatsAppProvider {
+  readonly name = "fonnte";
+
+  async send(to: string, body: string): Promise<SendResult> {
+    const token = process.env.FONNTE_TOKEN?.trim();
+    if (!token) return { ok: false, error: "FONNTE_TOKEN belum dikonfigurasi." };
+    let res: Response;
+    try {
+      res = await fetch("https://api.fonnte.com/send", {
+        method: "POST",
+        headers: { Authorization: token },
+        body: new URLSearchParams({ target: to, message: body, countryCode: "62" }),
+        signal: AbortSignal.timeout(15_000),
+      });
+    } catch (error) {
+      return { ok: false, error: `Fonnte tidak dapat dihubungi: ${(error as Error).message}` };
+    }
+    let data: { status?: boolean; reason?: string; detail?: string; id?: Array<string | number> } = {};
+    try {
+      data = (await res.json()) as typeof data;
+    } catch {
+      // Biarkan kosong; ditangani di bawah.
+    }
+    if (!res.ok || data.status !== true) {
+      return { ok: false, error: `Fonnte: ${data.reason || data.detail || `HTTP ${res.status}`}` };
+    }
+    const id = Array.isArray(data.id) && data.id.length ? String(data.id[0]) : `FONNTE-${Date.now()}`;
+    return { ok: true, providerMessageId: id };
+  }
+}
+
 export function getWhatsAppProvider(): WhatsAppProvider {
-  // Hanya mock untuk saat ini; tambahkan cabang provider asli di sini.
-  return new MockWhatsAppProvider();
+  // Dibaca saat dipanggil agar saklar env bisa diuji tanpa restart modul.
+  return process.env.WHATSAPP_PROVIDER === "fonnte" ? new FonnteWhatsAppProvider() : new MockWhatsAppProvider();
+}
+
+/**
+ * Pengaman provider asli: data demo berisi nomor karangan yang bisa saja milik orang
+ * sungguhan. Hanya nomor di `WHATSAPP_ALLOWED_NUMBERS` (fallback `DEMO_VENDOR_WHATSAPP`)
+ * yang dikirimi WA sungguhan; `*` = semua nomor. Kosong = tidak ada (aman secara default).
+ */
+export function isRealSendAllowed(phone: string): boolean {
+  const raw = process.env.WHATSAPP_ALLOWED_NUMBERS?.trim() || process.env.DEMO_VENDOR_WHATSAPP?.trim() || "";
+  if (raw === "*") return true;
+  const allowed = raw
+    .split(",")
+    .map((n) => normalizeIndonesianPhone(n))
+    .filter((n): n is string => !!n);
+  return allowed.includes(phone);
 }
 
 // ---------------------------------------------------------------------------
@@ -97,6 +148,17 @@ export function dispatchWhatsApp(limit = 50): Promise<number> {
     });
     let sent = 0;
     for (const m of queued) {
+      if (provider.name !== "mock" && m.toPhone && !isRealSendAllowed(m.toPhone)) {
+        await db.whatsAppMessage.updateMany({
+          where: { id: m.id, status: "QUEUED" },
+          data: {
+            status: "SKIPPED",
+            provider: provider.name,
+            error: "Bukan nomor demo yang diizinkan (WHATSAPP_ALLOWED_NUMBERS); tidak dikirim.",
+          },
+        });
+        continue;
+      }
       // Klaim baris agar dispatcher lain (proses lain) tidak mengirim ganda.
       const claimed = await db.whatsAppMessage.updateMany({
         where: { id: m.id, status: "QUEUED", attempts: m.attempts },

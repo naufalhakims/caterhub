@@ -106,6 +106,27 @@ Hasil 9 Nov 2026:
 - [x] File uji di `/data/public` tersaji lewat `https://<web>/uploads/...` dan **tetap ada setelah redeploy** `api` (volume persisten), lalu dihapus.
 - [ ] Login manual lewat browser + alur `docs/DEMO_SCRIPT.md` di URL produksi (dicek pemilik).
 
+## Pembayaran Midtrans (sandbox)
+
+Aktif sejak v0.14.0. Variabel di service `api`:
+
+| Variabel | Nilai |
+|---|---|
+| `PAYMENT_PROVIDER` | `midtrans` (kembalikan ke `mock` sebagai cadangan; tombol "Simulasikan bayar" muncul lagi) |
+| `MIDTRANS_SERVER_KEY` | Server key **sandbox** (`SB-Mid-server-…`), diisi pemilik lewat dashboard |
+| `MIDTRANS_IS_PRODUCTION` | `false` |
+| `MIDTRANS_ENABLED_PAYMENTS` | opsional, default `other_qris` |
+
+**Server key** dibuat di dashboard.sandbox.midtrans.com → *Settings → Access Keys → Generate*. Izin minimal: **Snap Checkout: Write** + **Core API: Read**; lainnya None. Key tidak bisa diedit: untuk mengubah izin, buat key baru → ganti variabel → Deploy → revoke key lama. Key berawalan `Mid-server-` (tanpa `SB-`) adalah key **production** dan ditolak sandbox (401).
+
+**Webhook** tidak perlu diatur di dashboard Midtrans: URL `APP_URL/api/payments/webhook` dikirim per transaksi (header `X-Override-Notification`), masuk lewat `web` lalu diteruskan ke `api`. Notifikasi untuk key hasil generate ditandatangani dengan key lain, jadi API memverifikasi lewat `GET /v2/{order_id}/status` (itulah alasan izin Core API: Read). Notifikasi yang terlewat bisa dikirim ulang dari detail transaksi di dashboard Midtrans (*Resend notification*).
+
+**Cara membayar saat demo**: halaman bayar → "Bayar QRIS via Midtrans" → di Snap, klik kanan QR → *Copy image address* → buka https://simulator.sandbox.midtrans.com/v2/qris/index → tempel → *Scan QR* → *Pay*. Halaman bayar CaterHub berubah menjadi lunas dalam ±5 detik.
+
+> **Jangan bayar QR sandbox dengan e-wallet asli.** Aplikasi e-wallet bisa membaca QR sandbox (menampilkan data merchant, acquirer GoPay) karena QRIS hanya teks berformat standar, tetapi transaksinya tidak ada di jaringan pembayaran sungguhan.
+
+**Ke mana uangnya di production**: ke saldo merchant Midtrans pemilik server key (CaterHub sebagai platform), lalu dicairkan ke rekening yang didaftarkan. Penerusan dana ke vendor (pencairan/split payment) di luar cakupan hackathon.
+
 ## Biaya & kredit
 
 Trial Railway: 30 hari + kredit sekali US$5, tanpa kartu. Setelah habis, akun turun ke Free plan (US$1/bulan, tidak cukup untuk 3 service) → perlu Hobby US$5/bulan bila demo harus tetap online. Pantau di *Workspace → Usage*.

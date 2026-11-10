@@ -8,7 +8,7 @@ import { canReviewBooking, roundRating } from "../domain/review";
 import { NON_REVENUE_BOOKING_STATUSES, cancelBooking } from "../domain/booking";
 import { maybeSweep } from "../domain/expiry";
 import { notify } from "../domain/notify";
-import { dispatchWhatsApp } from "../domain/whatsapp";
+import { dispatchWhatsApp, getWhatsAppProvider } from "../domain/whatsapp";
 import { ensureInvoiceNumber } from "../domain/invoice";
 import { confirmReceipt } from "../domain/progress";
 
@@ -182,7 +182,7 @@ export function adminRouter() {
       ]);
       res.json({
         data: {
-          provider: "mock",
+          provider: getWhatsAppProvider().name,
           messages,
           counts: Object.fromEntries(counts.map((c) => [c.status, c._count._all])),
         },

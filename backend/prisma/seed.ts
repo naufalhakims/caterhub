@@ -432,8 +432,11 @@ async function main() {
   // Vendor + katalog (dipertahankan bila sudah ada)
   const vendors: Ctx["vendors"] = [];
   let vi = 0;
-  for (const v of VENDORS) {
+  for (const seed of VENDORS) {
     vi++;
+    // Vendor demo utama memakai nomor WA sungguhan (env) agar notifikasi Fonnte sampai ke HP.
+    const demoPhone = process.env.DEMO_VENDOR_WHATSAPP?.trim();
+    const v = vi === 1 && demoPhone ? { ...seed, phone: demoPhone } : seed;
     const email = `vendor${vi}@demo.id`;
     const user = await db.user.upsert({
       where: { email },

@@ -2,7 +2,21 @@
 
 Catatan perubahan per tahap pengembangan. Versi mengikuti milestone roadmap ([ROADMAP_PENGEMBANGAN.md](./ROADMAP_PENGEMBANGAN.md)), bukan rilis npm.
 
-## v0.14.0 — Fase 2 Tahap C: Midtrans sandbox (dalam pengerjaan, 9 Nov 2026)
+## v0.15.0 — Fase 2 Tahap D: WhatsApp via Fonnte (dalam pengerjaan, 10 Nov 2026)
+
+**Keputusan**: WA sungguhan hanya untuk **vendor demo** (Dapur Nusantara, `vendor1@demo.id`); pelanggan tetap lewat kotak keluar.
+
+- **Provider Fonnte** (`backend/src/domain/whatsapp.ts`): `POST https://api.fonnte.com/send` (`target`, `message`, `countryCode=62`, header `Authorization: FONNTE_TOKEN`), timeout 15 dtk; alasan gagal dari Fonnte (mis. device terputus, kuota) dicatat di kotak keluar; dicoba ulang maks. 3× oleh dispatcher yang sudah ada.
+- **Saklar** `WHATSAPP_PROVIDER=mock|fonnte` (default mock; mock tetap cadangan).
+- **Pengaman nomor demo**: data seed berisi nomor karangan yang bisa saja milik orang sungguhan, jadi provider asli hanya mengirim ke `WHATSAPP_ALLOWED_NUMBERS` (fallback `DEMO_VENDOR_WHATSAPP`; `*` = semua; kosong = tidak ada). Nomor lain → status **Dilewati** dengan alasan.
+- **Seed**: nomor usaha Dapur Nusantara diambil dari `DEMO_VENDOR_WHATSAPP` bila diisi, sehingga tetap benar setelah seed ulang di hari demo.
+- **Kotak keluar admin** menampilkan provider yang aktif (sebelumnya selalu "mock") dan penjelasan sesuai mode.
+
+**Verifikasi**: 8 test baru (`whatsapp-fonnte.test.ts`: saklar provider, pengaman nomor, format request Fonnte, alasan gagal, token kosong, error jaringan) — total 139 unit test lulus (backend 104, frontend 35), typecheck & lint bersih. Uji kirim sungguhan menyusul.
+
+## v0.14.0 — Fase 2 Tahap C: Midtrans sandbox (10 Nov 2026)
+
+**Hasil uji end-to-end di produksi (sandbox)**: dua pesanan demo dibayar lewat QRIS simulator Midtrans — `Arisan Keluarga Wijaya` (Rp2.775.000) dan `Pernikahan Budi & Sari` (Rp9.781.000): Snap terbuka dengan QRIS, notifikasi Midtrans diverifikasi lewat status API, payment → `SETTLEMENT`, booking → `PAID`, notifikasi "Pembayaran diterima" (pelanggan) & "Pembayaran lunas diterima" (vendor) terkirim, halaman bayar memperbarui diri otomatis.
 
 **Perbaikan integrasi Snap** (`backend/src/domain/payment.ts`)
 - Parameter QRIS: `payment_type: "qris"` (parameter Core API, diabaikan Snap) diganti `enabled_payments: ["other_qris"]`; bisa diubah lewat `MIDTRANS_ENABLED_PAYMENTS`.
