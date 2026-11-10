@@ -101,20 +101,16 @@ export default async function NewOfflineOrderPage({ searchParams }: { searchPara
                   </Select>
                 </Field>
                 <div className="sm:col-span-2">
-                  <Field label="Lokasi antar">
-                    <Input name="location" required minLength={3} maxLength={300} placeholder="cth. Balai RW, Jl. Ketintang 12" />
-                  </Field>
-                </div>
-                <div className="sm:col-span-2">
                   <span className="mb-1.5 block text-sm font-semibold text-ink">
-                    Titik antar <span className="font-normal text-stone-500">(opsional, untuk ongkir otomatis)</span>
+                    Lokasi antar <span className="font-normal text-stone-500">(alamat & titik untuk ongkir otomatis)</span>
                   </span>
                   <LocationPicker
+                    addressName="location"
+                    addressPlaceholder="cth. Balai RW, Jl. Ketintang 12"
                     reference={kitchen ? { latitude: kitchen.latitude, longitude: kitchen.longitude, label: "Dapur Anda" } : null}
-                    addressInputName="location"
                     cityInputName="city"
                     height={220}
-                    label="Titik antar"
+                    label="Lokasi antar"
                   />
                 </div>
               </div>

@@ -54,24 +54,25 @@ export default async function NewEventPage({
                 <Input name="eventTime" type="time" required />
               </Field>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Lokasi acara">
-                <Input name="location" required minLength={3} maxLength={300} placeholder="cth. Gedung Sasono Utomo" />
-              </Field>
-              <Field label="Kota">
-                <Select name="city" defaultValue="Surabaya">
-                  <option>Surabaya</option>
-                  <option>Sidoarjo</option>
-                  <option>Gresik</option>
-                </Select>
-              </Field>
-            </div>
             <div className="text-sm">
               <span className="mb-1 block text-[13px] font-medium text-stone-600">
-                Titik lokasi di peta <span className="font-normal text-stone-400">(untuk jarak & ongkir otomatis)</span>
+                Lokasi acara <span className="font-normal text-stone-400">(alamat & titik untuk jarak dan ongkir)</span>
               </span>
-              <LocationPicker addressInputName="location" cityInputName="city" height={240} label="Titik lokasi acara" />
+              <LocationPicker
+                addressName="location"
+                addressPlaceholder="cth. Gedung Sasono Utomo, Surabaya"
+                cityInputName="city"
+                height={240}
+                label="Lokasi acara"
+              />
             </div>
+            <Field label="Kota">
+              <Select name="city" defaultValue="Surabaya">
+                <option>Surabaya</option>
+                <option>Sidoarjo</option>
+                <option>Gresik</option>
+              </Select>
+            </Field>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Budget min (Rp, opsional)">
                 <RupiahInput name="budgetMin" placeholder="7.000.000" />

@@ -2,6 +2,15 @@
 
 Catatan perubahan per tahap pengembangan. Versi mengikuti milestone roadmap ([ROADMAP_PENGEMBANGAN.md](./ROADMAP_PENGEMBANGAN.md)), bukan rilis npm.
 
+## v0.16.3 — Satu kolom lokasi + perbaikan titik kosong (10 Nov 2026)
+
+**Bug yang masih tersisa di v0.16.2**: alamat terisi otomatis, tetapi **titik (latitude/longitude) tetap kosong** sehingga tombol kirim tetap nonaktif. Penyebab: koordinat disimpan di `<input type="hidden" defaultValue>` yang diisi lewat DOM; pada input hidden nilai = atribut default, sehingga setiap render ulang React (mis. status pin berubah) menimpanya kembali kosong. Bug ini sudah ada sejak fitur peta; ditemukan lewat uji browser otomatis (Playwright + geolokasi tiruan).
+
+- Koordinat kini input **terkontrol** dari state pin; form diberi tahu (`change`) setelah render sehingga estimasi ongkir & tombol kirim ikut diperbarui.
+- **Satu kolom lokasi** (permintaan pemilik): kolom alamat dan kotak "Cari alamat" peta digabung. `LocationPicker` dengan `addressName="location"` merender kolom alamat wajib yang sekaligus pencarian; Enter/"Cari" → pilih hasil mengisi alamat & titik bersama; mengetik alamat lalu pindah kolom menaruh titik di hasil teratas (nama tempat yang diketik dipertahankan); "Lokasi saya"/ketuk/geser mengisi alamat dari titik kecuali pengguna sudah mengetik sendiri. Dipakai di halaman vendor, "Buat acara", dan "Catat pesanan offline" (kolom teks lokasi terpisah dihapus).
+
+**Verifikasi (browser, lokal)**: Lokasi saya, ketik+pindah kolom, cari+pilih, dan ketuk peta semuanya mengisi alamat **dan** titik, kota Surabaya terpilih, tombol kirim aktif; estimasi ongkir ±5,1 km Rp27.000; permintaan terkirim ke `/quotations/…`; "Buat acara" hanya punya satu kolom lokasi dan menyimpan titik. Typecheck, lint, 142 unit test lulus.
+
 ## v0.16.2 — Lokasi pemesanan seragam (10 Nov 2026)
 
 **Bug**: di halaman vendor, "Lokasi saya", ketuk peta, atau geser pin hanya mengubah koordinat; kolom wajib "Lokasi acara" tetap kosong sehingga permintaan tidak bisa dikirim. Kolom hanya terisi saat memilih hasil pencarian alamat. Selain itu, "Buat acara" masih teks biasa tanpa peta, dan acara tersimpan tidak pernah tersambung ke permintaan: halaman vendor meminta lokasi ulang lalu backend membuat acara baru "Pesanan {paket}" bertipe Lainnya, sehingga vendor tidak melihat nama, tipe, dan catatan acara yang diisi pelanggan.

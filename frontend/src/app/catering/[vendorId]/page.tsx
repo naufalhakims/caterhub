@@ -346,26 +346,22 @@ export default async function VendorDetailPage({
                     </label>
                     </>
                     )}
-                    <label className="block text-sm">
-                      <span className="mb-1 block text-[13px] font-medium text-stone-600">Lokasi acara <span className="text-red-500">*</span></span>
-                      <input name="location" required minLength={3} maxLength={300} defaultValue={savedEvent?.location ?? ""} placeholder="cth. Gedung Sasono Utomo" className="w-full rounded-2xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-ink focus:ring-4 focus:ring-sun-200 placeholder:text-stone-400" />
-                    </label>
-                    {kitchen && (
-                      <div className="text-sm">
-                        <span className="mb-1 block text-[13px] font-medium text-stone-600">
-                          Titik antar <span className="text-red-500">*</span>
-                          <span className="ml-1 font-normal text-stone-400">(untuk menghitung ongkir)</span>
-                        </span>
-                        <LocationPicker
-                          initial={pinFromSearch}
-                          reference={{ latitude: kitchen.latitude, longitude: kitchen.longitude, label: `Dapur ${vendor.businessName}` }}
-                          addressInputName="location"
-                          cityInputName="city"
-                          height={220}
-                          label="Titik antar"
-                        />
-                      </div>
-                    )}
+                    <div className="text-sm">
+                      <span className="mb-1 block text-[13px] font-medium text-stone-600">
+                        Lokasi acara <span className="text-red-500">*</span>
+                        {kitchen && <span className="ml-1 font-normal text-stone-400">(alamat & titik untuk ongkir)</span>}
+                      </span>
+                      <LocationPicker
+                        addressName="location"
+                        initialAddress={savedEvent?.location ?? ""}
+                        addressPlaceholder="cth. Gedung Sasono Utomo, Surabaya"
+                        initial={pinFromSearch}
+                        reference={kitchen ? { latitude: kitchen.latitude, longitude: kitchen.longitude, label: `Dapur ${vendor.businessName}` } : null}
+                        cityInputName="city"
+                        height={220}
+                        label="Lokasi acara"
+                      />
+                    </div>
                     <label className="block text-sm">
                       <span className="mb-1 block text-[13px] font-medium text-stone-600">Kota</span>
                       <select name="city" defaultValue={savedEvent?.city ?? searchParams.city ?? "Surabaya"} className="w-full rounded-2xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-ink focus:ring-4 focus:ring-sun-200">
