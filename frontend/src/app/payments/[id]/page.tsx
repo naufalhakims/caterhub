@@ -10,6 +10,8 @@ import { formatDateID, formatDateTimeID, formatIDR } from "@/lib/format";
 import { ApiError, apiGet } from "@/lib/api";
 import { requireUser } from "@/lib/auth-helpers";
 
+const MIDTRANS_QRIS_SIMULATOR = "https://simulator.sandbox.midtrans.com/v2/qris/index";
+
 type PaymentDetail = {
   id: string;
   bookingId: string;
@@ -48,6 +50,8 @@ export default async function PaymentPage({
     throw error;
   }
   const isMock = payment.provider === "mock";
+  // Snap sandbox → URL app.sandbox.midtrans.com; label uji hilang otomatis di production.
+  const isSandbox = !isMock && !!payment.qrPayload?.includes("sandbox.midtrans.com");
   const expired =
     payment.status === "EXPIRED" ||
     (payment.status === "PENDING" && !!payment.expiresAt && new Date(payment.expiresAt) < new Date());
@@ -130,6 +134,24 @@ export default async function PaymentPage({
               </a>
             )}
           </div>
+
+          {isSandbox && payable && (
+            <div className="mx-auto mt-4 max-w-[300px] rounded-xl bg-amber-50 px-4 py-3 text-left text-xs text-amber-900 ring-1 ring-inset ring-amber-200">
+              <p className="font-bold">Mode uji (sandbox Midtrans) — tidak ada uang sungguhan</p>
+              <p className="mt-1">
+                Jangan bayar dengan e-wallet asli. Di halaman Midtrans, klik kanan kode QR → <em>Copy image address</em>,
+                lalu tempel di QRIS Simulator dan tekan <em>Pay</em>.
+              </p>
+              <a
+                href={MIDTRANS_QRIS_SIMULATOR}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 inline-block font-semibold text-amber-900 underline underline-offset-2"
+              >
+                Buka QRIS Simulator Midtrans ↗
+              </a>
+            </div>
+          )}
 
           {isMock ? (
             <ol className="mx-auto mt-4 max-w-[280px] space-y-1 text-left text-xs text-stone-500">

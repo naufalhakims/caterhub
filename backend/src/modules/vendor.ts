@@ -11,7 +11,7 @@ import {
   canVendorSetBookingStatus,
 } from "../domain/booking";
 import { maybeSweep } from "../domain/expiry";
-import { markDeparted, startCookingForDate } from "../domain/progress";
+import { canVendorAdvance, markDeparted, startCookingForDate, vendorAdvanceOpensOn } from "../domain/progress";
 import { parseDateOnly } from "../lib/date";
 import { setDailyCapacity } from "../domain/capacity";
 import { zIdr, zIdrWithDefault } from "../lib/money";
@@ -459,8 +459,21 @@ export function vendorRouter() {
     asyncHandler(async (req, res) => {
       const vendor = await requireVendor(req);
       const to = String(req.body?.to ?? "");
-      const booking = await db.booking.findUnique({ where: { id: req.params.id } });
+      const booking = await db.booking.findUnique({
+        where: { id: req.params.id },
+        include: { event: { select: { eventDate: true } } },
+      });
       if (!booking || booking.vendorId !== vendor.id) throw new ApiError(403, "FORBIDDEN", "Akses ditolak.");
+
+      if ((to === "DELIVERED" || to === "COMPLETED") && !canVendorAdvance(booking.event.eventDate, todayDateOnly())) {
+        const opens = vendorAdvanceOpensOn(booking.event.eventDate).toLocaleDateString("id-ID", {
+          timeZone: "UTC",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        });
+        throw new ApiError(409, "TOO_EARLY", `Progres pesanan baru bisa diubah mulai H-1 acara (${opens}).`);
+      }
 
       // PAID hanya dari webhook pembayaran; pembatalan lewat POST /bookings/:id/cancel (wajib alasan).
       if (!canVendorSetBookingStatus(to)) {

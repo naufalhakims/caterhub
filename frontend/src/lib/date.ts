@@ -62,6 +62,15 @@ export function jakartaDateString(now: Date = new Date()): string {
   }).format(now);
 }
 
+/** Vendor boleh memajukan progres mulai H-1 acara (sama dengan aturan backend). */
+export function vendorAdvanceOpensOn(eventDate: Date | string): Date {
+  return new Date(toDateOnly(eventDate).getTime() - 86_400_000);
+}
+
+export function canVendorAdvance(eventDate: Date | string, today: Date = todayDateOnly()): boolean {
+  return today.getTime() >= vendorAdvanceOpensOn(eventDate).getTime();
+}
+
 /** Selisih hari (a - b) untuk dua tanggal date-only. */
 export function diffInDays(a: Date, b: Date): number {
   return Math.round((a.getTime() - b.getTime()) / 86_400_000);

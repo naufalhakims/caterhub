@@ -127,6 +127,22 @@ Aktif sejak v0.14.0. Variabel di service `api`:
 
 **Ke mana uangnya di production**: ke saldo merchant Midtrans pemilik server key (CaterHub sebagai platform), lalu dicairkan ke rekening yang didaftarkan. Penerusan dana ke vendor (pencairan/split payment) di luar cakupan hackathon.
 
+## WhatsApp via Fonnte
+
+Aktif sejak v0.15.0. Variabel di service `api`:
+
+| Variabel | Nilai |
+|---|---|
+| `WHATSAPP_PROVIDER` | `fonnte` (kembalikan ke `mock` sebagai cadangan) |
+| `FONNTE_TOKEN` | token device dari dashboard Fonnte (per device; berubah bila device diganti), diisi pemilik |
+| `DEMO_VENDOR_WHATSAPP` | nomor **penerima** vendor demo; seed memasangnya sebagai nomor usaha Dapur Nusantara |
+| `WHATSAPP_ALLOWED_NUMBERS` | opsional; kosong = `DEMO_VENDOR_WHATSAPP`, `*` = semua nomor |
+
+- **Dua nomor berbeda**: pengirim = device yang disambungkan ke Fonnte (pakai nomor cadangan — Fonnte mengotomasi WhatsApp biasa, jadi nomor pengirim berisiko diblokir bila terlihat seperti spam); penerima = nomor vendor demo (tanpa risiko). Simpan kontak pengirim di HP penerima dan balas sekali.
+- **Pengaman**: provider asli hanya mengirim ke nomor yang diizinkan; nomor seed lain (karangan) → **Dilewati**. Pelanggan tidak menerima WA sungguhan.
+- **Ganti penerima**: ubah `DEMO_VENDOR_WHATSAPP` → Deploy → **seed ulang** (nomor usaha vendor diisi saat seed).
+- Pesan berprovider `mock` di kotak keluar adalah contoh dari seed. Alasan gagal Fonnte (device terputus, kuota) tampil di kotak keluar; pastikan device *connected* sebelum demo.
+
 ## Biaya & kredit
 
 Trial Railway: 30 hari + kredit sekali US$5, tanpa kartu. Setelah habis, akun turun ke Free plan (US$1/bulan, tidak cukup untuk 3 service) → perlu Hobby US$5/bulan bila demo harus tetap online. Pantau di *Workspace → Usage*.

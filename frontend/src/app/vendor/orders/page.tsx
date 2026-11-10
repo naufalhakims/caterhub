@@ -3,7 +3,8 @@ import { Card, Empty, StatusBadge } from "@/components/ui/Card";
 import { FormButton } from "@/components/ui/FormButton";
 import { Flash } from "@/components/ui/Flash";
 import { CancelBookingForm } from "@/components/CancelBookingForm";
-import { formatIDR, formatDateID, formatDateTimeID } from "@/lib/format";
+import { formatIDR, formatDateID, formatDateOnlyID, formatDateTimeID } from "@/lib/format";
+import { canVendorAdvance, vendorAdvanceOpensOn } from "@/lib/date";
 import { apiGet } from "@/lib/api";
 import { requireVendor } from "@/server/vendor-helpers";
 import { advanceBookingAction } from "@/server/vendor-actions";
@@ -138,7 +139,11 @@ export default async function VendorOrdersPage({
 
                 {(next || CANCELLABLE.has(o.status)) && (
                   <div className="mt-3 flex flex-wrap items-start justify-between gap-2 border-t border-stone-100 pt-3">
-                    {next ? (
+                    {next && !canVendorAdvance(o.event.eventDate) ? (
+                      <p className="rounded-xl bg-stone-100 px-3 py-2 text-xs font-medium text-stone-600 ring-1 ring-inset ring-stone-200">
+                        “{next[1]}” tersedia mulai H-1 acara ({formatDateOnlyID(vendorAdvanceOpensOn(o.event.eventDate))}).
+                      </p>
+                    ) : next ? (
                       <form action={advanceBookingAction}>
                         <input type="hidden" name="id" value={o.id} />
                         <input type="hidden" name="to" value={next[0]} />

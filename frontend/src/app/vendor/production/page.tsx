@@ -6,6 +6,7 @@ import { formatDateOnlyID, formatIDR, jakartaDateString } from "@/lib/format";
 import { apiGet } from "@/lib/api";
 import { requireVendor } from "@/server/vendor-helpers";
 import { advanceBookingAction, startCookingAllAction } from "@/server/vendor-actions";
+import { canVendorAdvance } from "@/lib/date";
 import { FormButton } from "@/components/ui/FormButton";
 import { Flash } from "@/components/ui/Flash";
 
@@ -224,7 +225,7 @@ export default async function ProductionPage({ searchParams }: { searchParams?: 
                   </div>
                   <span className="flex items-center gap-2">
                     <StatusBadge status={o.status} />
-                    {["PAID", "PREPARING", "READY"].includes(o.status) && (
+                    {["PAID", "PREPARING", "READY"].includes(o.status) && canVendorAdvance(data.date) && (
                       <form action={advanceBookingAction} className="print:hidden">
                         <input type="hidden" name="id" value={o.id} />
                         <input type="hidden" name="to" value="DELIVERED" />

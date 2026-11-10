@@ -16,6 +16,50 @@ import { formatInvoiceNumber, vendorInvoicePrefix } from "../src/domain/invoice"
 import { computePaymentDueAt } from "../src/domain/booking";
 import { quoteDeliveryBetween } from "../src/domain/delivery";
 import { jakartaDateString } from "../src/lib/date";
+import { copyFile, mkdir } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { PUBLIC_UPLOAD_DIR, PUBLIC_UPLOAD_URL } from "../src/storage";
+
+// ---------------------------------------------------------------------------
+// Foto demo (Wikimedia Commons, kredit di docs/ASSET_CREDITS.md)
+// ---------------------------------------------------------------------------
+
+const SEED_ASSETS = path.join(path.dirname(fileURLToPath(import.meta.url)), "seed-assets");
+
+/** Salin foto demo ke folder unggahan publik (volume di produksi) dan kembalikan URL-nya. */
+async function seedImage(file: string): Promise<string> {
+  const dir = path.join(PUBLIC_UPLOAD_DIR, "seed");
+  await mkdir(dir, { recursive: true });
+  await copyFile(path.join(SEED_ASSETS, file), path.join(dir, file));
+  return `${PUBLIC_UPLOAD_URL}/seed/${file}`;
+}
+
+/** Urutan sama dengan VENDORS. */
+const VENDOR_IMAGE_KEYS = ["dapur-nusantara", "rasa-prima", "sajian-kita", "pawon-ibu", "kitchen-88"];
+
+const MENU_IMAGES: Record<string, string> = {
+  "Nasi putih hangat": "menu-nasi-putih.jpg",
+  "Nasi kuning gurih": "menu-nasi-kuning.jpg",
+  "Nasi liwet Solo": "menu-nasi-liwet.jpg",
+  "Ayam bakar madu": "menu-ayam-bakar-madu.jpg",
+  "Beef teriyaki": "menu-beef-teriyaki.jpg",
+  "Rendang sapi empuk": "menu-rendang-sapi.jpg",
+  "Ikan asam manis": "menu-ikan-asam-manis.jpg",
+  "Udang saus Padang": "menu-udang-saus-padang.jpg",
+  "Capcay kuah": "menu-capcay-kuah.jpg",
+  "Sop kimlo hangat": "menu-sop-kimlo.jpg",
+  "Tumis buncis bawang putih": "menu-tumis-buncis.jpg",
+  "Pudding cokelat vla": "menu-pudding-cokelat.jpg",
+  "Buah potong segar": "menu-buah-potong.jpg",
+  "Es campur / es teler": "menu-es-campur.jpg",
+  "Es teh manis": "menu-es-teh-manis.jpg",
+  "Jeruk peras hangat": "menu-jeruk-peras.jpg",
+  "Kopi tubruk + teh": "menu-kopi-tubruk.jpg",
+  "Lemper ayam": "menu-lemper-ayam.jpg",
+  "Risoles mayo": "menu-risoles-mayo.jpg",
+  "Pastel ayam": "menu-pastel-ayam.jpg",
+};
 
 const db = new PrismaClient();
 const APP_URL = process.env.APP_URL ?? "http://localhost:3000";
@@ -438,6 +482,9 @@ async function main() {
     const demoPhone = process.env.DEMO_VENDOR_WHATSAPP?.trim();
     const v = vi === 1 && demoPhone ? { ...seed, phone: demoPhone } : seed;
     const email = `vendor${vi}@demo.id`;
+    const imgKey = VENDOR_IMAGE_KEYS[vi - 1]!;
+    const logoUrl = await seedImage(`logo-${imgKey}.jpg`);
+    const coverUrl = await seedImage(`cover-${imgKey}.jpg`);
     const user = await db.user.upsert({
       where: { email },
       update: { whatsappOptIn: true },
@@ -448,21 +495,26 @@ async function main() {
       update: {
         businessName: v.businessName, city: v.city, phone: v.phone, address: v.address, description: v.desc,
         verificationStatus: "VERIFIED", rating: v.rating, reviewCount: v.reviews, minPax: v.minPax, maxPax: v.maxPax,
+        logoUrl, coverUrl,
         latitude: v.lat, longitude: v.lng,
         deliveryBaseFee: v.rate[0], deliveryBaseKm: v.rate[1], deliveryPerKm: v.rate[2], deliveryMaxKm: v.rate[3],
       },
       create: {
         userId: user.id, businessName: v.businessName, city: v.city, phone: v.phone, address: v.address, description: v.desc,
         verificationStatus: "VERIFIED", rating: v.rating, reviewCount: v.reviews, minPax: v.minPax, maxPax: v.maxPax,
+        logoUrl, coverUrl,
         latitude: v.lat, longitude: v.lng,
         deliveryBaseFee: v.rate[0], deliveryBaseKm: v.rate[1], deliveryPerKm: v.rate[2], deliveryMaxKm: v.rate[3],
       },
     });
     for (const [cat, list] of Object.entries(MENUS)) {
       for (const m of list) {
+        const imageUrl = MENU_IMAGES[m.name] ? await seedImage(MENU_IMAGES[m.name]!) : null;
         const exists = await db.menuItem.findFirst({ where: { vendorId: profile.id, name: m.name } });
         if (!exists) {
-          await db.menuItem.create({ data: { vendorId: profile.id, name: m.name, category: cat, description: m.desc, price: m.price, isAvailable: true } });
+          await db.menuItem.create({ data: { vendorId: profile.id, name: m.name, category: cat, description: m.desc, price: m.price, isAvailable: true, imageUrl } });
+        } else if (imageUrl) {
+          await db.menuItem.update({ where: { id: exists.id }, data: { imageUrl } });
         }
       }
     }
@@ -470,16 +522,17 @@ async function main() {
     const menus = new Map(menuItems.map((m) => [m.name, { id: m.id, price: m.price }]));
     const pick = (...names: string[]) => names.map((n) => menus.get(n)?.id).filter((x): x is string => !!x);
 
-    const ensurePackage = async (name: string, price: number, otherCost: number, desc: string, menuIds: string[]) => {
+    const ensurePackage = async (name: string, price: number, otherCost: number, desc: string, menuIds: string[], image: string) => {
+      const imageUrl = await seedImage(image);
       const existing = await db.package.findFirst({ where: { vendorId: profile.id, name } });
       if (existing) {
-        const p = await db.package.update({ where: { id: existing.id }, data: { otherCostPerPax: otherCost, isActive: true } });
+        const p = await db.package.update({ where: { id: existing.id }, data: { otherCostPerPax: otherCost, isActive: true, imageUrl } });
         return { id: p.id, name: p.name, pricePerPax: p.pricePerPax };
       }
       const p = await db.package.create({
         data: {
           vendorId: profile.id, name, pricePerPax: price, otherCostPerPax: otherCost, minPax: v.minPax, maxPax: v.maxPax,
-          isActive: true, description: desc, items: { create: menuIds.map((menuItemId) => ({ menuItemId })) },
+          isActive: true, description: desc, imageUrl, items: { create: menuIds.map((menuItemId) => ({ menuItemId })) },
         },
       });
       return { id: p.id, name: p.name, pricePerPax: p.pricePerPax };
@@ -488,11 +541,13 @@ async function main() {
       "Nusantara Hemat", v.basePrice - 5000, 3500,
       "Paket ekonomis: nasi, 1 lauk utama, sayur, dessert, minuman + 1 snack.",
       pick("Nasi putih hangat", "Ayam bakar madu", "Capcay kuah", "Pudding cokelat vla", "Es teh manis", "Lemper ayam"),
+      "package-paket-hemat.jpg",
     );
     const premium = await ensurePackage(
       "Nusantara Premium", v.basePrice, 4000,
       "Paket lengkap: nasi pilihan, 2 lauk premium, sayur, 2 dessert, minuman + pramusaji.",
       pick("Nasi kuning gurih", "Beef teriyaki", "Rendang sapi empuk", "Sop kimlo hangat", "Buah potong segar", "Es campur / es teler", "Jeruk peras hangat"),
+      "package-paket-premium.jpg",
     );
     vendors.push({ id: profile.id, userId: user.id, businessName: v.businessName, maxPax: v.maxPax, lat: v.lat, lng: v.lng, rate: v.rate, packages: { hemat, premium }, menus });
   }

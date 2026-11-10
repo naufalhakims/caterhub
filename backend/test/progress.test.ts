@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canConfirmReceipt, eventStartAt } from "../src/domain/progress";
+import { canConfirmReceipt, canVendorAdvance, eventStartAt, vendorAdvanceOpensOn } from "../src/domain/progress";
 import { canTransitionBooking, canVendorSetBookingStatus } from "../src/domain/booking";
 
 const D = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
@@ -49,5 +49,21 @@ describe("transisi berangkat antar", () => {
 
   it("belum lunas tidak bisa diantar", () => {
     expect(canTransitionBooking("PAYMENT_PENDING", "DELIVERED")).toBe(false);
+  });
+});
+
+describe("batas H-1 progres vendor", () => {
+  const event = new Date("2026-11-18T00:00:00Z");
+  it("terbuka mulai H-1 (tanggal WIB)", () => {
+    expect(vendorAdvanceOpensOn(event).toISOString().slice(0, 10)).toBe("2026-11-17");
+  });
+  it("menolak H-2 dan sebelumnya", () => {
+    expect(canVendorAdvance(event, new Date("2026-11-16T00:00:00Z"))).toBe(false);
+    expect(canVendorAdvance(event, new Date("2026-11-10T00:00:00Z"))).toBe(false);
+  });
+  it("mengizinkan H-1, hari acara, dan sesudahnya", () => {
+    expect(canVendorAdvance(event, new Date("2026-11-17T00:00:00Z"))).toBe(true);
+    expect(canVendorAdvance(event, new Date("2026-11-18T00:00:00Z"))).toBe(true);
+    expect(canVendorAdvance(event, new Date("2026-11-20T00:00:00Z"))).toBe(true);
   });
 });

@@ -2,9 +2,22 @@
 
 Catatan perubahan per tahap pengembangan. Versi mengikuti milestone roadmap ([ROADMAP_PENGEMBANGAN.md](./ROADMAP_PENGEMBANGAN.md)), bukan rilis npm.
 
-## v0.15.0 — Fase 2 Tahap D: WhatsApp via Fonnte (dalam pengerjaan, 10 Nov 2026)
+## v0.16.0 — Persiapan pengumpulan & video demo (10 Nov 2026)
 
-**Keputusan**: WA sungguhan hanya untuk **vendor demo** (Dapur Nusantara, `vendor1@demo.id`); pelanggan tetap lewat kotak keluar.
+Batas pengumpulan 10 Nov; uji juri penyisihan 10–14 Nov; final 14 Nov.
+
+- **Progres vendor mulai H-1**: "Berangkat antar" dan "Tandai selesai" ditolak API (`409 TOO_EARLY`, pesan berisi tanggal buka) bila hari ini (WIB) sebelum H-1 acara — mencegah pesanan ditandai selesai jauh sebelum acaranya. Halaman **Pesanan** menampilkan keterangan "tersedia mulai H-1 (tanggal)"; tombol di **Produksi** baru muncul mulai H-1. Helper `canVendorAdvance`/`vendorAdvanceOpensOn` di backend & frontend, +3 test.
+- **Label sandbox di halaman bayar**: bila tagihan berasal dari Midtrans sandbox (URL Snap `sandbox.midtrans.com`), tampil kotak "Mode uji (sandbox Midtrans) — tidak ada uang sungguhan", cara bayar lewat simulator, dan tautan **QRIS Simulator Midtrans**. Otomatis hilang di production.
+- **Foto vendor demo**: 32 foto Wikimedia Commons berlisensi bebas di `backend/prisma/seed-assets/` (logo & cover 5 vendor, 20 menu, 2 paket; di-crop & dikecilkan, total ±3 MB). Seed menyalinnya ke `PUBLIC_UPLOAD_DIR/seed/` (volume di produksi) dan mengisi `logoUrl`, `coverUrl`, `imageUrl` menu & paket — juga untuk data yang sudah ada. Foto dipilih manual: yang memuat wajah atau logo merek diganti/di-crop. Kredit lengkap di [ASSET_CREDITS.md](./ASSET_CREDITS.md).
+- **DEMO_SCRIPT** diperbarui untuk versi live: URL produksi, seed via `railway ssh`, bayar lewat Midtrans + simulator, WA sungguhan ke HP vendor, aturan H-1, langkah cadangan (mock) bila provider bermasalah.
+
+**Verifikasi**: seed lokal sukses (32 foto tersalin); katalog lokal memuat 5 cover + 5 logo, halaman vendor memuat 24 foto, `/uploads/seed/*` tersaji lewat web (200 image/jpeg).
+
+## v0.15.0 — Fase 2 Tahap D: WhatsApp via Fonnte (10 Nov 2026)
+
+**Keputusan**: WA sungguhan hanya untuk **vendor demo** (Dapur Nusantara, `vendor1@demo.id`); pelanggan tetap lewat kotak keluar. Nomor **pengirim** (device Fonnte) dan **penerima** (vendor demo) dibedakan; risiko pemblokiran WhatsApp ada di sisi pengirim, jadi pengirim memakai nomor cadangan.
+
+**Hasil uji di produksi**: pesan uji langsung via Fonnte diterima; setelah seed ulang, Sari membayar "Arisan Keluarga Wijaya" lewat QRIS simulator Midtrans → WA "Pembayaran lunas diterima" masuk ke HP vendor demo (kotak keluar: `SENT`, provider `fonnte`). Pesan berprovider `mock` di kotak keluar adalah contoh dari seed.
 
 - **Provider Fonnte** (`backend/src/domain/whatsapp.ts`): `POST https://api.fonnte.com/send` (`target`, `message`, `countryCode=62`, header `Authorization: FONNTE_TOKEN`), timeout 15 dtk; alasan gagal dari Fonnte (mis. device terputus, kuota) dicatat di kotak keluar; dicoba ulang maks. 3× oleh dispatcher yang sudah ada.
 - **Saklar** `WHATSAPP_PROVIDER=mock|fonnte` (default mock; mock tetap cadangan).
@@ -12,7 +25,7 @@ Catatan perubahan per tahap pengembangan. Versi mengikuti milestone roadmap ([RO
 - **Seed**: nomor usaha Dapur Nusantara diambil dari `DEMO_VENDOR_WHATSAPP` bila diisi, sehingga tetap benar setelah seed ulang di hari demo.
 - **Kotak keluar admin** menampilkan provider yang aktif (sebelumnya selalu "mock") dan penjelasan sesuai mode.
 
-**Verifikasi**: 8 test baru (`whatsapp-fonnte.test.ts`: saklar provider, pengaman nomor, format request Fonnte, alasan gagal, token kosong, error jaringan) — total 139 unit test lulus (backend 104, frontend 35), typecheck & lint bersih. Uji kirim sungguhan menyusul.
+**Verifikasi**: 8 test baru (`whatsapp-fonnte.test.ts`: saklar provider, pengaman nomor, format request Fonnte, alasan gagal, token kosong, error jaringan) — total 139 unit test lulus (backend 104, frontend 35), typecheck & lint bersih.
 
 ## v0.14.0 — Fase 2 Tahap C: Midtrans sandbox (10 Nov 2026)
 

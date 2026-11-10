@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { todayDateOnly } from "../lib/date";
+import { toDateOnly, todayDateOnly } from "../lib/date";
 import { notify } from "./notify";
 
 /**
@@ -35,6 +35,20 @@ export function eventStartAt(eventDate: Date, eventTime: string | null | undefin
     minute = Number(m[2]);
   }
   return new Date(eventDate.getTime() + (hour * 60 + minute) * 60_000 - WIB_OFFSET_MS);
+}
+
+const DAY_MS = 86_400_000;
+
+/**
+ * Vendor baru boleh memajukan progres ("Berangkat antar", "Tandai selesai") mulai
+ * H-1 acara (tanggal WIB), agar pesanan tidak ditandai selesai jauh sebelum acaranya.
+ */
+export function vendorAdvanceOpensOn(eventDate: Date): Date {
+  return new Date(toDateOnly(eventDate).getTime() - DAY_MS);
+}
+
+export function canVendorAdvance(eventDate: Date, today: Date): boolean {
+  return today.getTime() >= vendorAdvanceOpensOn(eventDate).getTime();
 }
 
 /** Pelanggan boleh konfirmasi terima bila sudah diantar, atau sudah tiba hari acara. */
